@@ -1,0 +1,39 @@
+{
+    "hooks":  {
+                  "SessionStart":  [
+                                       {
+                                           "hooks":  [
+                                                         {
+                                                             "type":  "command",
+                                                             "command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/orient.ps1\"",
+                                                             "timeout":  30
+                                                         }
+                                                     ]
+                                       }
+                                   ],
+                  "PostToolUse":  [
+                                      {
+                                          "matcher":  "Bash",
+                                          "hooks":  [
+                                                        {
+                                                            "type":  "command",
+                                                            "command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/record-test.ps1\"",
+                                                            "timeout":  30
+                                                        }
+                                                    ]
+                                      }
+                                  ],
+                  "PreToolUse":  [
+                                     {
+                                         "matcher":  "Bash",
+                                         "hooks":  [
+                                                       {
+                                                           "type":  "command",
+                                                           "command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/gate-commit.ps1\"",
+                                                           "timeout":  30
+                                                       }
+                                                   ]
+                                     }
+                                 ]
+              }
+}

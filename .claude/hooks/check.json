@@ -1,0 +1,5 @@
+{
+  "command": "flutter test",
+  "passMarker": "All tests passed",
+  "watch": ["lib", "test"]
+}

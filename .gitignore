@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Claude Code: the hooks are versioned on purpose - they are the machine check.
+# Local state and machine-specific settings are not.
+.claude/hooks/.last-pass
+**/settings.local.json
