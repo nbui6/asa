@@ -1,6 +1,7 @@
-/// Product Hub — one project's state on one screen.
+/// Product Hub — one project's state, in detail.
 ///
-/// Round 1. Deliberately one project, not several.
+/// Round 1, changed in Round 2: the folder now arrives from the projects list
+/// instead of being typed here. The text field moved to the home screen.
 library;
 
 import 'package:flutter/material.dart';
@@ -10,38 +11,28 @@ import '../../core/project.dart';
 import '../../core/project_reader.dart';
 
 class ProjectScreen extends StatefulWidget {
-  const ProjectScreen({super.key});
+  final String folder;
+  const ProjectScreen({super.key, required this.folder});
 
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
 }
 
 class _ProjectScreenState extends State<ProjectScreen> {
-  // Pre-filled with Nico's projects folder. Editable, so this is a default
-  // rather than a hard-coded path.
-  final _pathField = TextEditingController(
-    text: r'C:\Users\nico.bui\Documents\Claude\Vibe Coding\projects\asa',
-  );
-
   ProjectReadResult? _read;
   GitState? _git;
-  bool _loading = false;
+  bool _loading = true;
 
   @override
-  void dispose() {
-    _pathField.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _load();
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _read = null;
-      _git = null;
-    });
+    setState(() => _loading = true);
 
-    final read = await readProject(_pathField.text.trim());
-
+    final read = await readProject(widget.folder);
     GitState? git;
     if (read.isSuccess) {
       git = await readGitState(read.project!.repoPath);
@@ -57,35 +48,26 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final read = _read;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Asa — Product Hub')),
+      appBar: AppBar(
+        title: Text(read?.project?.name ?? 'Project'),
+        actions: [
+          IconButton(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Reload',
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Project folder'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _pathField,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                FilledButton(
-                  onPressed: _loading ? null : _load,
-                  child: Text(_loading ? 'Loading…' : 'Load'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            if (_read != null) ..._results(_read!),
+            if (_loading) const Text('Loading…'),
+            if (read != null) ..._results(read),
           ],
         ),
       ),
@@ -95,10 +77,21 @@ class _ProjectScreenState extends State<ProjectScreen> {
   List<Widget> _results(ProjectReadResult read) {
     if (!read.isSuccess) {
       return [
-        _Message(
-          title: 'Could not read the project',
-          detail: read.error ?? 'Unknown problem',
-          isError: true,
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.red),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Could not read the project',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(read.error ?? 'Unknown problem'),
+            ],
+          ),
         ),
       ];
     }
@@ -107,13 +100,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final git = _git;
 
     return [
-      Text(project.name, style: Theme.of(context).textTheme.headlineMedium),
-      const SizedBox(height: 24),
       _Field('Status', project.status),
       _Field('Milestone', project.milestone),
       _Field('Next step', project.nextStep),
       _Field('Note updated by hand', project.updated),
       _Field('Last moved (from git)', _lastMovedText(git)),
+      _Field('Repo', project.repoPath.isEmpty ? '(no code yet)' : project.repoPath),
       const SizedBox(height: 32),
       // Rule 5: show the raw data at every boundary.
       _RawBlock(
@@ -159,33 +151,7 @@ class _Field extends StatelessWidget {
             width: 200,
             child: Text(label, style: const TextStyle(color: Colors.grey)),
           ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  final String title;
-  final String detail;
-  final bool isError;
-  const _Message({required this.title, required this.detail, this.isError = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: isError ? Colors.red : Colors.grey),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(detail),
+          Expanded(child: SelectableText(value)),
         ],
       ),
     );

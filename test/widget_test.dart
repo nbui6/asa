@@ -1,9 +1,8 @@
-// Replaces the widget test that `flutter create` generates, which tests the
-// counter app and would fail now that main.dart is Asa.
+// Smoke test: the app builds and shows the projects list.
 //
-// A smoke test only: it proves the app builds and shows the Product Hub.
-// Nothing here touches the file system — reading only happens when Load is
-// pressed.
+// The list loads from disk after the first frame, so this only checks the
+// shell renders. Reading real folders in a test would break for the wrong
+// reasons.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,6 +13,6 @@ void main() {
     await tester.pumpWidget(const AsaApp());
 
     expect(find.text('Asa — Product Hub'), findsOneWidget);
-    expect(find.text('Load'), findsOneWidget);
+    expect(find.text('Projects folder'), findsOneWidget);
   });
 }
