@@ -82,3 +82,7 @@ The kit is half process and half instructions to the AI. So:
 **Send this file back.** It gets read, recorded in `KIT-LOG.md` with your name and the date, and
 turned into the next version — which comes back to you. **A complaint you make twice becomes a
 change**; the kit's own rule is that nothing changes on one sighting.
+
+## Collected from projects - 2026-09-01
+
+- **partner-trial-process** - 2026-09-01 - Switched from one file per decision to a single `decisions.md` log — *"too much file overhead for a project this size"*. **The reason was written at the bottom of the project note, where nothing looks.** A review an hour later recommended the opposite, unaware. _(convention changed)_

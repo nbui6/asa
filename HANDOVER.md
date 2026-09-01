@@ -52,14 +52,29 @@ containing anyone's username.**
 **Pure Dart. No Flutter import.** That rule is what makes this portable and testable, and ADR 0005
 depends on it staying true.
 
-Read `<project folder>/decisions/*.md`. **The parse contract below is taken from the five real
-files, not invented** — check it against them before writing anything:
+**Two sources, because two real formats exist and both are legitimate.** This is the second
+`DecisionSource` implementation the SOLID section calls for — it is not hypothetical, it is
+already on disk:
+
+| Source | Shape | Where |
+|---|---|---|
+| **A folder of files** | `decisions/0001-slug.md`, one per decision, `# ADR 0001 - Title` | Asa's own project |
+| **One log file** | `decisions.md`, one `## 0001 - Title` section per decision | A process project, which switched to it deliberately: *"too much file overhead for a project this size"* |
+
+**Both are read. Neither is converted.** A project that has both is showing them merged, with the
+file each came from — which is what the provenance rule already requires.
+
+**The parse contract below is taken from real files in both formats, not invented** — check it
+against them before writing anything:
 
 | Field | Where it is | Notes |
 |---|---|---|
 | Number and title | First line: `# ADR 0004 — Asa is the operating layer.` | The dash is an em dash. Number may be absent — then the file has no number, which is fine. |
 | Date | `**Date:** 2026-08-31` in the first five lines | **May share a line with Status**, separated by ` · `. Two of five do this. |
-| Status | `**Status:** accepted` | **The value is sometimes bold and sometimes not** — `**Status:** **accepted 2026-08-22**`. Strip the markers. Values seen: `accepted`, `accepted <date>`, `proposed — needs Nico's decision`. |
+| Status | `**Status:** accepted` | **The value is sometimes bold and sometimes not** — `**Status:** **accepted 2026-08-22**`. Strip the markers. Values seen across two real projects: `accepted` · `accepted <date>` · `proposed — needs …` · **`superseded by 0008`** · **`accepted (supersedes 0005)`** · **`accepted (drafted by Claude, pending legal review)`**. |
+| **Superseded by / supersedes** | Parsed **out of the status text** | `superseded by 0008` and `accepted (supersedes 0005)`. **Both already exist on a real project.** See criterion 8. |
+| **Separator between Date and Status** | ` · ` **or** ` - ` | Asa's own ADRs use the middle dot; a second project's use a plain hyphen. **Accept both**, and do not require either. |
+| Title dash | `—` **or** `-` | Same reason. `# ADR 0001 - Static serial per partner` is a real heading. |
 | Why | The `## Why` section, if present | Verbatim first paragraph. **Never summarise.** |
 | The decision | The `## Decision` section | **Present in 4 of 5.** The fifth has `## Recommendation`. Missing is normal — fall back to the title. |
 | **What would change it** | The `## What would change this` section | **Show this. It is the highest-value field in the file** and the reason it is in v0.1: ADR 0001 listed four conditions that would invalidate it, three of them happened, and nobody noticed for ten days. |
@@ -204,6 +219,13 @@ priorities and deadlines · **any editing of any note — Asa reads** · any AI.
    reader is wrong, not the file.*
 7. A person who is not the owner can clone, run, choose a folder, and see their own projects
    **without editing source**.
+8. **A superseded decision is visibly superseded in the list** — not only inside its own file, and
+   it names what replaced it.
+
+   > **This is not hypothetical and it is why it is in v0.1.** On a real project, decision 0005 is
+   > superseded by 0008 and the two are about the same mechanism. **A list that shows both as
+   > "accepted" will cause the wrong thing to be built.** A decisions list that misleads is worse
+   > than no decisions list, and this project's whole argument is that the record can be trusted.
 
 **Machine — run, not assumed. All four, in order:**
 
@@ -218,9 +240,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File check.ps1
 | Test | Proves |
 |---|---|
 | Parses each of the five real ADR shapes | The contract above, against reality |
+| **Parses a `decisions.md` log with `## NNNN - Title` sections** | The second real format |
+| **A project with both formats yields one merged list, each item naming its file** | The case that exists today |
 | Bold and plain `**Status:**` both parse | Two shapes exist in the same folder |
 | Date sharing a line with Status parses | Two of five do this |
 | A missing `## Decision` falls back, does not crash | One of five |
+| **`superseded by NNNN` is parsed and exposed** | Real, on a second project |
+| **`accepted (supersedes NNNN)` is parsed and exposed** | Its other half |
+| **A hyphen separator parses as well as a middle dot** | Two projects write it differently |
 | A malformed file yields **unreadable**, not silence | Criterion 5 |
 | No decisions yields an empty list, not an error | Criterion 4 |
 | Settings round-trip: write, read back, missing file | The picker |

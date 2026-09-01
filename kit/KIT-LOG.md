@@ -1536,3 +1536,38 @@ is not the top. For Dart the dial is three language modes plus `--fatal-infos`.
 **Not yet applied to the kit** — applied first to the product spec that needed it today, so the
 shape can be tested once before it becomes a rule. **The kit is not changed on one instance.**
 Second occurrence promotes it: `PLAYBOOK.md` §14, the rule of two.
+
+### 2026-09-01 — two sessions, opposite advice, one hour apart, on the same project
+
+**Bucket: how we build.**
+
+A second assistant session, working on a project in folders this session cannot see, decided the
+kit's one-file-per-decision convention was too heavy — *"too much file overhead for a project this
+size"* — moved to a single `decisions.md` log, and **recorded the reason at the bottom of the
+project note.**
+
+**One hour later this session reviewed the same project and recommended the opposite.** Neither
+session was wrong. Neither could see the other. There was no channel.
+
+**Three findings.**
+
+**1. The folder is the only channel, and only for whoever has the folder.** Session-to-session
+messaging exists but no other session was running; and even the kit itself is invisible to a
+session whose access is one project deep. **Anything the process needs a stranger to know has to be
+inside the folder that stranger can see.** Fixed: `ASA.md` in every project folder — self-contained,
+assumes no other access, states the decision formats and where feedback goes.
+
+**2. Most feedback is not filed as feedback.** That session was not "giving feedback" — it was
+making a local decision with a good reason. **No channel catches what nobody knows they are
+sending.** So `kit-feedback` gains a **sweep**: at every retrospective, read every project's
+`FEEDBACK.md` *and* the tail of every project note for changes explained in passing. The second
+half is what finds things.
+
+**3. The right response to a fork is usually not standardisation.** The other session was right for
+its project. **The reader now accepts both formats** — the tool bent, the people did not. That is
+the first option to reach for, ahead of "the kit adopts it" and well ahead of "everyone must do it
+the same way".
+
+> **And the reason this was caught at all:** the Boss asked *"can you find it?"*. Nothing surfaced
+> it. **Still true after the fix** — `FEEDBACK.md` and the sweep both depend on someone looking.
+> A folder cannot notify anyone. Recorded as a standing weakness, not solved.

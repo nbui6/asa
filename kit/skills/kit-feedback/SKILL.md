@@ -133,3 +133,60 @@ Six of them accumulated that way in one week before anyone noticed the bucket wa
 **If there is no operating layer in this project, say so and write it in the kit's log anyway** — but
 label it, so it can be moved when one exists. A finding in the wrong place is better than a finding
 nowhere.
+
+---
+
+# Feedback from a project you cannot see — added 2026-09-01
+
+**This skill has assumed one session, seeing everything.** That stopped being true the moment a
+second assistant worked on a project in a folder this one has no access to.
+
+## What happened
+
+A session working on one project decided the kit's decision format did not suit it — one file per
+decision was *"too much file overhead for a project this size"* — switched to a single log, and
+**wrote the reason at the bottom of the project note.** A good decision, correctly reasoned.
+
+**An hour later a second session reviewed the same project and recommended the opposite**, having
+never seen it. Neither was wrong. Neither could have known.
+
+> **Sessions cannot message each other. The folder is the only channel** — and only for whoever
+> has that folder. A file in the kit is invisible to a session that cannot see the kit.
+
+## The routing, now three ways
+
+| Goes to | What |
+|---|---|
+| **`KIT-LOG.md`** | How we build — a step that failed, a skill that did not fire, a check measuring the wrong thing |
+| **The operating layer's log** | How the work is remembered — something rebuilt that existed, a decision re-argued, a stale fact read as current |
+| **`<project>/FEEDBACK.md`** *(new)* | **Written from inside a project, by whoever is there.** The only one reachable without access to the kit. |
+
+## The mandatory case
+
+**A session that changes a convention it was given must write one line in that project's
+`FEEDBACK.md`.** Not the project note, not a comment, not the chat.
+
+**An unrecorded change forks the convention silently, per project, forever** — and the fork is only
+discovered by the next person who assumes the original still holds.
+
+## The sweep — because most feedback is not deliberate
+
+The session that switched formats **was not giving feedback.** It was making a local decision with
+a good reason. Nobody would have filed that under "feedback about the process", and no channel
+catches what nobody knows they are sending.
+
+**So at every retrospective: read every `projects/*/FEEDBACK.md`, and read the tail of every
+project note for changes explained in passing.** The second half is the one that finds things.
+
+## What to do with a fork once found
+
+**Do not standardise reflexively.** The format change was *right for that project*. Three outcomes,
+in order of preference:
+
+1. **The tool absorbs both.** Cheapest and most honest — the process bends to how people work.
+   *Applied here: the reader now accepts both a folder of files and a single log.*
+2. **The kit adopts the new way**, if the reason generalises.
+3. **The kit keeps its way and says why**, in one line, where the next session will read it.
+
+**"Everyone must do it the same way" is the fourth option and usually the wrong one.** The
+convention exists to serve the record, not the other way round.

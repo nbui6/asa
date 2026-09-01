@@ -104,6 +104,14 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     problem this project does not have. The second was written while the proven checker sat
     unread in the folder it had just been copied into.*
 
+    > **Named exception, open until v0.1 ships.** The check fails on **three lines** — the default
+    > folder in `projects_screen.dart` and two fixtures in `test/project_test.dart` — which contain
+    > the owner's Windows username. Known, accepted in a private repository, and **removed by
+    > v0.1's folder picker.** Commits are allowed past it *only* for these three, and only until
+    > then. **A gate that is routinely overridden is not a gate**, so this exception has an end
+    > condition and a check: when v0.1 lands, the script must pass with nothing waived.
+
+
 17. **The workspace has one root: `%USERPROFILE%\workspace\`.**
 
     | | |
@@ -119,6 +127,24 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     *Moved 2026-09-01, ADR 0006. Not moved: the Flutter SDK (a tool, not part of this
     system) and the German app's code, until that project is dealt with on its
     own terms.*
+
+18. **Project feedback is collected, not chased.** Every project folder has `FEEDBACK.md` — one
+    dated line per finding about *the way of working*, written by whoever is in that folder, even
+    a session that cannot see this repository at all.
+
+    ```
+    powershell -NoProfile -ExecutionPolicy Bypass -File collect-feedback.ps1
+    ```
+
+    Reads every project's `FEEDBACK.md`, appends the new lines to `kit\FEEDBACK.md`, and **holds
+    back any line containing a machine path or an email address** — not copied, not deleted, and
+    named so it can be rewritten. Nothing else ever leaves a project folder.
+
+    **Run it before a commit.** It reports and never blocks. `-SelfTest` proves it still works.
+
+    *Added 2026-09-01, after two sessions gave opposite structural advice on one project an hour
+    apart because neither could see the other. The folder is the only channel between sessions, and
+    a folder cannot notify anyone — so something has to go and look.*
 
 ## At the end of every session
 
