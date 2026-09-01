@@ -80,6 +80,38 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     a part.
 12. **A retired term is a banned term.**
 13. **Asa never becomes a text editor.** That is the line.
+14. **Read the repo before proposing anything for it.** Not the notes about it - the repo:
+    `ARCHITECTURE.md`, this file, and the vault's `CHARTER.md`. On 2026-08-31 an assistant
+    proposed "Asa, day one" - a fresh charter, roadmap and CLAUDE.md - for this repo, after an
+    hour of discussing Asa. Three rounds were already committed. A belief formed from
+    conversation is not evidence and reads exactly like knowledge from the inside.
+
+15. **No git remote is ever added, and nothing is ever pushed, without Nico saying so in that
+    session.** Not to company infrastructure, not to a personal host, not "just to back it up".
+    Verified 2026-09-01: `dev/asa` and `dev/assistant` have **no remote configured** and the vault
+    is not a repository. If a remote ever appears in `.git/config` and Nico did not ask for it,
+    stop and say so before doing anything else.
+
+16. **Nothing is pushed without `check-shareable.ps1` passing.** The repository is shared; the
+    projects Asa reads are not. Run it, read the output, then push:
+    `powershell -NoProfile -ExecutionPolicy Bypass -File check-shareable.ps1`
+    **Two checks always run — a machine path and an email address — and the name list starts
+    empty.** The repository is private and shared with people who already know the project names,
+    so nothing there is secret from them; add a name only if that changes. Same shape as
+    `kit/check-boundaries.ps1`, including the `-SelfTest` that proves it still catches things.
+    *Two more elaborate versions were written and thrown away first — one with a hand-maintained
+    list, one that derived the list from folder names, git and the private notes. Both solved a
+    problem this project does not have. The second was written while the proven checker sat
+    unread in the folder it had just been copied into.*
+
+## At the end of every session
+
+**Append to `HANDOVER.md`, upstream half:** what was built · **what was decided that the spec did
+not cover** · what could not be done · anything changed by hand that the agreed design still shows
+the old way.
+
+That half carries the reasoning no diff contains, and it is the half that gets skipped. This line is
+why it will not be.
 
 ## Where the process lives
 

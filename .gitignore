@@ -51,3 +51,11 @@ app.*.map.json
 # Local state and machine-specific settings are not.
 .claude/hooks/.last-pass
 **/settings.local.json
+
+# Asa's own settings live in the Windows app-data folder, never here.
+# Belt and braces in case that ever changes: a path on disk is machine-specific
+# and a username is not something a shared repository needs.
+asa_settings.json
+*.local.json
+
+# check-shareable.ps1 derives its private terms and keeps no list. Nothing to ignore.
