@@ -51,10 +51,10 @@ Some prose.
     test('keeps a Windows path with its drive colon', () {
       const file = r'''
 ---
-repo-path: C:\Users\nico.bui\dev\asa
+repo-path: C:\Users\nico.bui\workspace\asa
 ---
 ''';
-      expect(parseFrontmatter(file)['repo-path'], r'C:\Users\nico.bui\dev\asa');
+      expect(parseFrontmatter(file)['repo-path'], r'C:\Users\nico.bui\workspace\asa');
     });
 
     test('ignores lines that are not key and value', () {

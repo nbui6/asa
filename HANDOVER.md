@@ -1,116 +1,255 @@
-# HANDOVER.md — between the deciding session and the building session
+# HANDOVER.md — from the deciding session to the building session
 
-**Both sessions read this. Neither writes in the other's half.**
-Created 2026-08-31. Template and reasoning: the kit's `templates/SESSION-HANDOVER.md`.
-
-> **Why it exists.** Two assistant sessions on one repository — one that can decide, design and
-> research, one that can compile, run and see the result — turn the Boss into a message bus. **They
-> already share this repository:** the *what* is readable in the diff. Only the **why** needs
-> writing down.
+**Lives in the repo root.** Both sessions read it; **neither writes in the other's half.**
 
 ---
 
 ## ⬇ Downstream — written by the deciding session, read before building
 
-### Session 2026-08-31 · for Claude Code, running natively on Windows in this repo
+### Gate — read this first
 
-**Read these three first, in this order. Hard rule 14.**
+| Check | State |
+|---|---|
+| Does this work change the structure of a screen? | **Yes** — both screens |
+| Has the sketch been seen and approved by the Boss? | **Yes, 2026-09-01.** Front page: approved. Project page: approved. |
+| Is the plan signed? | **Yes** — `PLAN.md`, Nico Bui, 2026-09-01 |
+| Is anything sketched but **not** approved? | **Yes: the process tab (v2) is in review.** Do not build it. |
 
-1. `CLAUDE.md` — the standing rules, the machine check, and *Where we are*
-2. `ARCHITECTURE.md` — the map, and the two import rules it enforces
-3. `..\..\Documents\Claude\Vibe Coding\projects\asa\rounds\round-4.md` — **the criteria for this
-   round, already agreed on 2026-08-24. Do not rewrite them.**
+**The approved sketch is the target for the product, not for this version.** v0.1 is one step
+towards it. Anything in the sketch not named below is out.
 
----
+### Job zero — done 2026-09-01. What the app actually does today
 
-### Job 0 — close round 2, before anything new. Fifteen minutes.
+It builds in 33.7 s and runs. Ten days after round 2 was committed, this was unknown.
 
-`CLAUDE.md` names two open items and neither is code:
+**Projects screen** — a "Projects folder" text box with a hardcoded path and a Load button;
+`2 projects — most stale first`; each row shows name, typed status, next step, milestone, and a
+coloured age.
 
-| # | What | How to close it |
+**Project screen** — a labelled table (Status · Milestone · Next step · Note updated by hand ·
+Last moved (from git) · Repo), then **the source file path, the raw frontmatter, the exact git
+command that was run, and its output.**
+
+> **That provenance block is the best thing in this codebase and it must not be lost.** It is
+> `PLAYBOOK.md` §7 built rather than written down — the screen shows where every value came from.
+> **Everything v0.1 adds carries the same obligation: show the file it came from.**
+
+**Three findings, all confirmed by looking:**
+
+1. `status` is read from typed frontmatter. The charter says state is derived. **v0.2 fixes it —
+   not this version.** Do not touch it now.
+2. **Only two projects appear**, because only two folders have a project note. The kit and the
+   German app are invisible to Asa. **This is a data gap, not a bug — do not "fix" it in code.**
+3. The projects folder is a hardcoded path in a text box. **v0.1 fixes this** — see below.
+
+### What to build — v0.1, and nothing else
+
+**One sentence: the decisions already written in markdown become visible in Asa, and the app stops
+containing anyone's username.**
+
+#### 1. The decisions reader — `lib/core/`
+
+**Pure Dart. No Flutter import.** That rule is what makes this portable and testable, and ADR 0005
+depends on it staying true.
+
+Read `<project folder>/decisions/*.md`. **The parse contract below is taken from the five real
+files, not invented** — check it against them before writing anything:
+
+| Field | Where it is | Notes |
 |---|---|---|
-| 1 | **Round 2's human line was never checked.** Nobody has looked at the running window. | `flutter run -d windows`. Expect two rows, staleness on the right, and clicking `Asa` opens the round 1 detail screen. **Look at it, then write what you saw** into `CLAUDE.md` — evidenced, or the real result if it is not what round 2 claimed. |
-| 2 | **Round 2's acceptance criteria were never written down.** The verification ran against criteria reconstructed from the roadmap. | Write them into a `rounds/round-2.md`, **marked as reconstructed after the fact**, with the results as they actually are. A reconstructed criterion is worth having and must not pretend to be a criterion agreed in advance. |
+| Number and title | First line: `# ADR 0004 — Asa is the operating layer.` | The dash is an em dash. Number may be absent — then the file has no number, which is fine. |
+| Date | `**Date:** 2026-08-31` in the first five lines | **May share a line with Status**, separated by ` · `. Two of five do this. |
+| Status | `**Status:** accepted` | **The value is sometimes bold and sometimes not** — `**Status:** **accepted 2026-08-22**`. Strip the markers. Values seen: `accepted`, `accepted <date>`, `proposed — needs Nico's decision`. |
+| Why | The `## Why` section, if present | Verbatim first paragraph. **Never summarise.** |
+| The decision | The `## Decision` section | **Present in 4 of 5.** The fifth has `## Recommendation`. Missing is normal — fall back to the title. |
+| **What would change it** | The `## What would change this` section | **Show this. It is the highest-value field in the file** and the reason it is in v0.1: ADR 0001 listed four conditions that would invalidate it, three of them happened, and nobody noticed for ten days. |
 
-**Do not skip job 0 to get to the code.** Round 2 is the round that would otherwise be remembered as
-finished, and it is not.
+**Every decision keeps the path of the file it came from.** Non-negotiable — see the provenance
+rule above.
 
----
+#### 2. The screen
 
-### Job 1 — round 4: the stage, measured not typed
+Add a **Decisions** section to the project screen, below the existing table and **above** the
+provenance block.
 
-**The criteria, the rule table, the file list and the "not in this round" list are all in
-`rounds/round-4.md`.** Nothing is restated here — two copies of a criterion is how they drift.
+- Count in the heading: `Decisions · 5`
+- One row each: **title · date · status**. Tap opens the decision.
+- The decision view: title, date, status, *the decision*, *why*, **what would change it**, and the
+  file path it was read from.
 
-**What the deciding session is adding, and it is only context:**
+#### 3. The folder picker — removes the username from the source
 
-**Why this round and not round 3.** `CLAUDE.md` says *"Next: Round 3, the handoff."* The kit's
-roadmap ranks **round 4 first**, with round 3 noted as *"was next, overtaken — still the single
-highest-value screen element."* **Two sources disagree, and that disagreement is itself a finding**
-(`ASA-LOG.md`). Round 4 is specified here because **its criteria are already agreed and round 3's
-are not**, and hard rule 1 says criteria before code. *If the Boss says round 3, that overrides
-this — say so and stop.*
+Six lines of source contain `C:\Users\<username>\`. A second person reading this repo does not need
+them, and **the hardcoded default is broken on every machine except this one.**
 
-**What must keep working.** Round 4 touches `projects_scan.dart` and the projects screen, which are
-round 2's deliverable and have never been looked at by a human. **If job 0 finds round 2 broken,
-stop and report — do not build a stage indicator on top of an unverified list.**
+- First run: an empty state and a **Choose folder…** button
+- Store the choice in `%APPDATA%\Asa\settings.json` — `Platform.environment['APPDATA']`, **no new
+  package**
+- The text box may stay, pre-filled from the saved setting
+- Test fixtures use a neutral path
 
-**What is still undecided, and must not be built around:**
 
-| Open | Do not assume |
+### Code quality — the standard, and the Dart equivalents
+
+**Required from 2026-09-01.** The standard was given in PHP terms — PHPStan level 10, Pint,
+PHPUnit — so here is the mapping to this stack. **Each of these must pass completely, not mostly.**
+
+| Asked for | This stack | Command |
+|---|---|---|
+| Pint (style) | `dart format` | `dart format --set-exit-if-changed .` |
+| PHPStan level 10 (max static analysis) | `flutter analyze` **with strict modes on** | `flutter analyze --fatal-infos` |
+| PHPUnit (unit) | `flutter test` | `flutter test --coverage` |
+| Feature tests | `integration_test` — **ships with the Flutter SDK, not a package** | `flutter test integration_test` |
+
+**`analysis_options.yaml` — the level-10 equivalent. Add exactly this:**
+
+```yaml
+include: package:very_good_analysis/analysis_options.yaml
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    missing_return: error
+    dead_code: error
+    unused_import: error
+  exclude: [build/**, "**/*.g.dart"]
+```
+
+**The three `strict-*` modes are the actual equivalent of raising a PHPStan level** — they turn
+implicit `dynamic`, unannotated generics and silent downcasts into errors. `--fatal-infos` makes
+every hint fail the build, which is what "level 10" means in practice.
+
+> **One new dev dependency: `very_good_analysis`.** It is a list of lint rules and nothing else —
+> no runtime code, nothing shipped in the app. Explained in two sentences, as `CLAUDE.md` requires,
+> and **vetoable**: without it, `flutter_lints` plus the three strict modes gets most of the way.
+
+**One command that says pass or fail — `check.ps1` in the repo root:**
+
+```powershell
+dart format --set-exit-if-changed .   ; if ($LASTEXITCODE) { exit 1 }
+flutter analyze --fatal-infos         ; if ($LASTEXITCODE) { exit 1 }
+flutter test --coverage               ; if ($LASTEXITCODE) { exit 1 }
+flutter test integration_test         ; if ($LASTEXITCODE) { exit 1 }
+Write-Host "PASS"
+```
+
+**Order matters and it is not arbitrary.** Formatting first because it is instant; analysis before
+tests because **25 green tests once ran over code that could not compile** on the sibling project,
+2026-08-26. A test suite that passes over unanalysable code is measuring nothing.
+
+### SOLID, concretely — not as a slogan
+
+The existing `project.dart` / `project_reader.dart` split is already right: **the thing, and the
+thing that fetches it, are separate files.** Follow it. What each letter means for *this* work:
+
+| | Here |
 |---|---|
-| Whether the projects screen gets an action row at the top (kit roadmap item 8, six findings from a UI review) | Do not restructure the screen for it. Add the stage to the row as `round-4.md` says, and nothing else. |
-| Round 3's handoff buttons | Explicitly out — `round-4.md` says so |
+| **Single responsibility** | `decision.dart` parses text into a decision. `decisions_reader.dart` finds files. **Neither does the other's job.** |
+| **Open/closed** | A second decision source — a table inside a note — must be addable **without editing the ADR parser**. Define `DecisionSource` with one method; the ADR reader is the first implementation. |
+| **Liskov** | Every `DecisionSource` returns the same result type, including for "unreadable". No source signals failure differently. |
+| **Interface segregation** | The reader needs *list files in a folder* and *read a file as text*. **It does not need a filesystem object.** Two methods, not twenty. |
+| **Dependency inversion** | `decisions_reader` takes that small interface **as a constructor argument**. Production passes the real one; tests pass an in-memory one. |
 
-**Three rules from the kit that changed this week.** Two are new and untested; they are flagged so
-you can push back rather than absorb them silently:
+**Dependency inversion is the one that pays today:** every parser test runs with no disk, no
+fixtures folder and no temp directory — fast, hermetic, and identical on your teamlead's machine.
 
-| | |
+> **The trap to avoid, and it has already happened once here.** A `const` constructor with a new
+> mutable field broke the build on the sibling project while every test stayed green. **An
+> interface is not free — take it only where a second implementation is genuinely coming.** Two are
+> coming for `DecisionSource` (ADR files, tables in notes) and one for the file access (real,
+> in-memory). **Nowhere else.** `CLAUDE.md` rule 7: boring beats clever.
+
+### What must keep working
+
+- **The provenance block on the project screen.** Do not restyle it, do not collapse it.
+- The projects list, its sort, and its age colouring — untouched this version.
+- `flutter analyze` clean, then `flutter test` green. **In that order.**
+- **Nothing in `lib/core/` imports Flutter.**
+
+### Not in this piece of work — each is a later version in `PLAN.md`
+
+Progress bars · derived stage · any change to `status` · tabs of any kind · the process tab (**not
+approved**) · parked items · links, parent/child or "shared with" · the log · the HR tab ·
+priorities and deadlines · **any editing of any note — Asa reads** · any AI.
+
+### Files expected to change
+
+| File | |
 |---|---|
-| **The handover check is four lines now** — the fourth is **Reachable?** *Name the route a person takes to see this, tap by tap.* | Applies cleanly here: the stage appears on a row that already exists. |
-| *(new, one day old)* A round that changes a screen ships **a screenshot from the real window**, in the same commit | **Worth it this round** — criterion 6 is *"the stage is never colour alone"*, and a screenshot is the only thing that settles it. |
-| *(new, one day old)* A line in a plain-language changelog, in the same commit | **Not set up in this repo.** Say whether it is worth starting, rather than starting it silently. |
+| `lib/core/decision.dart` | new — the decision and the parse result |
+| `lib/core/decisions_reader.dart` | new — find and read them |
+| `lib/core/settings.dart` | new — read/write the chosen folder in `%APPDATA%` |
+| `lib/hubs/product/project_screen.dart` | the decisions section |
+| `lib/hubs/product/projects_screen.dart` | empty state and Choose folder… |
+| `test/decision_test.dart`, `test/decisions_reader_test.dart`, `test/settings_test.dart` | new — unit, **no disk access** |
+| `integration_test/decisions_flow_test.dart` | new — feature test: launch, choose a folder, open a project, see a decision |
+| `analysis_options.yaml`, `pubspec.yaml`, `check.ps1` | the quality tooling above |
+| `test/project_test.dart` | neutral fixture paths |
 
-**Who runs git.** You do, natively, in this repo. **The deciding session must not** — it reaches
-these files across a bridge, where git has no `core.autocrlf` and leaves an `index.lock` it cannot
-delete. Commit round 4 yourself, with a message naming the round.
+**`project.dart` and `projects_scan.dart` are not touched.**
 
-**Where to stop and ask.** Anything that changes what Asa *is* — a new hub, writing prose into a
-note, an editor of any kind (hard rule 13), or a change to the rule table in `round-4.md`. Those are
-charter questions, and they belong in the deciding session.
+### Acceptance criteria
+
+**Human — the Boss says yes or no, once:**
+
+1. Open Asa, click a project, see its decisions **without opening a file**.
+2. Each decision shows **what, when, and why**, in the words written at the time.
+3. **What would change this** is visible on a decision that has one.
+4. A project with no decisions says so plainly — **no empty box, no spinner.**
+5. A file that cannot be parsed is shown as **unreadable, with its path and its raw text.** Silent
+   skipping is banned.
+6. It reads the five real ADRs **unedited**. *If a real file must be reformatted to be read, the
+   reader is wrong, not the file.*
+7. A person who is not the owner can clone, run, choose a folder, and see their own projects
+   **without editing source**.
+
+**Machine — run, not assumed. All four, in order:**
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File check.ps1
+```
+
+`dart format --set-exit-if-changed` -> no diff · `flutter analyze --fatal-infos` -> clean ·
+`flutter test --coverage` -> green · `flutter test integration_test` -> green.
+**"Mostly passing" is failing.**
+
+| Test | Proves |
+|---|---|
+| Parses each of the five real ADR shapes | The contract above, against reality |
+| Bold and plain `**Status:**` both parse | Two shapes exist in the same folder |
+| Date sharing a line with Status parses | Two of five do this |
+| A missing `## Decision` falls back, does not crash | One of five |
+| A malformed file yields **unreadable**, not silence | Criterion 5 |
+| No decisions yields an empty list, not an error | Criterion 4 |
+| Settings round-trip: write, read back, missing file | The picker |
+| `lib/core` imports no Flutter | The architecture rule |
+
+### Before calling it done — `PLAYBOOK.md` §8
+
+- [ ] Does it run?
+- [ ] `check.ps1` green — **all four, completely**
+- [ ] Reviewed — **the reviewer agent**
+- [ ] **Reachable?** Can the Boss get to a decision from the front page without being told how?
+- [ ] `check-shareable.ps1` passes — **it fails today on purpose**, and this version is what makes
+      it pass.
+
+### Where to stop, and who does what
+
+- **Nico runs every `git` and `flutter` command, in Windows PowerShell.** Never through the
+  assistant's device bridge — a subagent doing that left a stale `.git/index.lock` on 2026-08-26.
+- Stop and ask if a criterion cannot be met **as written** rather than meeting a nearby one.
+- Stop if the parse contract disagrees with the real files. **The files win.**
 
 ---
 
 ## ⬆ Upstream — appended by the building session at the end of every session
 
-**This half is the one that does the work and the one that gets skipped.** Add a line to `CLAUDE.md`
-so it happens at session end without being asked.
-
-### <yyyy-mm-dd> — <what the session was>
-
 **Built:** <one or two lines. The diff has the detail; this is the index.>
 
-**Decided, that the downstream half did not cover:**
+**Decided that the spec did not say:** <the important half. The diff cannot show this.>
 
-| Decision | Why | What would reopen it |
-|---|---|---|
-| | | |
+**Surprised us:** <anything the spec got wrong about reality.>
 
-> **The most valuable table in this file.** It carries *reasoning*, and no diff ever contains
-> reasoning. A decision made here and not written down is one the deciding session will contradict
-> next week, in good faith, using a document that is now wrong.
-
-**Could not be done, and why:** <blocked · out of scope · needs a decision · needs the Boss to look>
-
-**Changed by hand and not reflected upstream:** <the most dangerous line in the file — anything
-adjusted here that the agreed design still shows the old way.>
-
----
-
-## What does not cross this boundary
-
-| | |
-|---|---|
-| **Live questions** | Hit an ambiguity mid-task and you cannot ask the deciding session. It routes through the Boss — which is the argument for a fuller downstream half, not a thinner one. |
-| **Anything only a human can see** | The running window. Whether the stage labels read clearly. Whether it feels slow. |
-| **Approval** | Neither session settles what Asa is. A shared file makes it slightly too easy to pretend otherwise. |
+**Left undone:** <and whether it blocks anything.>

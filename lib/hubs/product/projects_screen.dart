@@ -17,7 +17,7 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   final _rootField = TextEditingController(
-    text: r'C:\Users\nico.bui\Documents\Claude\Vibe Coding\projects',
+    text: r'C:\Users\nico.bui\workspace\projects',
   );
 
   ScanResult? _scan;

@@ -104,6 +104,22 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     problem this project does not have. The second was written while the proven checker sat
     unread in the folder it had just been copied into.*
 
+17. **The workspace has one root: `%USERPROFILE%\workspace\`.**
+
+    | | |
+    |---|---|
+    | `asa\` | **this repository** — the app and `kit\`. Shared. |
+    | `projects\` | every project's material. **Never in git**, and it cannot be — it is outside the repository root. |
+    | `workshop\` | `MACHINE.md`, `BOSS.md`, `hub\`. This machine, this Boss. Never in git. |
+
+    This is `PLAYBOOK.md` §14 *Three homes* made physical. The rule was prose for three weeks and
+    was broken anyway — a product skill filed into the kit, a glossary filled with one product's
+    build log. **A folder boundary cannot be broken by being helpful.**
+
+    *Moved 2026-09-01, ADR 0006. Not moved: the Flutter SDK (a tool, not part of this
+    system) and the German app's code, until that project is dealt with on its
+    own terms.*
+
 ## At the end of every session
 
 **Append to `HANDOVER.md`, upstream half:** what was built · **what was decided that the spec did

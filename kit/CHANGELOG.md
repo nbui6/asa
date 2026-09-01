@@ -8,6 +8,36 @@ Versions are dated. The current one is at the top.
 
 ---
 
+## v1.22 — 2026-09-01 — the machine check grows two categories
+
+**Outside feedback, and it found a hole the kit could not see in itself.** A code-quality standard
+arrived in PHP terms — PHPStan level 10, Pint, PHPUnit, plus feature tests — and measured against
+it the kit's machine check was **half a check**: static analysis at default strictness, and unit
+tests. No formatting. No feature tests.
+
+**Changed**
+
+- **`first-test` now sets up four categories, not two** — format, analyse *at maximum*, unit,
+  feature — wrapped in one script, in that order. Formatting because it is a minute's work and ends
+  every layout argument; **feature tests because `PLAYBOOK.md` §8's "is it reachable?" had only ever
+  been a question asked of a human**, and a feature test is the same question automated.
+- **"Run the analyser" is no longer accepted as a level.** Every analyser ships with its dial turned
+  down. `first-test` and `stack-choice` now name the dial per stack and require the setting to be
+  written into the project's `CLAUDE.md`, because a level nobody recorded gets lowered by the first
+  person who hits a warning.
+- **`stack-choice` records three extra lines with every stack**: the formatter and its check flag,
+  the analyser *and its level*, and the feature-test runner. Minutes on day one; a day or never in
+  month three.
+- **`PLAYBOOK.md` §14, the rule of two, gained an exception** — and it was written the day after the
+  rule itself, because the rule was about to be misapplied to this very change. The rule of two
+  guards against acting on one *inferred* pattern. **A stated requirement whose gap you can verify
+  by looking is not an inference**, and waiting for it to happen twice is just slowness.
+
+**Not changed:** "mostly passing" is still failing, and the order is still load-bearing — a project
+once had 25 green tests over code that could not compile, because only the test step ran.
+
+---
+
 ## v1.20 — 2026-08-31 — the kit learns it is a module
 
 **One change, and it is about the kit's own place rather than its contents.**

@@ -131,3 +131,66 @@ optimising it produces a lot of tests that assert nothing.
 will happily test that the code does what it does, bug included. The defence is that *you* say
 the sentence in plain language first, and that the failing test is seen failing before the fix
 makes it pass.
+
+---
+
+# Four categories, not two — added 2026-09-01
+
+**This skill has been telling people to set up two things: a static check and unit tests. That is
+half of what a working project needs**, and the gap was found by an outside standard rather than by
+this kit noticing.
+
+> *"There should be tools for code quality, code styling, and unit as well as feature tests, all
+> passing completely. As a PHP equivalent: PHPStan level 10, Pint, PHPUnit. Use tools matching the
+> stack."* — outside feedback, 2026-09-01
+
+| Category | What it answers | Was in this skill? |
+|---|---|---|
+| **Formatting** | Does the code look the same no matter who wrote it? | **No** |
+| **Static analysis** | Is it self-consistent, without running it? | Yes — **but at default strictness** |
+| **Unit tests** | Does each piece do what it claims? | Yes |
+| **Feature tests** | **Does the app work when a person uses it?** | **No** |
+
+## The two that were missing
+
+**Formatting is the cheapest and the most argued about.** It takes a minute to set up, it ends
+every discussion about layout, and it makes a diff show what changed rather than what moved.
+There is one command in every ecosystem and its exit code is the whole point:
+`dart format --set-exit-if-changed` · `gofmt -l` · `black --check` · `prettier --check` ·
+`cargo fmt --check`.
+
+**Feature tests are the bigger gap.** A unit test proves a function; it says nothing about whether
+the thing can be reached. **`PLAYBOOK.md` §8 already asks "is it reachable?" — and has only ever
+asked a human.** A feature test is that question, automated: start the app, do what a person does,
+check what a person would see. Flutter has `integration_test` in the SDK; most stacks have one.
+
+## Turn the strictness dial, and say what you set it to
+
+**"Run the analyser" is not a level.** Every analyser ships with a default that is deliberately
+gentle so it does not fail on new code, and almost nobody turns it up. *Level 10* asks for the top
+of the dial; the default is the bottom.
+
+| Stack | The dial |
+|---|---|
+| Dart | `strict-casts`, `strict-inference`, `strict-raw-types`, plus `--fatal-infos` |
+| PHP | PHPStan / Psalm level |
+| TypeScript | `strict: true`, then `noUncheckedIndexedAccess` |
+| Python | mypy `--strict` |
+| Rust | `#![deny(warnings)]`, `clippy::pedantic` |
+
+**Write the setting into the project's `CLAUDE.md`.** A dial nobody recorded gets turned back down
+by the first person who hits a warning.
+
+## Still one command
+
+Four categories, one script, and **the order is load-bearing**:
+
+```
+format --check   ->  analyse (strict)  ->  unit  ->  feature
+```
+
+**Cheapest first, and analysis before tests.** On 2026-08-26 a project had **25 passing tests over
+code that could not compile**, because only the test step was run. A suite that passes over
+unanalysable code measures nothing.
+
+**"Mostly passing" is failing.** A check with three known-failing tests is a check nobody reads.

@@ -115,3 +115,21 @@ choice and want the trade-offs argued. Two questions only:
 2. Is anything here **unused** — a dependency that stayed after the reason for it left?
 
 Changing a stack that is merely unfashionable is the most expensive way to feel productive.
+
+---
+
+## Name the strictness dial when you name the stack — added 2026-09-01
+
+Choosing a language chooses an analyser, and **every analyser has a dial that is shipped turned
+down.** If nobody sets it at the start, nobody sets it at all — turning it up on a mature codebase
+means hundreds of findings at once, which is how it gets turned back down again.
+
+**So when this skill records a stack, it records three more lines with it:**
+
+| | |
+|---|---|
+| The **formatter** and its checking flag | `dart format --set-exit-if-changed`, `prettier --check`, `gofmt -l` |
+| The **analyser and the level** | Not "the analyser" — the setting. `strict-casts` + `--fatal-infos`, PHPStan level 10, `mypy --strict` |
+| The **feature-test runner** | The one that drives the real thing, not the unit runner |
+
+**Cost of setting it on day one: minutes. Cost of setting it in month three: a day, or never.**

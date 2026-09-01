@@ -1037,6 +1037,15 @@ is almost always cheaper than the change.
 **Where it does not apply.** Anything that loses data, leaks a secret, or misleads a person: **once
 is enough.** The rule of two is for judging patterns, never for tolerating a defect.
 
+**And it does not apply to a stated requirement whose gap you can check directly.** *Added
+2026-09-01, the day after the rule was named, because it was almost misapplied.* Outside feedback
+arrived asking for formatting, maximum-strictness analysis, unit tests and feature tests. The first
+instinct was to wait for a second occurrence — **wrong.** The rule of two exists because a single
+*inferred* pattern might be a bad day. A **stated requirement** is not an inference, and the gap it
+names can be verified in one look: the kit genuinely had no formatting category and no feature-test
+category. **When you can check the claim against the kit itself, the evidence is the check, not the
+count.**
+
 ### Rendered is not seen — and a sketch that needs reading is not a sketch
 
 *Two failures in one exchange, 2026-09-01, both mine, both on the same drawing.*

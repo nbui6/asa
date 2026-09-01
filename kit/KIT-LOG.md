@@ -1498,3 +1498,41 @@ retrospective, not into v1.21.
 real name"*. The standing constraint on this workshop says *no colleague details, ever*. Both are
 right. **Resolution used: ask by role, never by name** — the interview recorded *"a teamlead"* and
 nothing else, and lost nothing by it. Belongs in `CONFLICTS.md`.
+
+### 2026-09-01 — the machine check was two commands and should have been four
+
+**Bucket: how we build.**
+
+An outside standard arrived for a product built with this kit: *code must follow SOLID where the
+stack allows, and there must be tools for code quality, styling, unit tests and feature tests, all
+passing completely.* Given in PHP terms — PHPStan level 10, Pint, PHPUnit.
+
+**The kit's machine check has been two commands: static analysis, then unit tests.** Measured
+against that standard it is missing two whole categories:
+
+| Category | Kit had it? |
+|---|---|
+| Static analysis | Yes — but **at default strictness**, which is not the level being asked for |
+| Unit tests | Yes |
+| **Formatting** | **No.** Never mentioned in `first-test` or the playbook. |
+| **Feature / end-to-end tests** | **No.** The kit has never distinguished *does the unit work* from *does the app work when a person uses it* — despite `PLAYBOOK.md` §8 asking "is it reachable?", which is exactly a feature test asked in prose. |
+
+**And the strictness point is the sharper one.** *"Level 10"* has no meaning in a kit that says
+"run the analyser". Every language has a dial, the kit never said to turn it up, and the default
+is not the top. For Dart the dial is three language modes plus `--fatal-infos`.
+
+**Changes to make:**
+
+1. `first-test` gains **four categories, not two** — format, analyse *at maximum*, unit, feature —
+   and says to wrap them in one script so it stays one command.
+2. The playbook's machine check becomes that script. **Order is load-bearing**: format, analyse,
+   unit, feature. On 2026-08-26 a project had 25 green tests over code that could not compile,
+   because only the test step ran.
+3. **§8's "is it reachable?" gets a mechanism.** It has been a question a human is asked. A feature
+   test is the same question, automated, and it stops depending on someone remembering to ask.
+4. `stack-choice` should name **the strictness dial for the chosen stack** at the moment the stack
+   is chosen, not leave it at default forever.
+
+**Not yet applied to the kit** — applied first to the product spec that needed it today, so the
+shape can be tested once before it becomes a rule. **The kit is not changed on one instance.**
+Second occurrence promotes it: `PLAYBOOK.md` §14, the rule of two.
