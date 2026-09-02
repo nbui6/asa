@@ -107,6 +107,18 @@ during Build.>
 
 <Filled in at Commit. Two or three lines.>
 
+**The gate — nothing below this table gets filled in until all three lines are green.**
+
+| # | | State |
+|---|---|---|
+| 1 | The result was **shown** — the screen itself, or the command and its real output | |
+| 2 | The Boss was **asked** whether it is right | |
+| 3 | He said **yes** — or named a fix, which was made and shown again | |
+
+**No round is finished before line 3, and the commit comes after it, never before.** *Added
+2026-09-02: a session reported a version done having shown nothing and committed nothing. See
+`PLAYBOOK.md` §14, "Done is not delivered".*
+
 - **Commit:** <hash>
 - **Defects found while verifying:** <the ones you did not expect — these are the valuable ones>
 - **Anything the process itself got in the way of:** → one line into `KIT-LOG.md`

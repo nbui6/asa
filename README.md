@@ -7,7 +7,32 @@ and shows them back to you. It does not ask you to fill anything in.
 
 > **Early. Version 0.1 is not finished.** Nothing here is stable, and the shape is still changing
 > after each version. If you are reading this because you were invited to try it, see
-> **[For testers](#for-testers)** below.
+> **[Where it is right now](#where-it-is-right-now)** and **[For testers](#for-testers)** below.
+
+---
+
+## Where it is right now
+
+*The app described here is the state committed on 1 September 2026, `00dd66d` — **nothing in the
+app has changed since.** This section names a commit on purpose: a status line that names nothing
+is quietly wrong, and one that names a hash is visibly out of date.*
+
+**Running the app is not worth your time yet, and you do not need to try.** It reads projects from
+a folder path that is **fixed in the source**, so on any machine but the owner's it finds nothing.
+The folder picker that fixes this is version 0.1 — written, not yet verified, not yet committed.
+
+| | |
+|---|---|
+| **Built and committed** | A Windows window · one project's state read from its own markdown and git · **every project on one screen, sorted by how long since anything moved** |
+| **Written, not verified** | **v0.1** — every decision of a project, read from the files that already hold it, with *why* and *what would change this*; plus the folder picker |
+| **Planned, in order** | state derived from git instead of typed, with progress per project · parked ideas, raised automatically when the same one is parked twice · the steps of a round, derived from the folder rather than listed · how projects relate to each other · tabs that appear only when they have content · priority and deadlines |
+| **Deliberately last** | packaging it so a second person installs and uses it. That is the final version, not the first — see *Two gates* in the plan. |
+
+**`kit/` is a different matter: it is usable today and needs none of the app.** It is at v1.24, it
+has been through one outside test, and everything that test produced is in it.
+
+**You will be told when the app is worth ten minutes.** Until then feedback on the kit is worth
+more, and the three questions under [For testers](#for-testers) apply to it just as well.
 
 ---
 
@@ -73,13 +98,20 @@ flutter analyze
 flutter test
 ```
 
-On first run Asa asks you to choose the folder your project notes live in. That choice is stored
-in your own Windows app-data folder, never in this repository.
+**The folder your project notes live in is currently fixed in the source, not chosen.** On any
+machine but the owner's, the app opens and finds nothing. **A folder picker is version 0.1** —
+written, not verified; the choice will be stored in your own Windows app-data folder, never in
+this repository.
+
+*This paragraph described the picker as if it shipped from 1 to 2 September 2026. It did not: it
+was written in a working tree and the commit did not have it. A README describes the commit
+someone can clone, never the machine it was written on.*
 
 ## For testers
 
 **You can read this repository and run the app. You cannot commit to it** — that is deliberate,
-not a lack of trust. One person and one assistant do the building, so that the record of why each
+not a lack of trust. **Right now the part worth trying is `kit/`, not the app** — see
+[Where it is right now](#where-it-is-right-now). One person and one assistant do the building, so that the record of why each
 thing was decided stays in one place.
 
 **Feedback is wanted and there is no wrong format.** A written note, a list of annoyances, a

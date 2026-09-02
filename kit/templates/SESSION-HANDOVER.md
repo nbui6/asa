@@ -61,6 +61,18 @@ during Build — including by an assistant being helpful.>
 project's `CLAUDE.md` so the building session writes it at session end without being asked, the way
 the commit happens without being asked.
 
+**Gate — the session does not end, and nothing is committed, until all three are true.**
+
+| # | | State |
+|---|---|---|
+| 1 | The result was **shown** to the Boss — the screen, or the command and its real output | |
+| 2 | He was **asked** whether it is right | |
+| 3 | He said **yes**, or named a fix that was then made and shown again | |
+
+> *Added 2026-09-02. A building session wrote a complete and honest note here and reported the
+> round done — with nothing shown and nothing committed. **This note is not the delivery.**
+> `PLAYBOOK.md` §8 and §14, "Done is not delivered".*
+
 ### <yyyy-mm-dd> — <what the session was>
 
 **Built:** <one or two lines. The diff has the detail; this is the index.>

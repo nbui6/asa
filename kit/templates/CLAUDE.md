@@ -39,8 +39,10 @@ reasoning no diff contains.
 
 Acceptance criteria met · handover check written · reviewed · `CLAUDE.md` updated ·
 **a line in `PRODUCT-CHANGELOG.md` saying what you can now do** · **a screenshot from the real
-device if a screen changed** · committed, by a session that is allowed to run git, with a message
-naming the round.
+device if a screen changed** · **the result shown to the Boss and a yes back** · committed, by a
+session that is allowed to run git, with a message naming the round.
+
+**Shown, then approved, then committed — in that order.** `PLAYBOOK.md` §8's fifth line.
 
 ## Commands
 

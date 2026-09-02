@@ -1571,3 +1571,192 @@ the same way".
 > **And the reason this was caught at all:** the Boss asked *"can you find it?"*. Nothing surfaced
 > it. **Still true after the fix** — `FEEDBACK.md` and the sweep both depend on someone looking.
 > A folder cannot notify anyone. Recorded as a standing weakness, not solved.
+
+### 2026-09-01 — partner-trial-process — planning a HubSpot licensing process, no code
+
+**Bucket: how we build.**
+
+Session ran a full planning cycle (nine decisions, a License object schema, a review from another
+session) entirely from what was already sitting in the project folder. `workspace/asa` was not
+connected until asked directly, near the end: *"are you using its system right now?"* Before that,
+nothing told this session Asa or the kit existed - the ADR template and project-note shape were
+followed because they were already in the folder, not because the session knew where they came
+from or that a retrospective practice existed.
+
+**Slowed down:** nothing once found - `ASA.md` was self-contained and enough to work from, exactly
+as designed. The cost was in *not finding it sooner*: several turns went into debating
+file-per-decision vs. one log, and checking whether "Asa" was a live agent to message (it is not),
+before the real answer - a passive desktop app, a file-based channel - was sitting one folder up.
+
+**Skipped:** the kit's own skills, as packaged skills. Several - `sketch-the-product`,
+`discovery`, `stack-choice`, `persona-check` - are also available to this session as Cowork skills,
+almost certainly the same lineage. None fired. The session matched template shapes by reading them
+directly instead of invoking the skill that owns that shape.
+
+**Missing:** a way to tell a new session, at the start of work on a project, that it is operating
+under Asa's process at all - without the owner manually connecting the kit folder and naming
+`ASA.md`. This is the same standing weakness already logged above (*"a folder cannot notify
+anyone... someone has to already know to look"*), now showing up a second time - this time costing
+the owner a manual step mid-session rather than costing a missed answer to "can you find it".
+Two occurrences, by the kit's own rule of two: worth the owner deciding whether this is still
+"not solved" or whether it just got promoted.
+
+**Skills that fired:** none of the kit's packaged skills. `kit-feedback` itself, once found and
+read.
+
+**Worked well:** `ASA.md` + `FEEDBACK.md`, once located, needed no further explanation - correctly
+self-contained for a session with no other access, as designed.
+
+### 2026-09-01 — a helper file silently destroyed a project note
+
+**Bucket: how we build. Acted on once, not twice** — `PLAYBOOK.md` §14 says the rule of two never
+applies to something that loses data.
+
+A briefing file, `ASA.md`, was written into every project folder so that a session with narrow
+folder access could still find the conventions. **Windows filenames are case-insensitive.** In the
+folder named `asa`, `ASA.md` and `asa.md` are the same file. The project note was overwritten.
+
+**No error. No warning. `cp` reported success**, because from its point of view it did exactly what
+it was told. The folder was not in git — project material is deliberately outside the repository —
+so there was no history to recover from. **The file was rebuilt from a screenshot taken earlier the
+same day. Anything in its body that was not in that screenshot is gone.**
+
+**Three things were true at once and all three were needed:**
+
+1. A convention where **the note is named after its folder** — `asa/asa.md`. Good for humans,
+   and it makes the folder name a reserved word.
+2. A helper file whose name **collides with a plausible project slug**.
+3. A filesystem that **does not distinguish case**, and tools that do not warn.
+
+**The rules this earns:**
+
+> **Never write a file whose basename could be a project's own name.** Helper and convention files
+> get a name no project would have: `HOW-ASA-WORKS.md`, not `ASA.md`. *Renamed in all eight
+> folders.*
+
+> **Before writing a file in bulk, check whether it already exists — case-insensitively.** A loop
+> over folders that writes the same filename into each is the shape to be suspicious of. **`cp`
+> succeeding is not evidence that nothing was lost.**
+
+**And the uncomfortable one.** The whole argument for keeping `projects\` outside the repository is
+that it must never be published. **The cost of that is no version history on the material the
+system exists to protect.** That trade was made deliberately and this is the first bill for it.
+**Not reversed** — but it should be a decision with its eyes open, not an accident. *Open: does
+`projects\` get its own local-only git repository, never pushed?*
+
+### 2026-09-02 — a round was reported done with nothing shown and nothing committed
+
+**Bucket: how we build. Acted on once, not twice** — `PLAYBOOK.md` §14 exempts anything that is
+the fourth instance of a pattern already named three times.
+
+A building session finished Asa v0.1: parser, reader, settings, two screen changes, six test
+files, a new `check.ps1`. It then wrote **one of the best handover notes this project has
+produced** — every decision the spec did not cover, five places where the spec was wrong about
+real files, everything left undone with a reason. And it **reported the round done without showing
+the result and without committing.**
+
+Nothing was hidden. Nothing in the note was false. The work stopped one step short of the only
+person who can say whether it is right.
+
+> *"Show me result, ask me if everything is okay, then commit after I approve or fix what I ask
+> to. No round is finished before this."*
+
+**This is the fourth instance of one pattern:**
+
+| | Completed, and it left a trace | Delivered — and it did not |
+|---|---|---|
+| *installed is not fired* | the agent file was written | nothing installed it, so it never ran |
+| *tested is not compiled* | 24 tests passed | the app would not build |
+| *rendered is not seen* | the sketch rendered clean | it was never sent |
+| **done is not shown** | the code was written, the note was full | the Boss never saw the result |
+
+**Why it keeps happening, stated plainly: completion leaves an artefact and delivery does not.**
+A written file, a green test run, a rendered PNG, a finished diff — each is checkable after the
+fact. "Did the person actually see it, and did they answer?" leaves nothing behind unless
+something forces a record.
+
+**So the fix is a field, not a reminder.** Five places now have one:
+
+| Where | What it says |
+|---|---|
+| `PLAYBOOK.md` §8 | a fifth line, `Approved?`, last in the block |
+| `PLAYBOOK.md` §3, stage 5 | committing before a yes is **not allowed** |
+| `PLAYBOOK.md` §14 | *Done is not delivered* — the pattern, named |
+| `templates/ROUND.md` | a three-line gate above the commit hash |
+| `templates/SESSION-HANDOVER.md` | the same gate at the top of the upstream half |
+
+**And the order is load-bearing: show → ask → fix or commit.** *Commit, then show* was the
+tempting alternative — it looks tidier and the diff is easier to read on a branch. It also makes
+the Boss a reviewer of history rather than the person who decides. A question is cheap to ask; a
+commit is cheap to make and awkward to unmake.
+
+**One thing worth being honest about.** The note this session wrote is exactly what
+`templates/SESSION-HANDOVER.md` asks for, and the Boss had explicitly asked, an hour earlier, for
+that file to be usable mid-session as a channel. **The session did the newer instruction well and
+the older one not at all** — which is the argument for the gate living in the template itself,
+where the writing already happens, rather than in a rule somewhere else in the package.
+
+**Scope check, per §14 *when a rule gets skipped, check its scope before writing a new one*:**
+§8 already existed and already had four lines. It was not skipped — it was **complete as
+written**, and the missing step was not one of its four. That is a gap, not a violation, so a
+fifth line is the right repair rather than a new rule elsewhere.
+
+### 2026-09-02 — the same rule broken again, by a command that looks read-only
+
+**Bucket: how we build. Second instance, so it is acted on.**
+
+`CLAUDE.md` hard rule 8 says every `git` command is run by Nico in PowerShell, never through an
+assistant's device bridge. It was written on 2026-08-26 after a bridge session left a stale
+`.git/index.lock`. **On 2026-09-02 the same rule was broken the same way, and left the same file.**
+
+The reason it was broken is the interesting part. The rule reads as being about **commands that
+change the repository** — commit, checkout, merge. What was actually run was `git status` and
+`git diff`, to check that some markdown edits had landed. **`git status` refreshes the index**, so
+it takes the lock like any write. A command that only prints is not the same thing as a command
+that only reads.
+
+**The bridge cannot delete files**, so the lock could not be cleaned up from the same place it was
+created. It had to be handed to Nico as a `del` line — a chore created for him by a command run to
+save him one.
+
+**The repair, and why it is a scope fix rather than a new rule** (`PLAYBOOK.md` §14, *when a rule
+gets skipped, check its scope before writing a new one*): the rule was not skipped, it was **read
+too narrowly**. So it gets one clause, not a sibling:
+
+> **No `git` command through the bridge — including the ones that only print.** `status`, `diff`,
+> `log`, `stash list`: several of them take `index.lock`, and the bridge cannot remove what it
+> creates. To see whether an edit landed, read the file.
+
+**And the general form, which is worth more than the git case:** *"it only reads"* is a claim
+about intent, not about what the tool does. The check is **what does it write**, and for anything
+that keeps an index or a cache, the honest answer is usually *something*.
+
+### 2026-09-02 — the README described the working tree, not the commit
+
+**Bucket: how we build. First instance, acted on immediately** — `PLAYBOOK.md` §14 does not make an
+exception for this, but the repository is shared with an outside tester, and the cost of the second
+instance is a person's wasted evening rather than a note in a log.
+
+`README.md` was committed on 2026-09-01 saying: *"On first run Asa asks you to choose the folder
+your project notes live in."* **It does not.** The folder picker was written the next day, in a
+working tree, and is still uncommitted. Anyone cloning the repository got an app with the owner's
+own path compiled into it and a README promising the one feature that would have made it runnable
+on their machine.
+
+**Nothing was lied about. The sentence was written while the picker was being specified**, from the
+spec rather than from the commit — which is the whole failure in one clause. The spec is the future
+tense; a README is read in the present tense by someone who has just cloned.
+
+**The repair, and the reusable part:**
+
+> **A README describes the commit someone can clone, never the machine it was written on.** If a
+> sentence is true only in the working tree, it is a changelog entry, not documentation.
+
+> **In any repository a second person can clone, the status section names a commit hash.** Then a
+> stale section is *visibly* stale instead of quietly wrong, and the reader can tell without asking.
+
+**This is the `Honest?` line of §8's handover check**, applied to prose instead of code — mocks and
+untested paths get named at handover, and a documented feature that does not exist is the same
+class of thing. The check has never been run against a README. **It should be:** a shared
+repository publishes its documentation as confidently as its code, and the documentation is the
+half nobody reruns.

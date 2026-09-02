@@ -5,7 +5,7 @@ description: Turn the project's pass/fail command into a blocking gate that grow
 
 # The regression gate
 
-> Not to be confused with the **handover check** (`PLAYBOOK.md` §8), which is the three lines
+> Not to be confused with the **handover check** (`PLAYBOOK.md` §8), which is the five lines
 > that accompany every handover. This is the automated pass/fail run.
 
 A **regression** is something that used to work and stopped. It is the failure mode that grows

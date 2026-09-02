@@ -216,7 +216,7 @@ approves; nothing recorded that they had. `PLAN.md` is where that fact lives, an
 | 2 | **Acceptance criteria** | Write what "done" looks like (§5). If it touches a screen, run the persona check. | Writing code | The criteria are written, with a machine line where possible |
 | 3 | **Build** | Code gets written, one small change at a time (§4), in the style of §7. Then the `reviewer` agent reads the diff. | New ideas — those go to `BACKLOG.md` | It compiles, the machine check passes, and the review is clear |
 | 4 | **Test** | **You** run it against the criteria. Your eyes, not a summary. | Being told it works | Criteria met, or a specific error to report |
-| 5 | **Commit** | Update `CLAUDE.md`, write the next step, `git commit`. | Ending mid-refactor | Committed, and future-you could resume cold |
+| 5 | **Commit** | **Show the result. Ask whether it is right. Fix what comes back.** Then update `CLAUDE.md`, write the next step, `git commit`. | Ending mid-refactor · **committing before the Boss has said yes** | He said yes, it is committed, and future-you could resume cold |
 
 **Two sizes.** A process with one speed gets dropped the first time it is overkill.
 
@@ -315,7 +315,11 @@ architecture.
 for *everything* in the project — it is the standing bar. Yours:
 
 > Criteria met · handover check written · reviewed · `CLAUDE.md` updated · **a line in the
-> plain-language changelog** · **a screenshot, if a screen changed** · committed.
+> plain-language changelog** · **a screenshot, if a screen changed** · **the result shown to the
+> Boss and a yes back** · committed.
+
+**The last two before the commit are in that order on purpose.** Shown, then approved, then
+committed — see §8's fifth line and §14, *Done is not delivered*.
 
 Write it once in `CLAUDE.md` and stop restating it per session.
 
@@ -424,9 +428,9 @@ name means what it says. This rule exists because it was broken: `gate` was reti
 being confusing, and reappeared six times in a screen design on 2026-08-24.
 ---
 
-## 8. The handover check — four lines
+## 8. The handover check — five lines
 
-Every time the assistant hands you anything, these four lines come with it, containing the
+Every time the assistant hands you anything, these five lines come with it, containing the
 **actual command and the actual output**.
 
 ```
@@ -434,6 +438,7 @@ Exists?    — grep -r "parseDate" src/   →  0 hits, so this is new code
 Checked?   — npm test                   →  14 passed, 0 failed
 Honest?    — the API response is a hard-coded sample; the real call is untested
 Reachable? — Home → Settings → Practice; the button is on Settings as of this change
+Approved?  — shown 14:10, asked, yes at 14:18  →  and only now, commit
 ```
 
 - **Exists?** — assistants are biased toward writing new code rather than finding code already
@@ -449,6 +454,12 @@ Reachable? — Home → Settings → Practice; the button is on Settings as of t
 - **Honest?** — mocks, guessed versions and untested paths get named **at handover**, not
   discovered an hour later. Anything fake must be visibly labelled *in the product* too — a
   mock that looks real gets tested as if it were real, and that costs a session.
+- **Approved?** — **the last line, and the only one that is not about the code.** The result was
+  **shown**, the question *"is this right?"* was actually **asked**, and the answer came back. The
+  order is the rule: **show → ask → fix or commit.** If the answer names a fix, the fix is made
+  and shown again — this line goes green only on a yes. *Added 2026-09-02, after a session
+  reported a version done having shown nothing and committed nothing. §14, "Done is not
+  delivered".*
 
 **A claim you cannot re-run is not evidence.** If a line has no command in it, ask for one.
 
@@ -1083,6 +1094,38 @@ that gets looked at, and it competes for thirty seconds of attention, not thirty
 **The recommendation goes in the sketch, in one sentence, with its single reason.** Laying out two
 options evenhandedly and asking the Boss to weigh them is the assistant declining to do its job. Say
 which one and why; being overruled costs one line.
+
+### Done is not delivered — the end-of-round gate
+
+*2026-09-02. The fourth instance of one pattern, and the one that finally got written as a gate
+instead of a lesson.*
+
+A building session finished a version and wrote a full, honest handover note — and **reported the
+round done without showing the result and without committing.** Nothing was hidden and nothing in
+the note was wrong. The work simply stopped one step short of the only person who can say whether
+it is right. The instruction that followed, verbatim:
+
+> *"Show me result, ask me if everything is okay, then commit after I approve or fix what I ask to.
+> No round is finished before this."*
+
+**The row of near-misses this kit keeps tripping on is now four long:**
+
+| | The completed part left a trace | The delivered part did not |
+|---|---|---|
+| *installed is not fired* | the agent file was written | nothing installed it, so it never ran |
+| *tested is not compiled* | 24 tests passed | the app would not build |
+| *rendered is not seen* | the sketch rendered clean | it was never sent |
+| **done is not shown** | the code was written, the note was full | the Boss never saw the result |
+
+**Each is a step that was completed and then not delivered**, and each was invisible for the same
+reason: **completion leaves an artefact, delivery does not.** So delivery gets a field of its own,
+in three places — §8's handover check, the round note's *After* section, and the building
+session's half of the handover file. A rule with no field to fill is a rule remembered by whoever
+is least tired.
+
+**And the order is the whole rule: show → ask → fix or commit.** Not *commit, then show*, which
+turns the Boss into a reviewer of history rather than the person who decides. A question is cheap
+to ask; a commit is cheap to make and awkward to unmake.
 
 ### The freeze — one round where the kit is not allowed to change
 

@@ -8,6 +8,41 @@ Versions are dated. The current one is at the top.
 
 ---
 
+## v1.24 — 2026-09-02 — the handover check gains its fifth line
+
+**One change, in five places, and it is the fourth time this kit has been caught by the same
+shape.** A building session finished a version, wrote a long and honest handover note — and
+reported the round done **having shown nothing and committed nothing.** The Boss's instruction:
+
+> *"Show me result, ask me if everything is okay, then commit after I approve or fix what I ask
+> to. No round is finished before this."*
+
+**Changed**
+
+- **`PLAYBOOK.md` §8 is now five lines, not four.** The fifth is **`Approved?`** — the result was
+  shown, the question *"is this right?"* was asked, and the answer came back. It is deliberately
+  the last line and the only one that is not about the code.
+- **The order is written into the rule: show → ask → fix or commit.** Not *commit, then show*,
+  which turns the Boss into a reviewer of history instead of the person who decides. Stage 5 of
+  §3 now names committing before a yes as **not allowed**.
+- **`PLAYBOOK.md` §14 gained *Done is not delivered*** — the row of near-misses now runs four
+  long: *installed is not fired* · *tested is not compiled* · *rendered is not seen* · **done is
+  not shown**. All four are a step that was completed and then not delivered, and all four were
+  invisible for one reason: **completion leaves an artefact, delivery does not.**
+- **Three templates gained the field, because a rule with nothing to fill in gets remembered by
+  whoever is least tired.** `templates/ROUND.md`'s *After* section, the upstream half of
+  `templates/SESSION-HANDOVER.md`, and the definition of done in `templates/CLAUDE.md`.
+
+**Also corrected:** `regression-gate` described §8 as "the three lines" (it had been four since
+v1.4); `sketch-the-screen` pointed at "the fourth line" by position rather than by name, which
+this change would have broken.
+
+**Not changed:** the inner loop in §4 stays *change → run → check → commit*. The gate is
+per **round**, not per change — a rule that asks the Boss to approve every small commit is a rule
+that gets switched off in an afternoon.
+
+---
+
 ## v1.22 — 2026-09-01 — the machine check grows two categories
 
 **Outside feedback, and it found a hole the kit could not see in itself.** A code-quality standard

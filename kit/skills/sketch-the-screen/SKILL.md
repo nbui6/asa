@@ -108,7 +108,8 @@ device, in the evening.
 the sketch, which is the cheapest moment it will ever have.
 
 **It does not check that the screen can be reached.** A perfect screen with no route to it is three
-of one project's wasted days. That is the fourth line of the handover check, `PLAYBOOK.md` §8.
+of one project's wasted days. That is the *Reachable?* line of the handover check,
+`PLAYBOOK.md` §8.
 
 **And it is not a design tool.** The output is throwaway. If a sketch is being polished, it has
 stopped being this step and started being the product.

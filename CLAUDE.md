@@ -11,8 +11,13 @@ built to accept them, and naming them is the entire investment.
 `ARCHITECTURE.md` is the map of the code. Read it before adding a file, and update it in the
 same commit as the part it describes.
 
-This file is ASCII only. The orient hook prints the section below into the session's opening
-context, and Windows PowerShell 5.1 mangles anything else.
+**The `## Where we are` section below is ASCII only.** That is the only part the orient hook
+prints into the session's opening context (`hooks/orient.ps1`, `Get-MarkdownSection -Heading
+'Where we are'`), and Windows PowerShell 5.1 mangles anything else.
+
+*Corrected 2026-09-02: this said "this file is ASCII only", which was never true - rules 16, 17
+and 18 have carried em dashes for over a week with no ill effect, because the hook never reads
+them. A constraint stated wider than it is real gets ignored where it is real too.*
 
 ---
 
@@ -54,7 +59,10 @@ using it means saying why in the commit message.
 
 The standing bar for everything, not restated per session:
 
-> Criteria met - handover check written - reviewed - `CLAUDE.md` updated - committed.
+> Criteria met - handover check written - reviewed - `CLAUDE.md` updated - **result shown to Nico
+> and a yes back** - committed.
+
+**Shown, then approved, then committed - in that order.** Rule 19.
 
 ## Hard rules
 
@@ -146,6 +154,23 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     apart because neither could see the other. The folder is the only channel between sessions, and
     a folder cannot notify anyone — so something has to go and look.*
 
+19. **No round ends until Nico has seen the result and said yes.** Every time, in this order:
+
+    | # | | |
+    |---|---|---|
+    | 1 | **Show** | The screen itself, or the command and its real pasted output. A summary of a result is not a result. |
+    | 2 | **Ask** | *"Is this right?"* - asked out loud, as a question. Handing something over does not ask it. |
+    | 3 | **Commit** | Only after a yes. If he names a fix, make it and show it again - the round goes back to line 1. |
+
+    **A round reported done with nothing shown and nothing committed is not done.** That is what
+    happened on 2026-09-02 with v0.1, in his words: *"Show me result, ask me if everything is
+    okay, then commit after I approve or fix what I ask to. No round is finished before this."*
+
+    This is the fifth line of `PLAYBOOK.md` §8 and the fourth entry in its row of near-misses
+    (§14, *Done is not delivered*) - after *installed is not fired*, *tested is not compiled* and
+    *rendered is not seen*. Same shape every time: **completion leaves an artefact, delivery does
+    not.**
+
 ## At the end of every session
 
 **Append to `HANDOVER.md`, upstream half:** what was built · **what was decided that the spec did
@@ -157,6 +182,10 @@ why it will not be.
 
 ## Where the process lives
 
-The playbook, the roadmap and the retrospective log are outside this repo, in the Obsidian
-vault: `Vibe Coding/PLAYBOOK.md`, `Vibe Coding/projects/asa/`, and `vibe-coding-kit/KIT-LOG.md`.
-`asa.md` in that vault is the project's own note, and Asa reads it like any other project.
+The playbook and the kit log are **in this repo**, under `kit\` - `kit/PLAYBOOK.md`,
+`kit/KIT-LOG.md`. This project's own material is outside it, at
+`%USERPROFILE%\workspace\projects\asa\` (charter, plan, persona, decisions, sketches, round
+notes). `asa.md` there is the project's own note, and Asa reads it like any other project.
+
+*Corrected 2026-09-02. This section still pointed at the Obsidian vault, which rule 17 and ADR
+0006 replaced on 2026-09-01.*
