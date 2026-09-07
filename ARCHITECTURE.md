@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-02.
+Last checked against the folder tree: 2026-09-04.
 
 ---
 
@@ -31,7 +31,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | **`core/` never imports Flutter** | The tests. Every file in `test/` (except `widget_test.dart`) imports `core/` directly — if Flutter leaked in, it would still compile but core would stop being testable without a widget harness. Checked by eye at each checkpoint. |
 | `hubs/` may import `core/`. Never the reverse, never each other. | Review, for now. A lint is the trigger at the second hub. |
 | **`lib/local/` is empty in this repository.** It exists so a fork has somewhere to put its own screens that our releases never touch. | `check-shareable.ps1` — a non-empty `local/` here means someone else's work has arrived in our repo, which is a leak. *Planned for v0.1.1; not built yet.* |
-| **`core/`'s public surface is a contract with a second developer.** Renaming a public field breaks someone else's build. | The release note names what moved in `core/`. See `decisions/0010-second-developer-and-forks.md`. |
+| **`core/`'s public surface is a contract with a second developer.** Renaming a public field breaks someone else's build. | The release note names what moved in `core/`. See `projects\asa\decisions\0010-second-developer-and-forks.md`. |
 | Asa writes only structured fields, never prose | Review. `settings.dart` is the one thing that writes, and it writes Asa's own settings file — never a project note. |
 
 ## Where things live
@@ -43,6 +43,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change what a single decision's detail screen shows | `lib/hubs/product/decision_detail_screen.dart` |
 | change which folders count as projects, or the staleness sort and labels | `lib/core/projects_scan.dart` |
 | change how frontmatter is parsed, including `parent`/`priority`/`deadline`/`jira`/`links` | `lib/core/project.dart` |
+| change how the one-line description is derived from a note's body | `lib/core/project.dart`'s `deriveDescription` |
 | change how a project note is found on disk | `lib/core/project_reader.dart` |
 | change what git is asked, or how failures read | `lib/core/git_state.dart` |
 | change how one decision (an ADR file, or one log section) is parsed | `lib/core/decision.dart` |

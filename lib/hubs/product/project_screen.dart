@@ -1,10 +1,11 @@
 /// Product Hub — one project's state, in detail.
 ///
-/// Rebuilt 2026-09-04 to match the approved sketch (`asa-v01b`, recovered
-/// from `asa-v01b-DRIFT-2026-09-03.png` — the standalone file was never
-/// saved). A quiet typographic list: no Material AppBar, no cards, no
-/// uppercase tabs. The provenance block stays, collapsed behind one line —
-/// it is the best thing in this codebase, not deleted, not moved.
+/// Built 2026-09-04 to match the approved sketch, `asa-v01b.png`: a quiet
+/// typographic list — no Material AppBar, no cards, no uppercase tabs. The
+/// provenance block stays, collapsed behind one line — it is the best
+/// thing in this codebase, not deleted, not moved. The one-line
+/// description under the project name landed the same day, once
+/// `project_reader.dart` could expose it.
 library;
 
 import 'package:asa/core/decision.dart';
@@ -80,11 +81,13 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              // Row 2 of the drift table — a one-line description derived
-              // from the project note's body — is deliberately not built.
-              // See the note appended to HANDOVER.md's upstream half: it
-              // needs a field `project_reader.dart` does not expose, and
-              // this round does not touch `lib/core/`.
+              if (read.isSuccess && read.project!.description != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  read.project!.description!,
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                ),
+              ],
               const SizedBox(height: 20),
               _tabRow(),
               const SizedBox(height: 4),

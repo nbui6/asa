@@ -13,6 +13,7 @@ class Project {
     required this.repoPath,
     required this.updated,
     required this.sourceFile,
+    this.description,
     this.parent,
     this.priority,
     this.deadline,
@@ -29,6 +30,12 @@ class Project {
 
   /// The file this was read from, so the UI can say where a value came from.
   final String sourceFile;
+
+  /// The first paragraph of ordinary text in the note, after the `#
+  /// Heading` — derived, never typed, so it cannot go stale the way a
+  /// frontmatter field would. Null when there is none; the screen shows
+  /// nothing rather than a placeholder.
+  final String? description;
 
   // Parsed for v0.1, not shown anywhere yet — every later version that
   // reads groups, priority, deadlines, Jira or links reads these, and none
@@ -155,6 +162,7 @@ Project projectFromFields(
   Map<String, String> fields,
   String sourceFile, {
   List<ProjectLink> links = const [],
+  String? description,
 }) {
   String field(String key) {
     final value = fields[key];
@@ -180,6 +188,7 @@ Project projectFromFields(
     repoPath: fields['repo-path'] ?? '',
     updated: field('updated'),
     sourceFile: sourceFile,
+    description: description,
     parent: optionalField('parent'),
     priority: optionalField('priority'),
     deadline: optionalField('deadline'),
@@ -237,4 +246,65 @@ List<ProjectLink> parseLinks(String fileContents) {
   }
 
   return links;
+}
+
+/// Derives the one-line description from the note's body — the first
+/// paragraph of ordinary text after the `# Heading`.
+///
+/// "Ordinary" excludes blank lines, a blockquote (`>` — asa.md's own note
+/// puts a callout there, and the description is the plain sentence before
+/// it, not the callout), and any further heading. Reaching a heading
+/// before finding a paragraph means there is no description — this only
+/// looks in the note's own introduction, never into a named section
+/// further down, so it cannot mistake `## Where I am`'s content for one.
+///
+/// Multiple lines of one paragraph are joined with a space; a second
+/// paragraph, after a blank line, is never reached.
+String? deriveDescription(String fileContents) {
+  final lines = _bodyLines(fileContents);
+
+  var i = 0;
+  while (i < lines.length && !_isH1(lines[i])) {
+    i++;
+  }
+  if (i == lines.length) return null; // no heading at all
+  i++; // past the heading line
+
+  while (i < lines.length) {
+    final trimmed = lines[i].trim();
+    if (trimmed.isEmpty || trimmed.startsWith('>')) {
+      i++;
+      continue;
+    }
+    if (trimmed.startsWith('#')) {
+      return null; // a section arrived before any ordinary paragraph did
+    }
+    break;
+  }
+  if (i == lines.length) return null;
+
+  final paragraph = <String>[];
+  while (i < lines.length && lines[i].trim().isNotEmpty) {
+    paragraph.add(lines[i].trim());
+    i++;
+  }
+
+  final text = paragraph.join(' ').trim();
+  return text.isEmpty ? null : text;
+}
+
+bool _isH1(String line) => line.trim().startsWith('# ');
+
+/// The lines after the frontmatter block, or every line when there is none.
+List<String> _bodyLines(String fileContents) {
+  final lines = fileContents.split('\n');
+  if (lines.isEmpty || lines.first.trim() != '---') {
+    return lines;
+  }
+
+  var i = 1;
+  while (i < lines.length && lines[i].trim() != '---') {
+    i++;
+  }
+  return lines.sublist((i + 1).clamp(0, lines.length));
 }

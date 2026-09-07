@@ -142,6 +142,116 @@ repo-path: C:\Users\test\workspace\asa
       expect(project.links.first.type, 'relates to');
       expect(project.links.first.target, 'other');
     });
+
+    test('description is null unless passed in', () {
+      final project = projectFromFields({}, 'asa.md');
+      expect(project.description, isNull);
+    });
+
+    test('description passed in is carried onto the project', () {
+      final project = projectFromFields(
+        {},
+        'asa.md',
+        description: 'A short summary.',
+      );
+      expect(project.description, 'A short summary.');
+    });
+  });
+
+  group('deriveDescription', () {
+    test('reads the paragraph before a blockquote callout — real shape', () {
+      // asa.md's own note: one plain paragraph, then a blockquote aside.
+      // The description is the paragraph, not the callout.
+      const file = '''
+---
+project: Example
+---
+
+# Example
+
+A short record of what this project is for.
+
+> **Restored 2026-09-01.** Some longer aside that is not the description.
+> More aside text.
+''';
+      expect(
+        deriveDescription(file),
+        'A short record of what this project is for.',
+      );
+    });
+
+    test('stops at the first blank line — a second paragraph is not read', () {
+      const file = '''
+# Example
+
+First paragraph, this is the description.
+
+Second paragraph, never reached.
+''';
+      expect(
+        deriveDescription(file),
+        'First paragraph, this is the description.',
+      );
+    });
+
+    test('joins a wrapped paragraph with a space', () {
+      const file = '''
+# Example
+
+Line one of the paragraph
+line two of the same paragraph.
+''';
+      expect(
+        deriveDescription(file),
+        'Line one of the paragraph line two of the same paragraph.',
+      );
+    });
+
+    test('a blockquote with no paragraph before the next heading yields '
+        'null — real shape (a note with no body written yet)', () {
+      const file = '''
+# Example
+
+> **Written 2026-09-01.** Structural only; nobody has filled this in.
+
+## What this is
+
+<One paragraph.>
+''';
+      expect(deriveDescription(file), isNull);
+    });
+
+    test('no heading at all yields null', () {
+      const file = 'Just some text, no heading.';
+      expect(deriveDescription(file), isNull);
+    });
+
+    test('a heading with nothing after it yields null', () {
+      const file = '# Example\n';
+      expect(deriveDescription(file), isNull);
+    });
+
+    test('works with no frontmatter block', () {
+      const file = '# Example\n\nA description with no frontmatter above it.\n';
+      expect(
+        deriveDescription(file),
+        'A description with no frontmatter above it.',
+      );
+    });
+
+    test('skips the frontmatter block when finding the heading', () {
+      const file = '''
+---
+project: Example
+next-step: "# not a heading"
+---
+
+# Example
+
+The real description.
+''';
+      expect(deriveDescription(file), 'The real description.');
+    });
   });
 
   group('parseLinks', () {

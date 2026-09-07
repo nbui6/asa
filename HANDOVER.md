@@ -793,3 +793,92 @@ finding below — waived for this commit with the Boss's explicit yes, not silen
 - **`git push` is still Nico's alone** — two commits ahead of `origin/main`, nothing pushed this
   session, per the standing rule and his own restatement of it.
 - **The ~25x repeated test line in step 3** — flagged above, not chased down.
+
+### 2026-09-04 — the one addition: the one-line description, and a real deviation table
+
+**Read the 2026-09-04 downstream entry — "One line, and v0.1 is finished."** Confirms this round
+was one addition, not a third rebuild: six of eight drift-table rows already accepted, untouched.
+
+**Built:** `deriveDescription` in `lib/core/project.dart` — the first paragraph of ordinary text
+after the `# Heading`, skipping blank lines and blockquotes, stopping (returning null) if a
+subsection heading arrives before any paragraph does. `Project.description`, threaded through
+`project_reader.dart`. `project_screen.dart` shows it under the name when present, nothing when
+not — no placeholder. Tests in `project_test.dart` against the real shapes: a paragraph before a
+blockquote (`asa.md`'s own shape), a blockquote with nothing before the next heading (a note
+nobody has filled in yet), a wrapped paragraph, a second paragraph never reached, no heading, no
+frontmatter. `lib/core/` touched for exactly this, nothing else.
+
+**`check.ps1` run by this session itself, real output, twice** (once caught its own unformatted
+file — expected, documented, not a defect): `dart format` clean, `analyze --fatal-infos` clean,
+`test --coverage` 87 passed, `integration_test -d windows` passed. **PASS, all four.**
+
+**Shown — the actual screen, not a description of it.** Launched `flutter run -d windows`,
+navigated to a real project (`asa`) with real decisions and one with none
+(`data-deletion-policy`), screenshotted both. Sent alongside `asa-v01b.png` in the same message,
+per kit v1.26.
+
+**Deviation table — checked row by row against the real `asa-v01b.png`, not the DRIFT
+recreation this time:**
+
+| # | Approved | Built | Match? |
+|---|---|---|---|
+| 1 | Name + `←` in the page body | Same | yes |
+| 2 | One-line description under the name | Same — this round's addition | yes |
+| 3 | Plain-text tabs, thin underline | Same | yes |
+| 4 | Flat list, hairline between | Same | yes |
+| 5 | Inline pill after title, green/blue/grey | Same | yes |
+| 6 | Date right-aligned, humanised | Same | yes |
+| 7 | Fired-conditions flag on the row | **Deferred** — no data, per `asa-v01b-NOT-IN-V0.1.md` | **known gap, not a defect** |
+| 8 | Provenance collapsed behind one line | Same | yes |
+
+**Zero undeclared deviations.** The one gap (row 7) is already named and reasoned about in the
+sketch's own annotation file — nothing new to write there.
+
+**Not shown yet — rule 19, still.** This is written up and the screenshots are attached; it still
+needs Nico's actual yes before anything past this commit.
+
+### 2026-09-07 — next round: group the Decisions tab, trial only
+
+**Do not start this until the "one addition" round above (the description line) has been shown to
+Nico and he's given a verdict.** One round at a time, one diff at a time — that round is built,
+checks are green, and it is sitting uncommitted waiting for his live look. This is queued behind
+it, not alongside it.
+
+**What prompted it.** Nico looked at the real Decisions tab (the screenshot from the round above)
+and said reading it doesn't help him see what to do next — six decisions, same visual weight,
+newest first. Two of the six are the only ones that ever want something from him: one *proposed*
+(awaiting his call), one *accepted* with a fired condition (its reasoning no longer holds). The
+other four are settled history. Full reasoning is in the conversation with the deciding session,
+2026-09-07.
+
+**Reference — `projects\asa\sketches\asa-decisions-v2.png` / `.html`, logged in
+`projects\asa\sketches\APPROVED.md` under "Trial builds", not the approved table.** Nico asked
+to try this live rather than judge it from a still image, so this is authorisation to build for a
+live trial, not a design sign-off — see that file's new section for the exact wording. Treat the
+image as owning form for this round the same way an approved sketch would; the difference is only
+in what "done" means at the end (see last paragraph).
+
+**The rule, precisely — data and behaviour, since the image can't carry this part:**
+A decision goes in **"Needs a look"** when its status is `proposed`, **or** its status is
+`accepted` **and** it has at least one fired condition. Everything else goes in **"Settled"**.
+Order inside each group is unchanged — newest first, same as today. **Reuse whatever already
+computes "has a fired condition"** — it's the exact thing already driving the red
+`⚠ N of its conditions have happened` flag in the current build. Do not write new fired-condition
+detection for this; if that logic isn't already exposed as something groupable (e.g. a bool or a
+count on the decision), expose it, don't duplicate it.
+
+**Presentation, from the sketch:** two small-caps group labels ("Needs a look", "Settled") with a
+thin rule between them, same row style, same pill, same flag — nothing new drawn. **When "Needs a
+look" is empty, both the label and the rule are omitted** — the screen must fall back to exactly
+today's flat list. A healthy project should never show an empty section header.
+
+**Scope.** Only the Decisions list grouping. Not the detail view, not the tabs, not the
+provenance block, not the front page, not the one-line-description round already in flight.
+
+**What "done" means this round, since it isn't a locked design:** build it, run `check.ps1`, show
+it per rule 19 with a real project's data (not just the mockup's canned example) — but the
+question this time isn't only "does this match the drawing," it's "does this actually help once
+you're looking at your own decisions." **Expect more than one look before a verdict.** If Nico
+asks for a change after using it, that's this round continuing, not a new drift table — the image
+was never a final sign-off to begin with.
+

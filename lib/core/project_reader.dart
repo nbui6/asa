@@ -42,6 +42,7 @@ Future<ProjectReadResult> readProject(String projectFolder) async {
       fields,
       noteFile.path,
       links: parseLinks(contents),
+      description: deriveDescription(contents),
     ),
     rawFrontmatter: raw,
   );
