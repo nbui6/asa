@@ -176,4 +176,59 @@ void main() {
       expect(sortDecisionsNewestFirst([]), isEmpty);
     });
   });
+
+  group('groupForReview — the 2026-09-07 trial grouping, proposed-only', () {
+    DecisionReadResult withStatus(String title, String status) {
+      return parseDecision(
+        '# $title\n\n**Date:** 2026-09-01 · **Status:** $status\n',
+        '$title.md',
+      );
+    }
+
+    test('proposed goes to needsALook, everything else to settled', () {
+      final groups = groupForReview([
+        withStatus('proposed one', 'proposed'),
+        withStatus('accepted one', 'accepted'),
+        withStatus('superseded one', 'superseded by 0002'),
+      ]);
+
+      expect(groups.needsALook.map((r) => r.decision!.title), ['proposed one']);
+      expect(groups.settled.map((r) => r.decision!.title), [
+        'accepted one',
+        'superseded one',
+      ]);
+    });
+
+    test('an accepted decision never goes to needsALook, even one that '
+        'would show a fired-condition flag if this build had one — the '
+        'narrowed rule, confirmed with Nico 2026-09-07', () {
+      final groups = groupForReview([withStatus('accepted one', 'accepted')]);
+      expect(groups.needsALook, isEmpty);
+      expect(groups.settled, hasLength(1));
+    });
+
+    test('order within each group is unchanged from the input', () {
+      final groups = groupForReview([
+        withStatus('newer proposed', 'proposed'),
+        withStatus('older proposed', 'proposed'),
+      ]);
+      expect(groups.needsALook.map((r) => r.decision!.title), [
+        'newer proposed',
+        'older proposed',
+      ]);
+    });
+
+    test('an unreadable result goes to settled, not needsALook', () {
+      final unreadable = parseDecision('no heading here', 'bad.md');
+      final groups = groupForReview([unreadable]);
+      expect(groups.needsALook, isEmpty);
+      expect(groups.settled, [unreadable]);
+    });
+
+    test('an empty list yields two empty groups', () {
+      final groups = groupForReview([]);
+      expect(groups.needsALook, isEmpty);
+      expect(groups.settled, isEmpty);
+    });
+  });
 }

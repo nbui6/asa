@@ -268,4 +268,46 @@ void main() {
     final bad = parseDecision('no heading', r'C:\proj\bad.md');
     expect(bad.sourceFile, r'C:\proj\bad.md');
   });
+
+  group('isProposed — the one status signal groupForReview reuses', () {
+    test('true for a plain "proposed" status', () {
+      final result = parseDecision(
+        '# ADR 0005 — Title\n\n**Date:** 2026-09-01 · **Status:** proposed\n',
+        '0005.md',
+      );
+      expect(result.decision!.isProposed, isTrue);
+    });
+
+    test('true for status text longer than the one word — real shape', () {
+      final result = parseDecision(
+        '# ADR 0007 - Title\n\n**Date:** 2026-09-01 - **Status:** proposed '
+            "- needs Nico's decision\n",
+        '0007.md',
+      );
+      expect(result.decision!.isProposed, isTrue);
+    });
+
+    test('false for accepted', () {
+      final result = parseDecision(
+        '# ADR 0001 — Title\n\n**Date:** 2026-08-22 · **Status:** accepted\n',
+        '0001.md',
+      );
+      expect(result.decision!.isProposed, isFalse);
+    });
+
+    test('false for superseded by — not proposed, even though it is a '
+        'kind of open question', () {
+      final result = parseDecision(
+        '## 0005 - Title\n\n**Date:** 2026-09-01 - **Status:** superseded '
+            'by 0008\n',
+        'decisions.md',
+      );
+      expect(result.decision!.isProposed, isFalse);
+    });
+
+    test('false when there is no status at all', () {
+      final result = parseDecision('# ADR 0001 — Title\n', '0001.md');
+      expect(result.decision!.isProposed, isFalse);
+    });
+  });
 }

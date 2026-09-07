@@ -162,6 +162,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
     );
   }
 
+  /// 2026-09-07 trial (`asa-decisions-v2.png`): split into "Needs a look"
+  /// and "Settled" when there is anything to put in the first group. A
+  /// healthy project — nothing proposed — falls back to exactly the flat
+  /// list, so a group header is never shown empty.
   Widget _decisionsTab(ProjectReadResult read) {
     final decisions = _decisions ?? [];
 
@@ -172,8 +176,37 @@ class _ProjectScreenState extends State<ProjectScreen> {
       );
     }
 
+    final groups = groupForReview(decisions);
+    if (groups.needsALook.isEmpty) {
+      return Column(
+        children: [for (final result in decisions) _decisionRow(result)],
+      );
+    }
+
     return Column(
-      children: [for (final result in decisions) _decisionRow(result)],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _groupLabel('Needs a look', groups.needsALook.length),
+        for (final result in groups.needsALook) _decisionRow(result),
+        const SizedBox(height: 16),
+        _groupLabel('Settled', groups.settled.length),
+        for (final result in groups.settled) _decisionRow(result),
+      ],
+    );
+  }
+
+  Widget _groupLabel(String label, int count) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        '${label.toUpperCase()} · $count',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+          color: Colors.grey.shade600,
+        ),
+      ),
     );
   }
 
@@ -230,7 +263,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     decision.title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  if (decision.status != null) _statusPill(decision.status!),
+                  if (decision.status != null) _statusPill(decision),
                   // The pill alone would drop "names what replaced it" —
                   // still required (HANDOVER.md §5b), so it stays as a
                   // small note next to the pill rather than inside it.
@@ -262,7 +295,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// status text (which can run to a whole sentence, e.g. asa/0007's
   /// "proposed - needs Nico's decision") — the full text is one tap away,
   /// on the detail screen.
-  Widget _statusPill(String status) {
+  Widget _statusPill(Decision decision) {
+    final status = decision.status!;
     final lower = status.toLowerCase();
     final Color background;
     final Color foreground;
@@ -272,7 +306,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
       background = const Color(0xFFEEEEEE);
       foreground = const Color(0xFF616161);
       label = 'superseded';
-    } else if (lower.contains('proposed')) {
+    } else if (decision.isProposed) {
+      // The same check `groupForReview` uses for "Needs a look" — one
+      // canonical place this is decided, not two.
       background = const Color(0xFFE3F2FD);
       foreground = const Color(0xFF1565C0);
       label = 'proposed';

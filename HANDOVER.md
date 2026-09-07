@@ -882,3 +882,127 @@ you're looking at your own decisions." **Expect more than one look before a verd
 asks for a change after using it, that's this round continuing, not a new drift table — the image
 was never a final sign-off to begin with.
 
+### 2026-09-07 — the trial grouping built, proposed-only, real gap caught before writing code
+
+**A real premise check, before touching anything:** this entry's own instruction says to reuse
+"the exact thing already driving the red `⚠ N of its conditions have happened` flag in the
+current build." Searched — **that flag does not exist anywhere in this codebase.**
+`whatWouldChangeThis` is raw, unparsed prose; nothing counts or detects a fired condition. Put to
+Nico rather than guessed past: build the half of the grouping rule that has real data
+(`proposed`), leave "accepted with a fired condition" for its own decision, as
+`asa-v01b-NOT-IN-V0.1.md` already said it would need. **Confirmed: proposed-only.**
+
+**Built:**
+- `Decision.isProposed` in `lib/core/decision.dart` — the one canonical place this check is made.
+  `project_screen.dart`'s status pill was re-derived from raw string matching before; it now calls
+  this too, so there is one definition, not two.
+- `groupForReview` in `lib/core/decisions_reader.dart` — splits an already-sorted list into
+  `needsALook` (proposed) and `settled` (everything else, including unreadable results). Order
+  within each group unchanged.
+- `project_screen.dart`: when `needsALook` is empty, falls back to exactly the flat list — a
+  healthy project never shows an empty group header, per the sketch's own note. Group label is
+  `LABEL · count`, small-caps grey, no extra divider — matches `asa-decisions-v2.png` exactly,
+  checked against the image directly, not the writeup.
+
+**Tests:** `Decision.isProposed` against real status shapes (plain, the longer real sentence from
+asa/0007, superseded-by, accepted, absent). `groupForReview` — split, order preserved, an
+unreadable result goes to settled, an accepted decision never reaches needsALook regardless of
+`whatWouldChangeThis`'s content (the narrowed-rule test, named as such so nobody "fixes" it back
+to the full rule without re-deciding this).
+
+**`check.ps1` run by this session, real output:** first run caught the round's own unformatted
+files (expected) and one `prefer_single_quotes` info in a test string (fixed). Second run: `dart
+format` clean, `analyze --fatal-infos` clean, `test --coverage` **97 passed** (up from 87 — one
+test file's fixture repeated the exact `# ADR - $title` heading-shape bug from 2026-09-02, caught
+and fixed the same way: fix the fixture, not the parser), `integration_test -d windows` passed.
+**PASS, all four.**
+
+**Shown — real data, not the mockup's canned six decisions.** Fixed `%APPDATA%\Asa\settings.json`
+directly to point at the real `projects\` folder (faster and more reliable than driving the
+Windows UI for a one-line JSON file), launched the app, opened the real `asa` project: 10 real
+decisions, 2 proposed → "Needs a look," 8 settled — including `Start in Obsidian...`, which the
+trial sketch's own mock data shows with 3 fired conditions and grouped as needing a look. **Here
+it sits in Settled — the narrowed rule working exactly as agreed, not a bug.** Screenshot sent
+alongside `asa-decisions-v2.png` in the same message, per kit v1.26.
+
+**Not shown yet — rule 19.** Written up, screenshotted, not committed. Needs Nico's actual look —
+and per this round's own "done" criterion, that means using it, not just matching the drawing.
+
+### 2026-09-07 — next round: accept/reject a proposed decision, append-only
+
+**Sequencing.** This is queued behind the grouping round above once it's committed — one diff at a
+time, same as always.
+
+**What this is.** Asa's first write to a decision file, ever — deliberately decided, not a side
+effect. Full reasoning, rejected alternatives, and the safety argument are in
+`projects\asa\decisions\0011-append-only-verdicts.md`. Read that ADR before building this; it is
+the spec's real foundation, and this section only restates the parts a builder needs at hand.
+
+**Reference — `projects\asa\sketches\asa-decision-call.png` / `.html`**, approved,
+`APPROVED.md`. Three states of the same screen: opened and undecided (a "Your call" block —
+reason box, Reject/Accept buttons), reason typed in, and after — the block replaced by one line in
+the same style as "Why". **Note the sketch's own file path (`0011-stack-reopened.md`) and title
+were illustrative** — the real proposed decision this will actually run against is
+`projects\asa\decisions\0005-stack-reopened.md`, and it does not have a `## Why` section (it has
+`## Why this is open`, which the parser's exact-heading rule does not match, so `decision.why` is
+empty for this file today). **Build against the real file and the real parser output, not the
+sketch's simplified content** — if the "Why" area renders empty for this decision, that is
+correct, pre-existing behaviour, not a bug this round introduces or needs to fix.
+
+**The write, precisely — append only, per ADR 0011:**
+
+- Never modify, delete, or reorder a single existing byte of the file. Never touch the
+  `**Status:**` line.
+- Append, after a blank line at the end of the file:
+  ```
+  ## Your call
+
+  **Accepted** — 2026-09-07
+  
+  <typed reason, verbatim, or "No reason given." if the box was left empty>
+  ```
+  `**Rejected**` for the other verdict.
+- Atomic write: temp file, then rename. A crash mid-write must never leave a half-written file.
+- If a `## Your call` section already exists in the file, do not offer to write a second one —
+  the accept/reject controls do not appear; the screen shows the recorded verdict, same as the
+  sketch's third state.
+
+**Parsing (`lib/core/decision.dart`):**
+
+- New field, same pattern as `whatWouldChangeThis` — exact `## Your call` heading, case-insensitive,
+  to the next heading/`---`/end of file. Parse out the verdict (`Accepted`/`Rejected`), the date,
+  and the reason paragraph.
+- `isProposed` becomes: header says proposed **and** no `## Your call` section present. A decided
+  decision must leave "Needs a look" and its own re-derived status pill must show the verdict, not
+  the stale header — this is the one place the app is allowed to show something other than what
+  `**Status:**` literally says, and it needs a test that says so explicitly, the way the
+  narrowed-rule test already documents `groupForReview`'s scope on purpose.
+- The header field itself (`Decision.status`) stays exactly what it reads today — untouched,
+  unfixed. Effective/displayed status is a derived value, not a rewrite.
+
+**UI, from the sketch:** "Your call" block appears only when `isProposed` is true (post-override).
+Reason box, Reject and Accept buttons, same visual language as the rest of the screen — no new
+colours or components. After writing, re-read the file (don't trust the in-memory value) and show
+the recorded state.
+
+**Tests, minimum:** a feature test appending a verdict to a real file's content and asserting
+every byte before the new section is byte-identical to the original. `isProposed` false once a
+`## Your call` section is present, regardless of header text — the override case, named as such.
+Reject and Accept both write correctly. Empty reason writes "No reason given." A second attempt
+when a verdict already exists does not show the controls.
+
+**Update, 2026-09-07, same day this was written:** `0005-stack-reopened.md` is no longer
+proposed. Nico decided it directly — *"yes let's stay with Flutter"* — and it was recorded by hand
+in the ADR itself, the normal way, before this feature exists to do it any other way. **It is no
+longer the real decision to demo against.** Check what's actually proposed in the real `asa`
+project before showing this round; if nothing is, that's fine — the round-trip tests don't need a
+real proposed decision, only the demo does, and it can wait for one or use a project created for
+the purpose rather than inventing test data inside a real project's `decisions/` folder.
+
+**What "done" means:** build it, run `check.ps1`, show it per rule 19 — on the real `asa` project,
+against the real `0005-stack-reopened.md` file, not a copy. **After showing it, do not leave the
+real file in a decided state without saying so plainly** — accepting or rejecting ADR 0005 through
+this test is a real action on a real, currently-open decision about this project's own stack, not
+a throwaway click. Flag that explicitly when asking for the verdict, so it isn't decided by
+accident while testing the button.
+

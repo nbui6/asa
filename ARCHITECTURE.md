@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-04.
+Last checked against the folder tree: 2026-09-07.
 
 ---
 
@@ -47,7 +47,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how a project note is found on disk | `lib/core/project_reader.dart` |
 | change what git is asked, or how failures read | `lib/core/git_state.dart` |
 | change how one decision (an ADR file, or one log section) is parsed | `lib/core/decision.dart` |
-| change how decisions are found on disk, or their merge and sort order | `lib/core/decisions_reader.dart` |
+| change how decisions are found on disk, their merge and sort order, or the "Needs a look" / "Settled" trial grouping | `lib/core/decisions_reader.dart` |
 | change where or how Asa's own settings are read or written | `lib/core/settings.dart` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 

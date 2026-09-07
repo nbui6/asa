@@ -148,6 +148,43 @@ List<DecisionReadResult> sortDecisionsNewestFirst(
   return [...dated, ...undated, ...unreadable];
 }
 
+/// The two groups the trial Decisions-tab grouping sorts an already-sorted
+/// list into. Order within each group is unchanged.
+typedef ReviewGroups = ({
+  List<DecisionReadResult> needsALook,
+  List<DecisionReadResult> settled,
+});
+
+/// Splits decisions into "Needs a look" and "Settled" — 2026-09-07's trial
+/// grouping (`asa-decisions-v2.png`).
+///
+/// **Narrower than the trial's own rule.** The full rule is: needs a look
+/// when `proposed`, *or* when `accepted` with a fired condition. Only the
+/// `proposed` half is built — an accepted decision with a fired condition
+/// has no data source yet, and guessing one from `whatWouldChangeThis`'s
+/// raw prose was already rejected once, for the row-7 flag this reuses
+/// (`asa-v01b-NOT-IN-V0.1.md`). Confirmed with Nico, 2026-09-07: ship the
+/// half that is real; the other half waits for its own decision on how a
+/// decision file states a fired condition in a form a parser can read.
+///
+/// An unreadable result — no [DecisionReadResult.decision] to read a
+/// status from — goes to "Settled": it is not asking for a call, it is
+/// already visible as unreadable in its row.
+ReviewGroups groupForReview(List<DecisionReadResult> decisions) {
+  final needsALook = <DecisionReadResult>[];
+  final settled = <DecisionReadResult>[];
+
+  for (final result in decisions) {
+    if (result.decision?.isProposed ?? false) {
+      needsALook.add(result);
+    } else {
+      settled.add(result);
+    }
+  }
+
+  return (needsALook: needsALook, settled: settled);
+}
+
 /// The real file system. Every other implementation of [FileAccess] in
 /// this codebase is a test fake — this is the only one that ever touches a
 /// real disk.

@@ -68,6 +68,17 @@ class Decision {
   /// The file this was read from, so the screen can say where a value
   /// came from — the same obligation the provenance block already carries.
   final String sourceFile;
+
+  /// Whether the status text says `proposed` — the one status-based signal
+  /// this codebase currently exposes for "this decision wants something
+  /// from you." The other half of that question — an accepted decision
+  /// with a fired condition — has no data source yet:
+  /// [whatWouldChangeThis] is raw prose, and nothing records whether one
+  /// of its conditions has actually happened. See
+  /// `asa-v01b-NOT-IN-V0.1.md`. The one canonical place this check is
+  /// made — `project_screen.dart`'s status pill uses it too, rather than
+  /// re-deriving its own.
+  bool get isProposed => (status ?? '').toLowerCase().contains('proposed');
 }
 
 /// What happened when we tried to parse one decision file, or one section of
