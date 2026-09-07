@@ -92,6 +92,22 @@ the commit happens without being asked.
 **Changed by hand and not yet reflected upstream:** <the most dangerous line in the file. Anything
 adjusted directly here that the agreed design still shows the old way.>
 
+**Deviated from the approved sketch:** <every place the build differs from the drawing the Boss
+signed off — with what the sketch shows, what was built, and why.>
+
+| The sketch shows | What was built | Why | Sketch annotated? |
+|---|---|---|---|
+| | | | |
+
+> **Naming it here is half the job; the other half is marking the drawing.** *2026-09-03: an
+> approved sketch showed a "Choose folder…" button, which reads as a native folder dialog. The
+> build made it a text field and a button that read the text field — **and said so, honestly, in
+> this file.** Nobody connected the two until the Boss clicked it and nothing happened.*
+>
+> **A deviation written only in prose is found by whoever reads the prose.** The sketch is what
+> gets looked at again, so the sketch is where the deviation has to be visible — one line on the
+> image or beside it. **A round is not ready to show while this table has an unannotated row.**
+
 ---
 
 ## What does not cross this boundary — say it out loud

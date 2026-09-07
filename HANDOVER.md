@@ -218,13 +218,218 @@ created · derived status · the process tab · the full tab row · **any write 
 
 ## Who does what
 
-- **Nico runs every `git` and `flutter` command himself, in Windows PowerShell.** Never through an
-  assistant's device bridge — one left a stale `.git/index.lock` on 2026-08-26.
+**Three roles, and the third is the only one that runs anything.**
+
+| | Does | Never |
+|---|---|---|
+| **The deciding session** | decisions, sketches, specs, records, boundary checks. Writes in this file's downstream half | writes Dart. Runs `git` or `flutter` |
+| **The building session** | writes the Dart. Writes in the upstream half | runs `git` or `flutter` |
+| **Nico** | **runs every command.** Looks at the result. Says yes or no | is the message bus between the two sessions |
+
+**So "hand code work to Code" and "here is a command to run" are not in conflict.** Neither session
+can execute anything - both hand commands to Nico, because he is the only one with a terminal that
+counts. What must never happen again is an assistant asking him to *carry text* from one session to
+the other; that is what this file is for.
+
+*Added 2026-09-03, after he asked: "but that is code work? It is working right now, so I am
+confused." The division had been stated as two roles and it is three.*
+
+
+- **Never through an assistant's device bridge** — one left a stale `.git/index.lock` on
+  2026-08-26, and could not delete it afterwards. **That rule is about the deciding session, which
+  reaches this machine through a bridge with no delete permission. It is not about the building
+  session**, which runs in a real PowerShell with a real shell.
+
+  > ### GRANTED for the checks, 2026-09-03. Act on this now.
+  >
+  > **Nico's words: *"code is making me copy and paste so much, cant Code do it itself?"*** That is
+  > the authorisation, and it covers everything in the first row below. **Run the checks yourself.
+  > Stop handing them over.**
+  >
+  > **Staging and committing are now covered too** — *"yes do it."*, 2026-09-03 — **but only after
+  > he has seen the result and said yes.** The gate has not moved; only the typing has.
+  >
+  > **`git push` stays with Nico.** One command, one human hand on the only thing that leaves the
+  > machine.
+  >
+  > *You have been citing `CLAUDE.md` rule 3 and the `.git/index.lock` incident. **That incident was
+  > the deciding session, through a device bridge that cannot delete a file it creates.** You run in
+  > a real PowerShell. The rule generalised from one actor's mechanism to every actor, and the
+  > person paying for it was neither of them.*
+  >
+  > *"code is making me copy and paste so much, cant Code do it itself?"* — and it can. The rule
+  > said "Nico runs every `git` and `flutter` command himself", giving the bridge incident as the
+  > reason. **The reason names a mechanism the building session does not use.** The rule
+  > over-applied, and the cost has been a copy-paste round-trip on every check of every round.
+  >
+  > | Command | Who, proposed |
+  > |---|---|
+  > | `check.ps1` and everything in it — `pub get`, `dart format`, `analyze`, `test`, `integration_test`, `clean` | **The building session, itself.** No approval. Touches no remote and nothing outside the repo |
+  > | `flutter run -d windows` | **The building session** puts it on screen. **Nico looks.** The looking is the part that cannot be delegated |
+  > | `git add` · `git commit` | **The building session — but only after Nico has said yes.** *Granted 2026-09-03: "yes do it."* Rule 19 is about approval, not about who types |
+  > | `git push` | **Nico, in his own terminal.** The only command that leaves the machine, and the only one rules 15 and 16 guard |
+  > | Anything at all through the device bridge | **Never.** Unchanged |
+  >
+  > **This is configuration, not weakening** — `PLAYBOOK.md` section 14: turning off a rule that
+  > does not fit is configuration; turning one off because its findings are inconvenient is
+  > weakening. Nothing here removes a check. **The gate, the approval and the push all stay
+  > exactly where they were.** What changes is who types the four commands that only ever report.
 - **Stop and ask** if a criterion cannot be met **as written**, rather than meeting a nearby one.
 - **If the parse contract disagrees with a real file, the file wins.** Say so and stop.
 - **Nico is the only one who can say the round is done.** Show him the result - the app running,
   and `check.ps1`'s real output — then ask, then commit after a yes. **Not the other way round,
   and not a note in this file instead of the showing.** `CLAUDE.md` rule 19.
+- **Every deviation from an approved sketch goes in the upstream half's deviation table AND on
+  the sketch itself.** Naming it in prose is not enough - the sketch is the thing that gets
+  looked at again. *2026-09-03: the "Choose folder…" button was drawn as a native dialog, built
+  as a text field, reported honestly in this file, and still reached the Boss as a button that
+  did nothing when clicked.*
+
+---
+
+## ⬇ Downstream — 2026-09-03, and a correction about who does what
+
+### Routing: this was done in the wrong session
+
+`PLAYBOOK.md` §15 says **route the work before starting it**. On 2026-09-03 the deciding session
+wrote Dart directly — the folder picker, a dependency, seven widget tests, a revert — in a session
+that **cannot compile or run any of it.** It went to Nico as paste-blocks instead of to the session
+whose job this is.
+
+**The cost was not hypothetical.** `file_selector` was added on the strength of a pub.dev page,
+handed over as "run `flutter pub get`", and the Windows build refused it: no plugin builds without
+Developer Mode. **A session that could build would have found that in one step instead of three
+round-trips through a person.**
+
+> **From here: code changes are written by the building session, and this file is how they are
+> asked for.** Not paste-text carried by Nico. He is the Boss and the person who runs `flutter` and
+> `git` — he is not the message bus between two assistants.
+
+### Where v0.1 actually stands
+
+| | |
+|---|---|
+| `check.ps1` | **green, all four**, on 2026-09-03 after `flutter clean` |
+| The app | runs. Front page lists all nine projects. |
+| Seen by the Boss | the front page only. **Decisions tab not yet walked.** |
+| Committed | **no** |
+
+### What changed after that green run, and therefore needs another
+
+All by the deciding session, all unverified by any build:
+
+1. **Test fixtures neutralised.** `test/decision_test.dart` and `test/project_test.dart` carried
+   real internal decision titles, a real partner-programme rule and a vendor name. Structure kept
+   verbatim, prose replaced. **Rule 8 refined: test against the real *shape*, never the real
+   *content*.**
+2. **The folder picker.** The button said `Choose folder…`, opened nothing, and with an empty box
+   did nothing at all — no dialog, no message. Now: `Use this folder`, and every path says why.
+3. **`file_selector` added, then reverted** — see routing above. The `pickFolder` seam stays so a
+   machine with Developer Mode can supply a real dialog in three lines.
+4. **`test/projects_screen_test.dart`** — new, seven tests, both shapes.
+5. **`check.ps1`** — `-Fresh` switch, `flutter pub get` always, numbered steps, and a failure
+   message naming the step.
+
+### THE ROUND'S REMAINING WORK — the Decisions tab does not match its approved sketch
+
+**Rejected by the Boss on 2026-09-03: *"it doesnt look anything like the UI we agreed on, try
+again."*** He is right. Compared line by line against `asa-v01b`, which he approved, and against
+`project_screen.dart` lines 68–210, there are **eight differences** — and together they are not
+styling, they are a different kind of screen. The approved drawing is a quiet typographic list.
+What was built is stock Material: an indigo AppBar, uppercase tabs, and a stack of shadowed cards
+where five decisions fill the window.
+
+**Reference, both in `projects\asa\sketches\`:**
+
+| | |
+|---|---|
+| `asa-v01b.png` | the approved design. **This is the spec.** |
+| `asa-v01b-DRIFT-2026-09-03.png` | the annotation — approved and built side by side, with the eight rows numbered |
+
+**Do not draw a new sketch.** `PLAYBOOK.md` §14: *a version is a subset of the approved design,
+never a different drawing.* This screen already has an approved drawing; the job is to build it.
+
+| # | Build this | Instead of |
+|---|---|---|
+| 1 | The project name and a `←` **in the page body**, on the page's own background | a Material `AppBar` |
+| 2 | **A one-line description** under the name | nothing |
+| 3 | Tabs as plain text with a 2px underline on the active one, left-aligned, in the body | `TabBar` inside the app bar, uppercase, full width |
+| 4 | **A flat list**: one row per decision, a 1px hairline between, ~9px vertical padding | `Card` per decision |
+| 5 | Status as a **small rounded pill, inline immediately after the title** — green accepted, blue proposed, grey superseded | grey text on a second line |
+| 6 | Date **right-aligned on the row**, humanised: `today`, `1 Sep`, `22 Aug` | raw ISO date joined to the status with `·` |
+| 7 | Fired *what would change this* conditions flagged **on the row** — `⚠ 3 conditions fired`, red | visible only after tapping in |
+| 8 | The provenance block **collapsed** behind a one-line `Read from: asa.md` that expands | always expanded, below the list |
+
+**Row 8 — put to Nico and decided by him, 2026-09-03: collapsed.** The provenance block is what
+`CLAUDE.md` rule 5 exists for and the notes call it the best thing in this codebase; the sketch
+does not show it because the sketch is about the list, not because the block should go. **One line
+reading `Read from: asa.md`, which expands to the raw text on click.** Not deleted, not moved to
+the Details tab — both were offered and both were declined.
+
+**Row 2 — put to Nico and decided by him, 2026-09-03: derived, no new field.** No note has a
+`summary:`, and adding one to nine notes was offered and declined. **Take the first paragraph of
+ordinary text in the project note after the `# Heading`, and omit the line entirely when there is
+none.** Charter: derived, not typed — a field that has to be maintained is out of date exactly when
+it is needed.
+
+*Both of these were put to him as plain-language choices with the trade-off named, after he said he
+did not understand the question as first asked. The first phrasing used "provenance block" and
+"derive from frontmatter" to someone who is deliberately not a developer — `PLAYBOOK.md` §15, a
+question of category 1 travels with its explanation, and the explanation has to be in his
+language, not the code's.*
+
+**Not in this work, and it will be tempting:** the front page (still Round 2's, still deliberately
+out of scope), the Details tab's contents, the decision detail screen, and any change to
+`lib/core/`. **This is `project_screen.dart` and nothing else.** If something in `core/` seems to be
+in the way, say so here and stop.
+
+**Before it is shown:** `check.ps1` green, and the deviation table in the upstream half filled in —
+including whether the sketch was annotated. That table exists because this exact failure happened
+twice.
+
+### The failing widget test is my bug, not yours — 2026-09-03
+
+**`test/projects_screen_test.dart` was written by the deciding session, and its `tearDown` is the
+defect.** You are chasing a race that should not exist:
+
+```
+writeSettings tried to open ...\settings.json and got "path not found"
+```
+
+**`tearDown` deletes the temp directory while the widget's `writeSettings` future is still in
+flight.** `runAsync` and `pumpAndSettle` are both the wrong tools for this, and no amount of
+timing will make it reliable — you are trying to synchronise with real disk I/O from a fake-async
+zone.
+
+**The boring fix: none of these tests need the file to exist.**
+
+Every assertion is on visible state — a `SnackBar`, the text in the box, the button label. Nothing
+reads `settings.json` back. So:
+
+> **Delete the `tearDown` that removes the temp directory.** Keep `settingsPath` pointing inside
+> `Directory.systemTemp`; the operating system cleans that up. **The race disappears because
+> nothing races.**
+
+If a stray directory per run offends, delete only the *file* and only inside a `try`/`catch` — but
+the directory deletion is what breaks it, and leaving it there costs nothing.
+
+**Same latent bug is in `integration_test/app_test.dart`**, which has
+`addTearDown(() => tempDir.deleteSync(recursive: true))`. It has not bitten yet. Fix it while you
+are in there.
+
+*Written by the session that wrote the test. `PLAYBOOK.md` section 14: fix the encoding, never the
+assertion — and a test that needs a timing trick to pass is the assertion being bent.*
+
+### Open, for whoever picks this up
+
+- **The Boss has not walked the Decisions tab.** That is v0.1's entire payload and its
+  done-condition. Everything above is preamble to that one look.
+- **7 of 10 real ADR files have no heading literally named `## Why`**, so most decisions will show
+  an empty *why*. Flagged, not papered over — **his call whether it is acceptable or a defect.**
+- **"Not the correct UI we agreed on"** — said of the front page. The front page as drawn is
+  explicitly in *Not in this version*. Unresolved whether that scoping still holds now he has seen
+  it.
+- **`check-shareable.ps1 -SelfTest` has never been run** and must pass before the commit.
 
 ---
 
@@ -378,3 +583,67 @@ themselves been run through the analyzer, so there is a real chance one of them 
 finding that was not visible before. **The next `check.ps1` run is what actually confirms this**,
 including whether `very_good_analysis: ^7.0.0` resolves at all (still unverified — see above) and
 whether `integration_test` runs cleanly (still never executed).
+
+### 2026-09-04 — the Decisions tab rebuilt against `asa-v01b`, six of eight rows
+
+**Read the downstream half's 2026-09-03 entry before this one — it names the eight differences and
+scopes the work to `project_screen.dart` only.** This entry reports against that table.
+
+**First, a real gap in the downstream instructions, found before writing anything:** the reference
+file it names, `projects\asa\sketches\asa-v01b.png`, **does not exist on disk.** The sketches
+folder has `asa-v01.html`/`.png` (the *rejected* first attempt) and
+`asa-v01b-DRIFT-2026-09-03.png`, nothing named `asa-v01b` on its own. The drift image's left half
+is a full recreation of the approved screen — "drawn from the source, not from memory" per its own
+caption — so that recreation is what this entry was built against. **Not the same thing as the
+original approved artifact surviving**, and worth someone confirming the recreation is faithful,
+since nobody who approved `asa-v01b` has looked at this recreation of it.
+
+**Built, matching rows 1, 3, 4, 5, 6, 8:**
+
+| # | Row | Built as |
+|---|---|---|
+| 1 | Name and back arrow in the page body | `Scaffold` has no `appBar`; a plain `IconButton` row (back, reload) sits in the body above the heading |
+| 3 | Plain-text tabs, 2px underline | Dropped `TabController`/`TabBar` entirely — a `Row` of two `GestureDetector`s over styled `Text`, state is a plain `int _tabIndex` |
+| 4 | Flat list, hairline between | `Card` replaced with `Container` + bottom `BorderSide`, ~9px vertical padding |
+| 5 | Status pill, inline after title | Small rounded `Container`; the pill shows a short canonical word (`accepted`/`proposed`/`superseded`), not the raw parsed status text, which can run to a full sentence (asa/0007: *"proposed - needs Nico's decision"*) — full text is one tap away on the detail screen |
+| 6 | Humanised date, right-aligned | `today`, or `D Mon` (`1 Sep`, `22 Aug`) — kept as a private method in this file, not moved to `core/`, per the scope limit below |
+| 8 | Provenance collapsed behind one line | `Read from: <filename>`, an `expand_more`/`expand_less` chevron, toggles both raw blocks together |
+
+**One addition beyond the eight rows, not a deviation from them:** the original spec (HANDOVER.md
+§5b, before the drift report) required *"a superseded one is visibly superseded and names what
+replaced it."* The drift table's row 5 covers "visibly superseded" (the grey pill) but the pill
+alone drops "names what replaced it" — a short pill has no room for a number. Kept as a small
+`→ replaced by 0008` note beside the pill, reusing the fired-condition warning's amber colour
+family since both are "look at this."
+
+**Blocked, and stopped rather than guessed at — both need `lib/core/`, out of scope per the
+downstream instruction itself ("if something in core/ seems to be in the way, say so here and
+stop"):**
+
+- **Row 2, the one-line description.** The instruction is precise about the source — *"the first
+  paragraph of the project note after the `# Heading`"* — and precise that it is not a new
+  frontmatter field. But nothing between here and the disk exposes that text: `project_reader.dart`
+  reads the whole file, then throws away everything except the frontmatter block;
+  `ProjectReadResult` never carries the body. Building this needs `project_reader.dart` (and
+  probably `project.dart`, for where the derived value lives) to change. **Not built. No line
+  shown for it** — closer to "omit when there is none" than to a placeholder, even though the real
+  reason is "blocked," not "absent."
+- **Row 7, fired *what would change this* conditions.** `Decision.whatWouldChangeThis` is one blob
+  of parsed prose — there is no per-condition structure to count against, and nothing records
+  whether a condition has "happened." The real ADR files that show fired conditions today
+  (`asa/decisions/0001`, annotated by hand in the mockup) state it in freeform sentences a parser
+  cannot safely evaluate — the same reason `## Why` is only matched on an exact heading applies
+  here even harder: guessing "has this fired" from prose risks being confidently wrong, which is
+  worse than showing nothing. **Not built.** If this stays wanted, it needs a decision first —
+  render the sketch does not currently support (a decision needs to *say* it has fired, in its own
+  text, for anything to count it) — not just a parser change.
+
+**Also not done, and outside what I can do at all:** rule ("Who does what") says every deviation
+goes in this table **and on the sketch itself.** The sketch lives under `projects\`, and this
+session's hard limit is to write nothing there. Whoever can write to
+`projects\asa\sketches\` should add the annotation; I can describe exactly what changed (this
+table) but cannot mark the image.
+
+**Not shown yet — rule 19.** This session does not run `flutter`. Nobody has looked at the running
+screen, and `check.ps1` has not been run since this change. Both are needed before this can be
+called anything but written.

@@ -3,9 +3,8 @@
 /// One product, several hubs. Only the Product Hub exists.
 library;
 
+import 'package:asa/hubs/product/projects_screen.dart';
 import 'package:flutter/material.dart';
-
-import 'hubs/product/projects_screen.dart';
 
 void main() {
   runApp(const AsaApp());

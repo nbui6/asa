@@ -1731,6 +1731,20 @@ too narrowly**. So it gets one clause, not a sibling:
 about intent, not about what the tool does. The check is **what does it write**, and for anything
 that keeps an index or a cache, the honest answer is usually *something*.
 
+**Confirmed the same day, in both directions.**
+
+*It writes:* before that `git status` ran, roughly forty files under `android/` and `ios/` showed
+as modified. Afterwards they did not. The command had **rewritten their index entries** to
+normalise line endings — a real change to the repository, made by the command whose defence was
+that it only prints.
+
+*And the lock was not the problem it was reported as:* by the time Nico ran the `del`, the file was
+already gone — a later git invocation had cleaned it up. **The bridge could not remove it; Windows
+had no trouble.** The chore handed over was unnecessary, and "I cannot delete this" was true only
+of the tool in hand. **Say which tool cannot do a thing, not that the thing cannot be done** —
+`PLAYBOOK.md` §15 already says to hand over the safe form of a command, and this is its mirror:
+do not hand over a chore without checking it is still needed.
+
 ### 2026-09-02 — the README described the working tree, not the commit
 
 **Bucket: how we build. First instance, acted on immediately** — `PLAYBOOK.md` §14 does not make an
@@ -1760,3 +1774,378 @@ untested paths get named at handover, and a documented feature that does not exi
 class of thing. The check has never been run against a README. **It should be:** a shared
 repository publishes its documentation as confidently as its code, and the documentation is the
 half nobody reruns.
+
+### 2026-09-02 — the repository was public for two days, and two hard rules cited its privacy as their reason
+
+**Bucket: how we build. Acted on once, not twice** - `PLAYBOOK.md` §14 says the rule of two never
+applies to something that loses data, and leaking it is the same class.
+
+Asked to look for feedback on GitHub, a session opened the repository in a signed-out browser. There
+was no feedback - no issues, no pull requests, discussions not enabled. **The repository was
+public.** The badge said so, the page offered "Sign in", and it served the full file tree and README
+with no account.
+
+**What was exposed:** the owner's Windows username in two source files, his employer and product
+name in a forbidden-words list, one internal project name and the vendor it involves in two kit
+files, and his work email in every commit's author field. **No customer data, no partner data, no
+credential** - those rules held, and they are the ones that were actually enforced by a script.
+
+**The part worth keeping is not the leak. It is what the belief was used for.**
+
+"The repository is private" had been believed for two days. In that time it was written into **two
+hard rules as their justification**:
+
+| Rule | What it justified |
+|---|---|
+| `check-shareable.ps1`'s header | *"This repository is private and shared with people who already know the names of the projects in it"* - the reason the private-name list could stay **empty** |
+| `CLAUDE.md` rule 16's named exception | the owner's username in three lines, *"known, accepted in a private repository"* |
+
+**Both waivers were sound reasoning resting on an unchecked fact.** That is worse than a missing
+check, because it reads as a *considered* decision. Anyone reviewing it sees a trade-off with a
+reason attached and moves on.
+
+**Same shape as the row in `PLAYBOOK.md` §14, and it extends it past delivery into premises:**
+
+> **A property that nothing verifies is a hope.** *Installed* left no trace when it was false.
+> *Rendered* left no trace when it was false. **Private** left no trace when it was false - and
+> unlike the others, it had been promoted to the reason other decisions were safe.
+
+**The repair, in three parts:**
+
+1. **The check now runs.** `check-shareable.ps1` asks GitHub's public API, unauthenticated, whether
+   a stranger can read the repository - literally the signed-out-browser test, automated - and
+   **fails closed** if it cannot find out. 200 is public, 404 is private, anything else is unknown
+   and does not pass.
+2. **Both rationales were rewritten**, not just corrected. The empty list now has a reason that
+   does not depend on privacy at all.
+3. **The verification is the reusable bit:** the cheapest test of "can outsiders see this" is to
+   *be* an outsider. A signed-out browser, or an unauthenticated GET. No credentials means no way
+   to accidentally prove the wrong thing - a check run while logged in would have said "private"
+   for a public repo and for a private one alike.
+
+**And a fourth thing, which is uncomfortable.** The reason nobody checked is that the repository was
+*created* in a session where creating it privately was the intent, and intent is what got recorded.
+**The gap between "we meant to" and "it is" is exactly where this class of bug lives**, and no
+amount of care at creation time closes it. Only a check that runs later does.
+
+### 2026-09-02 — the safe form of a command existed, was written down, and got abbreviated anyway
+
+**Bucket: how we build. Repeat instance** - `PLAYBOOK.md` §15 already says to hand over the safe
+form of a command. The rule was not missing and its scope was not wrong. **It was simply not
+applied**, for the fourth time in this project's life.
+
+The assistant asked for `check-shareable.ps1 -SelfTest`. PowerShell does not run a bare script name
+in the current directory, so it produced a `CommandNotFoundException` and a blocked round-trip. The
+runnable form was **already written in `CLAUDE.md` rule 16, in that same repository**, and had been
+pasted correctly earlier the same day:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File check-shareable.ps1
+```
+
+**Why the abbreviation happens is worth naming, because it is not carelessness.** A full command is
+noise inside a sentence about something else. *"Run `check-shareable.ps1 -SelfTest` and then read
+her page"* reads better than the same sentence with forty characters of interpreter flags in it.
+**The prose wins and the command loses**, every time, unless the command is pulled out of the prose
+into a block of its own.
+
+**Which is the actual repair, and it is a formatting rule rather than a discipline:**
+
+> **A command never appears inside a sentence. It appears in its own block, in the form that can be
+> pasted into a cold terminal** - with the `cd`, the interpreter and the flags. Reference it in
+> prose by what it does (*"the shareable check"*), never by a fragment of its command line.
+
+**And a second one, cheaper still:** where a project has already written the runnable form down,
+**quote it verbatim.** Every reformatting is a chance to drop something, and the file that holds it
+is a file both sides can read.
+
+*Same day as the `del` for a lock file that was already gone, and both are the same category:
+handing the Boss something that cost him a round-trip and returned nothing. `PLAYBOOK.md` §15
+covers both, and §15 is now the most-broken section in the playbook - which is itself a finding.
+A rule broken four times is either unenforceable as written or needs a mechanical form. This one
+now has a mechanical form.*
+
+### 2026-09-03 — a folder move broke the build for two days, and only the check nobody had run could see it
+
+**Bucket: how we build. Fifth instance of *tested is not compiled*, and the first one where the
+evidence was sitting in a folder the whole time.**
+
+`check.ps1` was run for the first time end to end. Three of four steps were green:
+`flutter analyze --fatal-infos` found **no issues** (so `very_good_analysis: ^7.0.0`, written as an
+unverified guess, resolves), and **70 unit tests passed**. The fourth failed:
+
+```
+CMake Error: The current CMakeCache.txt directory C:/Users/.../workspace/asa/build/windows/x64
+is different than the directory c:/Users/.../dev/asa/build/windows/x64 where CMakeCache.txt was
+created.
+```
+
+**The repository was moved on 2026-09-01** (ADR 0006, `dev\asa` to `workspace\asa`). The move was
+lossless and was verified — by `flutter test`, which passed. **`build\` came along with absolute
+paths from the old location baked into `CMakeCache.txt`, and nothing that ran afterwards touched
+it.** One `flutter clean` fixes it.
+
+**Why it hid for two days is the whole finding.** Unit tests run on the Dart VM. **They do not
+build the app.** So every check that ran after the move was a check that could not see a broken
+build, and the one check that would have caught it in a minute — the feature test — had **never
+been executed on this machine**, which its own handover note said in plain words.
+
+| | |
+|---|---|
+| What was verified after the move | `flutter test` — 70 tests, green |
+| What that proves | the Dart code parses and its logic is right |
+| What it does not prove | **that the application compiles** |
+
+**This is the row from `PLAYBOOK.md` §14 again, and it is now the most productive entry in the
+kit:** *installed is not fired* · *tested is not compiled* · *rendered is not seen* · *done is not
+shown* — and here, **moved is not rebuilt.**
+
+**The rule it earns, and it is narrow enough to be worth having:**
+
+> **After moving or copying a project, delete the build output before believing any check.** A
+> build cache holds absolute paths. It survives the move, keeps reporting success to everything
+> that does not compile, and fails only in whatever runs the compiler — which may be nothing you
+> run for days.
+
+**And a likely second casualty, stated as a hypothesis rather than a fact:** `flutter run -d
+windows` uses the same cache, so **the app has probably not been runnable since the move.** If so,
+nobody has seen v0.1 at all, and "the app you ran an hour ago" — written into a sketch on
+2026-09-01 — was describing a build from the old folder. **Testable in one command**, and worth
+testing rather than assuming in either direction.
+
+**Two defects in the gate itself, found by running it:**
+
+1. **Step 4 asked which device to use and waited for a keystroke.** Three devices are connected, so
+   `flutter test integration_test` prompted. **A gate that can sit waiting for input is not a
+   gate** — `PLAYBOOK.md` §15 says exactly this and the script broke it. Now `-d windows`.
+2. **When it stopped at step 1, the operator finished the other three by hand** — reasonably, since
+   the script prints each command before running it, so a half-finished run looks like a list to
+   type. It now says *"FAILED at step 1 of 4"* and *"nothing after this step ran"*. Also documented
+   at the top: `dart format --set-exit-if-changed` **rewrites** the files and then fails, so the
+   first run legitimately fails and the second passes with no work in between. That is not
+   flakiness, and without the note it reads exactly like it.
+
+### 2026-09-03 — the fixtures were real, and that turned out to be two different claims
+
+**Bucket: how we build. Found at the commit gate, before the commit** - which is the first time
+this project's boundary rule has caught something rather than being written after the fact.
+
+v0.1's machine check went green. Sweeping the source before the commit turned up **internal
+business content sitting in unit-test fixtures**: a decision title naming a commercial mechanism,
+two more naming internal fields, a `**Decision:**` line stating an actual partner-programme rule,
+and a `**What would change this:**` line naming another internal project. Plus a vendor name in a
+doc comment and in three link fixtures - and **that folder had since been renamed**, so the fixture
+was a stale leak.
+
+**All of it was there because rule 8 was followed.** *Test against the real contract* - and the
+person who wrote these did exactly that: copied real files verbatim, and said so in a header
+comment, which is why it was findable in one grep.
+
+**So rule 8 was right and its wording was not precise enough.** The refinement:
+
+> **Test against the real *shape*, never the real *content*.**
+>
+> The fixture must reproduce the payload's structure exactly - every marker, separator, quirk and
+> ordering oddity, because those are what break an implementation. It must not reproduce the
+> payload's **subject matter**, because no assertion depends on it.
+
+**The test that makes this checkable:** *would any assertion in this file change if the prose were
+different?* If no - and for a parser it is almost always no - then the prose is decoration, and
+decoration copied from a real internal document is a liability with no upside.
+
+**What was kept, deliberately, because it is the actual contract:** the plain hyphen after the
+decision number, a header line packing `Date`, `Status` and `Decided by` together (which broke the
+first implementation - it captured `"accepted - **Decided by:** Nico"` as the status), the inline
+`**Decision:**` / `**Why:**` / `**What would change this:**` labels, the trailing
+`**Update yyyy-mm-dd:**` block, and a quoted sentence followed by further prose. Every one of those
+survived. Only the sentences changed. **The file now says which half is real, in a header comment**,
+so the next person does not have to guess which parts they may edit.
+
+**Two smaller things from the same sweep:**
+
+- **The owner's own first name was left in the fixtures.** It appears as the value of a
+  `**Decided by:**` field, in a private repository he owns and commits to under that name. Removing
+  it would be theatre; the *field* is the contract and the value is his. **Named here so that
+  "cleaned" is not read as "emptied".**
+- **A `check-shareable.ps1` run would not have caught any of it.** Its name list is empty by
+  design, and none of this matched a machine path or an email address. **The check that found it was
+  a person reading the diff before a commit** - which is what the gate is for, and an argument
+  against believing a green script is the whole of it.
+
+### 2026-09-03 — the package was researched, the platform was not
+
+**Bucket: how we build. First instance, acted on** — it produced a rule with a one-line test, and
+the rule is cheap enough that waiting for a second instance would only buy a second wasted round.
+
+A button labelled *"Choose folder…"* turned out to read a text box, and to do nothing at all when
+the box was empty. Fixing it properly meant a folder dialog, which in Flutter means a plugin. The
+assistant **did research the package** — publisher `flutter.dev`, v1.1.0, Windows 10+ supported,
+`getDirectoryPath()` present — and recommended it on that basis, with the facts checked rather than
+assumed.
+
+`flutter pub get` succeeded. The build did not:
+
+```
+Building with plugins requires symlink support.
+Please enable Developer Mode in your system settings.
+```
+
+**Windows will not build ANY Flutter plugin without Developer Mode or admin rights.** Not this one.
+Any. And the project's own `CLAUDE.md` already carried the finding — *"Nico often lacks admin
+rights here. Prefer user-space installs."* — verified two weeks earlier and walked straight past.
+
+**The two questions look identical and are not:**
+
+| Asked | Not asked |
+|---|---|
+| *Does this package support Windows?* | *What does adding a package of this kind cost on Windows?* |
+
+The first is about the dependency. The second is about the **platform**, it has the same answer for
+every package of that kind, and it is the one that decides. **A dependency that resolves is not a
+dependency that builds.**
+
+**The rule, for `stack-choice` and for every "can we just add X" moment:**
+
+> **Research the class before the instance.** Before checking whether a specific package fits, check
+> what packages *of that class* cost on the target platform — native plugins, anything needing a
+> build step, anything needing a service, anything needing a licence key. That answer is reusable
+> and it usually disqualifies or clears the whole class at once.
+
+**The test, which takes one line:** *if this exact package were perfect, what would still be in the
+way?* Here: Developer Mode. It would have surfaced before the pubspec was touched.
+
+**And the good part, which is why this is not just a loss.** The revert kept its seam.
+`ProjectsScreen` still takes an optional `pickFolder` function; it is null here, so the button
+honestly says *"Use this folder"* instead of *"Choose folder…"* — **an ellipsis is a promise that a
+dialog opens.** Anyone whose machine can build a plugin supplies the function and gets the dialog,
+label included, with no other change. The tests cover both shapes.
+
+> **A limit on one machine became an extension point for everyone else.** Same move as the
+> `lib/local/` seam decided the day before, reached from the opposite direction — and the Boss
+> asked for it in those words: *"Put this in the note so whoever has admin right could develop
+> better solution for themselves."*
+
+**Where it was written down**, because a constraint recorded in one place is a constraint
+rediscovered everywhere else: `workshop/MACHINE.md` (the measured fact, with what still works),
+`projects/asa/TOOLCHAIN.md` (the ceiling and the seam), `README.md` (no Developer Mode needed, and
+why), `FOR-YOUR-FORK.md` (how the second developer turns it on if *she* has the rights, and a
+request that she say so), `BACKLOG.md` (blocked, with its trigger), and `pubspec.yaml` — where the
+next person will actually be standing when they reach for a plugin.
+
+### 2026-09-03 — the question carried its explanation, in the wrong language
+
+**Bucket: how we build. Second instance** — `PLAYBOOK.md` §15 already says *a question of category 1
+travels with its explanation*, and it was followed. The question still failed.
+
+Two design choices were put to the Boss at the end of a long message:
+
+> *"The provenance block stays — collapsed behind a one-line Read from: asa.md… The one-line
+> description gets derived, from the first paragraph of the project note."*
+
+His reply: **"I dont understand your question."**
+
+**Every fact in it was correct and it was unanswerable.** "Provenance block", "derived", "the
+first paragraph of the project note" are the code's names for those things. He is deliberately not
+a developer — `PERSONA.md` says so and the kit is written on that basis. The explanation was
+attached, as the rule requires; **it was written in the vocabulary of the thing being explained.**
+
+Rewritten, it took four sentences and no new information:
+
+> *"At the bottom of the project screen there's a grey box showing the raw text of `asa.md`. Your
+> rule says always show where a number came from, and that box is how Asa keeps that promise. But
+> the sketch you approved doesn't have it. So: does it stay?"*
+
+Both were then answered immediately, and both answers matched the recommendation — **which is the
+point.** He was never undecided. He could not find the decision inside the words.
+
+**The rule this refines:**
+
+> **A question is not asked until it is asked in the Boss's language.** Name the thing by what he
+> can see on screen — "the grey box at the bottom", "the sentence under the project name" — never
+> by what it is called in the code. **If a term appears in the codebase and in the question, the
+> question is written for the wrong reader.**
+
+**And the test that catches it before sending:** *could he point at the thing this question is
+about?* A grey box, yes. A "provenance block", no.
+
+**A second thing worth keeping, about offering options.** Showing what each choice *looks like* did
+more work than any sentence — a five-line sketch of the folded state, and a five-line sketch of the
+note with an arrow at the line Asa would read. **For a screen decision, draw the options; do not
+describe them.** That is `sketch-the-screen`'s argument, applied to a question rather than a
+design.
+
+### 2026-09-03 — asked for the next step, an action was invented rather than "nothing right now"
+
+**Bucket: how we build. First instance, acted on because the correction is one sentence.**
+
+He said: *"ok what is the next step? please dont make me ask"* — a fair complaint, after several
+replies had ended in a question instead of a direction.
+
+**The reply named an action. The honest answer was that there was not one.** The building session
+was mid-rebuild; the only remaining work was to wait for it, look at the result, and commit. Instead
+a script he could run was promoted to "the next step", which produced: *"but that is code work? It
+is working right now, so I am confused."*
+
+**Two separate failures, and the second is the more useful one.**
+
+1. **"Don't make me ask" was answered by inventing work.** *No next step* is a legitimate answer to
+   *what is next*, and it is the honest one when the round is blocked on someone else. **Saying
+   "nothing for you right now, and here is what happens when it comes back" is a direction.** It is
+   not the same as ending on a question.
+
+2. **The division of labour had been written as two roles and it is three.** The deciding session
+   decides; the building session writes code; **and neither of them can run anything.** Both hand
+   commands to the Boss, because he is the only one with a terminal that counts. Stated as two
+   roles, "hand code work to Code" and "here is a command for you" read as a contradiction — and
+   he was right to read it that way.
+
+> **Write the role that has no name.** In a system with two assistants and one human, the human's
+> role is the easiest to leave implicit and the one whose absence causes the confusion. It is now a
+> three-row table in `HANDOVER.md`.
+
+**And the boundary that was actually the point:** what must never happen is an assistant asking him
+to **carry text** between the two sessions. Handing him a command to run is not that — he is the
+only one who can run it. Those two got collapsed into one rule, and collapsing them is what made
+the rule unusable.
+
+### 2026-09-03 — a rule banned the wrong actor, and charged the Boss for it every round
+
+**Bucket: how we build. First instance, and it should have been caught the day the second session
+existed.**
+
+*"code is making me copy and paste so much, cant Code do it itself?"*
+
+**It can.** The building session runs in a real PowerShell. The rule stopping it read:
+
+> *"Nico runs every `git` and `flutter` command himself, in Windows PowerShell. Never through an
+> assistant's device bridge - one left a stale `.git/index.lock` on 2026-08-26."*
+
+**One sentence, two claims, and the second is the reason for the first.** The incident was the
+**deciding session**, reaching the machine through a bridge that cannot delete a file it created.
+The **building session** does not use that bridge and has no such limitation. **The rule generalised
+from one actor's mechanism to every actor**, and nobody noticed because the person paying the cost
+was neither of them.
+
+**What it cost:** a copy-paste round-trip for every check of every round. On 2026-09-03 alone that
+was `flutter pub get`, `check.ps1`, `flutter clean`, `check.ps1` again, plus a `del` for a lock file
+that was already gone - all of it typed by hand by the one participant whose time is the scarcest.
+
+**The repair is a split, not a removal:**
+
+| Command | Who |
+|---|---|
+| The checks - format, analyse, test, feature test, clean, pub get | **the building session, itself.** Touches no remote |
+| `flutter run` | the session launches it; **the Boss looks.** The looking cannot be delegated |
+| `git add` / `commit` | the session, **only after a yes.** Rule 19 is about approval, not typing |
+| `git push` | **the Boss.** The only command that leaves the machine |
+| Anything through the device bridge | **never.** Unchanged |
+
+**And the general form, which is the reusable part:**
+
+> **When a rule names an incident as its reason, check that the actor it constrains is the actor
+> from the incident.** A rule written as *"assistants must not X"* after *one* assistant hit a
+> mechanism-specific problem will over-apply to every assistant, forever, and the over-application
+> is invisible because the rule still reads as prudent.
+
+**The tell to look for:** a rule whose cost is paid by someone who is not mentioned in it. Here the
+rule constrained two assistants, cited one incident, and **billed the human.**

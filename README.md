@@ -86,6 +86,12 @@ list that is **not** in this repository. See the script's header for why.
 Requires the Flutter SDK with Windows desktop support (`flutter doctor` green for Windows) and
 Visual Studio Build Tools.
 
+**No Developer Mode needed, because Asa uses no Flutter plugins.** That is deliberate and it is
+recorded: on Windows any plugin needs symlink support, which needs Developer Mode or admin rights,
+and the machines this is built on have neither. The visible cost is the first-run folder chooser —
+you paste a path rather than picking one in a dialog. If your machine *can* build plugins, see
+[FOR-YOUR-FORK.md](FOR-YOUR-FORK.md) for the three lines that turn the real dialog on.
+
 ```
 flutter pub get
 flutter run -d windows
@@ -124,8 +130,12 @@ Three questions worth more than any feature request:
 2. What did you have to work out for yourself?
 3. Did you open it a second time without being reminded to?
 
-**Send feedback as a file or a message.** It gets recorded, and every version says which feedback
-produced it.
+**Send feedback as a GitHub issue on this repository.** Read access is enough to open one, it is
+dated, and it cannot get lost in a chat — which is exactly what happened to the previous round.
+
+**Building your own features on top?** Read **[FOR-YOUR-FORK.md](FOR-YOUR-FORK.md)** first. Short
+version: fork it, keep your work in the places our releases never touch, and nothing of yours ever
+comes back to us.
 
 ## What Asa never holds
 

@@ -8,6 +8,40 @@ Versions are dated. The current one is at the top.
 
 ---
 
+## v1.25 — 2026-09-03 — the rule that billed the human
+
+**One finding, and it had been costing a copy-paste round-trip on every check of every round.**
+
+A rule read: *"Nico runs every `git` and `flutter` command himself. Never through an assistant's
+device bridge — one left a stale `.git/index.lock`."* **One sentence, two claims, and the second is
+the stated reason for the first.** The incident was the *deciding* session, through a bridge that
+cannot delete a file it creates. The *building* session runs in a real shell — and had spent a
+morning quoting this rule as the reason it could not run a test, handing every `flutter test` back
+to the Boss to type. On a test-iteration loop.
+
+**Changed**
+
+- **`PLAYBOOK.md` §14 gained the mirror of its own best diagnostic.** §14 already asked *who does
+  this rule actually bind, and who was standing just outside it* — for rules that **failed**. The
+  new half is for rules that are **obeyed**: *when a rule names an incident as its reason, check
+  that the actor it constrains is the actor from the incident.* **The tell: a rule whose cost is
+  paid by someone the rule does not mention.**
+- **`PLAYBOOK.md` §15 now names three roles, not two.** Deciding session · building session ·
+  the Boss. The human's role is the one that gets left implicit, and its absence is what makes the
+  other two read as contradictory — *"hand code work to Code"* against *"here is a command for
+  you"*. Those are about **who writes** and **what the channel is**; neither says who types.
+- **A who-runs-what split, written down**: the machine check belongs to the building session; the
+  looking belongs to the Boss; commits happen after his yes; **anything that leaves the machine
+  stays in his hands.** No check removed, no gate moved.
+- **`templates/CLAUDE.md` asks for all of this on day one**, so a new project never has to discover
+  it the expensive way.
+
+**The reusable line:** **write a prohibition as the mechanism, never as the category of actor.**
+*"Never through the device bridge"* is true forever. *"Assistants never run commands"* was never
+what the incident showed.
+
+---
+
 ## v1.24 — 2026-09-02 — the handover check gains its fifth line
 
 **One change, in five places, and it is the fourth time this kit has been caught by the same

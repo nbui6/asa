@@ -28,23 +28,35 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  flutter:
-    sdk: flutter
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-
-dev_dependencies:
-  flutter_test:
+  # NO PLUGINS. Not a style preference - a hard constraint on this machine.
+  # On Windows, building with ANY Flutter plugin requires symlink support,
+  # which requires Developer Mode or admin rights. Neither is available here,
+  # and the second person who builds this is on a managed laptop too.
+  # Tried and reverted 2026-09-03: file_selector (flutter.dev, works fine,
+  # would not build). See TOOLCHAIN.md. ProjectsScreen keeps a `pickFolder`
+  # seam so anyone who DOES have admin rights can add a real folder dialog
+  # in three lines without touching anything else.
+  flutter:
     sdk: flutter
 
+dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # v0.1's code-quality bar (HANDOVER.md): lint rules only, nothing shipped.
+  # Vetoable — see analysis_options.yaml for what it turns on.
+  very_good_analysis: ^7.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

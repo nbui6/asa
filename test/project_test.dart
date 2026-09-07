@@ -6,10 +6,9 @@
 // Nothing here touches the file system or Flutter, which is why core/ does not
 // import Flutter.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('parseFrontmatter', () {
@@ -51,10 +50,13 @@ Some prose.
     test('keeps a Windows path with its drive colon', () {
       const file = r'''
 ---
-repo-path: C:\Users\nico.bui\workspace\asa
+repo-path: C:\Users\test\workspace\asa
 ---
 ''';
-      expect(parseFrontmatter(file)['repo-path'], r'C:\Users\nico.bui\workspace\asa');
+      expect(
+        parseFrontmatter(file)['repo-path'],
+        r'C:\Users\test\workspace\asa',
+      );
     });
 
     test('ignores lines that are not key and value', () {
@@ -73,6 +75,15 @@ repo-path: C:\Users\nico.bui\workspace\asa
       const file = '---\nrepo-path:\n---\n';
       expect(parseFrontmatter(file)['repo-path'], '');
     });
+
+    test('ignores an indented line — it belongs to a nested block like '
+        'links, not a flat key', () {
+      const file = '---\nlinks:\n  - relates to: other\n---\n';
+      final fields = parseFrontmatter(file);
+      expect(fields.containsKey('links'), isTrue);
+      expect(fields['links'], '');
+      expect(fields.containsKey('- relates to'), isFalse);
+    });
   });
 
   group('projectFromFields', () {
@@ -90,6 +101,83 @@ repo-path: C:\Users\nico.bui\workspace\asa
     test('remembers which file it came from', () {
       final project = projectFromFields({}, r'C:\vault\asa\asa.md');
       expect(project.sourceFile, r'C:\vault\asa\asa.md');
+    });
+
+    test('parent, priority, deadline and jira parse when present', () {
+      final project = projectFromFields({
+        'parent': 'other',
+        'priority': 'medium',
+        'deadline': 'Oct-Dec',
+        'jira': 'ASA-12',
+      }, 'asa.md');
+
+      expect(project.parent, 'other');
+      expect(project.priority, 'medium');
+      expect(project.deadline, 'Oct-Dec');
+      expect(project.jira, 'ASA-12');
+    });
+
+    test('parent, priority, deadline and jira are null, not "(not set)", '
+        'when absent — real files leave them blank', () {
+      final project = projectFromFields({'project': 'Asa'}, 'asa.md');
+
+      expect(project.parent, isNull);
+      expect(project.priority, isNull);
+      expect(project.deadline, isNull);
+      expect(project.jira, isNull);
+    });
+
+    test('links default to an empty list', () {
+      final project = projectFromFields({}, 'asa.md');
+      expect(project.links, isEmpty);
+    });
+
+    test('links passed in are carried onto the project', () {
+      final project = projectFromFields(
+        {},
+        'asa.md',
+        links: const [ProjectLink(type: 'relates to', target: 'other')],
+      );
+      expect(project.links, hasLength(1));
+      expect(project.links.first.type, 'relates to');
+      expect(project.links.first.target, 'other');
+    });
+  });
+
+  group('parseLinks', () {
+    test("reads a links block, per ADR 0008's shape", () {
+      const file = '''
+---
+project: Asa
+links:
+  - relates to: example-policy
+  - blocked by: example-integration
+  - shares marketing with: example-process
+---
+''';
+      final links = parseLinks(file);
+      expect(links, hasLength(3));
+      expect(links[0].type, 'relates to');
+      expect(links[0].target, 'example-policy');
+      expect(links[1].type, 'blocked by');
+      expect(links[1].target, 'example-integration');
+      expect(links[2].type, 'shares marketing with');
+      expect(links[2].target, 'example-process');
+    });
+
+    test('no links key yields an empty list', () {
+      const file = '---\nproject: Asa\n---\n';
+      expect(parseLinks(file), isEmpty);
+    });
+
+    test('an empty links block yields an empty list, not an error', () {
+      const file = '---\nproject: Asa\nlinks:\n---\n';
+      expect(parseLinks(file), isEmpty);
+    });
+
+    test('stops at the closing frontmatter marker', () {
+      const file = '---\nlinks:\n  - relates to: other\n---\nrelates to: bad\n';
+      expect(parseLinks(file), hasLength(1));
     });
   });
 

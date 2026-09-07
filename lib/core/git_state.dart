@@ -11,17 +11,17 @@ import 'dart:io';
 /// Carries the raw command output so the screen can show exactly what git said.
 /// PLAYBOOK.md section 7, rule 5: show the raw data at every boundary.
 class GitState {
+  const GitState({
+    required this.command,
+    required this.rawOutput,
+    this.lastCommit,
+    this.error,
+  });
+
   final DateTime? lastCommit;
   final String? error;
   final String command;
   final String rawOutput;
-
-  const GitState({
-    this.lastCommit,
-    this.error,
-    required this.command,
-    required this.rawOutput,
-  });
 
   /// Whole days between the last commit and [now]. Null if there is no commit.
   int? daysSinceLastCommit(DateTime now) {
@@ -49,7 +49,7 @@ Future<GitState> readGitState(String repoPath) async {
 
   final command = 'git -C $repoPath ${args.join(' ')}';
 
-  if (!await Directory(repoPath).exists()) {
+  if (!Directory(repoPath).existsSync()) {
     return GitState(
       error: 'repo-path does not exist: $repoPath',
       command: command,
@@ -97,9 +97,5 @@ Future<GitState> readGitState(String repoPath) async {
     );
   }
 
-  return GitState(
-    lastCommit: parsed,
-    command: command,
-    rawOutput: output,
-  );
+  return GitState(lastCommit: parsed, command: command, rawOutput: output);
 }

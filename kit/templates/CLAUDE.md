@@ -35,6 +35,27 @@ the old way.** `templates/SESSION-HANDOVER.md`, and `PLAYBOOK.md` §15.
 This line exists because that half is the one that gets skipped, and it is the one carrying the
 reasoning no diff contains.
 
+## Who runs what
+
+**Three roles. Fill this in on day one, before the first command is handed to anyone.**
+
+| | Does | Never |
+|---|---|---|
+| **The deciding session** | decisions, sketches, specs, records | writes the product's code |
+| **The building session** | writes the code, **and runs the checks on it** | pushes anything outward |
+| **<your name>** | **looks at the result and says yes or no.** Runs whatever leaves the machine | carries text between the two sessions |
+
+| Command | Who |
+|---|---|
+| The machine check and everything in it | **the building session, itself** |
+| Running the app | the session launches it; **you look** |
+| Stage and commit | the building session, **after you have said yes** |
+| Push, deploy, send — anything that leaves the machine | **you** |
+
+> **Write a prohibition as the mechanism, never as the category of actor.** *"Never through the
+> device bridge"* stays true forever. *"Assistants never run commands"* costs you a copy-paste on
+> every round and was never what any incident showed. `PLAYBOOK.md` section 14.
+
 ## Definition of done
 
 Acceptance criteria met · handover check written · reviewed · `CLAUDE.md` updated ·

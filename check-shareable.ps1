@@ -9,13 +9,30 @@
 # since 2026-08-26. Two checks that always run, one list that starts empty,
 # and a self-test - because a check nobody has seen fail is not a check.
 #
+# CHECK ONE: IS THE REPOSITORY ACTUALLY PRIVATE?
+#
+# On 2026-09-02 this repository was found to be PUBLIC. It had been believed
+# private for two days, and that belief was written into this file and into
+# CLAUDE.md rule 16 as the JUSTIFICATION for the two things below. Nobody had
+# ever checked.
+#
+# So it is checked now, on every run, by asking GitHub's public API whether the
+# repository is readable without an account. No token, no credentials: exactly
+# the test a stranger performs. It FAILS CLOSED - if the answer cannot be
+# obtained, the check does not pass.
+#
+# A security property that nothing verifies is a hope.
+#
 # WHY THE LIST IS EMPTY AND IN THIS FILE
 #
-# This repository is private and shared with people who already know the names
-# of the projects in it. Nothing here is secret from them. What would be a real
-# mistake is a machine path or an email address, so those two are built in and
-# always on. Add a name below only if this ever goes public, or if something
-# turns up that a reader should not see.
+# The list stays empty, but the reason is now narrower than it was. The old
+# reason was "this repository is private and shared with people who already
+# know the project names" - which was false at the time it was written. The
+# reason that survives: the built-in checks catch the two things that are
+# genuinely damaging wherever this ends up (a machine path, an email address),
+# and a hand-maintained name list was tried twice and thrown away both times
+# because a noisy check gets switched off. Add a name below when something
+# turns up that a reader should not see - not pre-emptively.
 #
 # An earlier version of this script derived the list from folder names, the git
 # email and the private notes. It worked, and it was thrown away: it solved a
@@ -74,6 +91,65 @@ function Test-Shareable {
     return @{ Hits = $hits; Count = $files.Count }
 }
 
+# --- is it private? -------------------------------------------------------
+#
+# Split into three so that two of them are pure and can be self-tested:
+#   Get-RemoteSlug     .git/config text  ->  'owner/repo' or ''
+#   Resolve-Visibility HTTP status code  ->  'public' / 'private' / 'unknown'
+# and one that is not, because it touches the network.
+
+function Get-RemoteSlug {
+    param([string]$ConfigText)
+    # Reads .git/config as text rather than running git, so this works with no
+    # git on PATH and never takes .git/index.lock.
+    $m = [regex]::Match($ConfigText, 'url\s*=\s*\S*github\.com[:/]([^/\s]+)/([^/\s]+?)(\.git)?\s*$',
+                        [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    if (-not $m.Success) { return '' }
+    return ($m.Groups[1].Value + '/' + $m.Groups[2].Value)
+}
+
+function Resolve-Visibility {
+    param([int]$StatusCode)
+    # 200 = a stranger can read it.
+    # 404 = a stranger cannot. That covers private, renamed and deleted, and
+    #       unauthenticated GitHub cannot tell those apart - which is fine,
+    #       because all three mean "not readable by the world".
+    if ($StatusCode -eq 200) { return 'public' }
+    if ($StatusCode -eq 404) { return 'private' }
+    return 'unknown'
+}
+
+function Get-RepoVisibility {
+    param([string]$Root)
+
+    $cfg = Join-Path $Root '.git\config'
+    if (-not (Test-Path -LiteralPath $cfg)) {
+        return @{ State = 'no-remote'; Detail = 'not a git repository' }
+    }
+    $slug = Get-RemoteSlug -ConfigText (Get-Content -LiteralPath $cfg -Raw)
+    if ($slug -eq '') {
+        return @{ State = 'no-remote'; Detail = 'no GitHub remote configured - nothing can be pushed' }
+    }
+
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    } catch { }
+
+    $code = 0
+    try {
+        $r = Invoke-WebRequest -Uri ('https://api.github.com/repos/' + $slug) `
+                               -Method Head -UseBasicParsing -TimeoutSec 15
+        $code = [int]$r.StatusCode
+    } catch {
+        if ($_.Exception.Response -ne $null) {
+            $code = [int]$_.Exception.Response.StatusCode
+        } else {
+            return @{ State = 'unknown'; Detail = ('could not reach api.github.com: ' + $_.Exception.Message); Slug = $slug }
+        }
+    }
+    return @{ State = (Resolve-Visibility -StatusCode $code); Detail = ('HTTP ' + $code); Slug = $slug }
+}
+
 # --- self-test ------------------------------------------------------------
 
 if ($SelfTest) {
@@ -108,6 +184,22 @@ if ($SelfTest) {
     else { Write-Host '  PASS  whole words only - a longer word is not a hit' }
 
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
+
+    # The visibility half. Pure functions only - the network is not mocked,
+    # because a self-test that needs the internet is a self-test that fails on
+    # a train and then gets switched off.
+    $cfgText = "[remote `"origin`"]`n`turl = https://github.com/someone/some-repo.git`n"
+    if ((Get-RemoteSlug -ConfigText $cfgText) -ne 'someone/some-repo') { Write-Host '  FAIL  the remote slug was not parsed'; $ok = $false }
+    else { Write-Host '  PASS  owner/repo is read from .git/config text' }
+
+    if ((Get-RemoteSlug -ConfigText "[core]`n`tbare = false`n") -ne '') { Write-Host '  FAIL  a config with no remote should give an empty slug'; $ok = $false }
+    else { Write-Host '  PASS  no remote gives no slug' }
+
+    if ((Resolve-Visibility -StatusCode 200) -ne 'public')  { Write-Host '  FAIL  200 must mean public'; $ok = $false }
+    elseif ((Resolve-Visibility -StatusCode 404) -ne 'private') { Write-Host '  FAIL  404 must mean private'; $ok = $false }
+    elseif ((Resolve-Visibility -StatusCode 500) -ne 'unknown') { Write-Host '  FAIL  anything else must mean unknown'; $ok = $false }
+    else { Write-Host '  PASS  200 is public, 404 is private, everything else is unknown' }
+
     Write-Host ''
     if ($ok) { Write-Host 'Self-test passed.'; exit 0 } else { Write-Host 'SELF-TEST FAILED'; exit 1 }
 }
@@ -115,12 +207,29 @@ if ($SelfTest) {
 # --- the real run ---------------------------------------------------------
 
 $result = Test-Shareable -Root $root -Private $private -Allowed $allowed
+$vis    = Get-RepoVisibility -Root $root
 
 Write-Host ''
-if ($result.Hits.Count -eq 0) {
+
+$visOk = $false
+switch ($vis.State) {
+    'private'   { Write-Host ("Private.  {0} is not readable without an account ({1})." -f $vis.Slug, $vis.Detail); $visOk = $true }
+    'no-remote' { Write-Host ("No remote.  {0}." -f $vis.Detail); $visOk = $true }
+    'public'    { Write-Host ("PUBLIC.  {0} is readable by anyone ({1})." -f $vis.Slug, $vis.Detail) }
+    default     { Write-Host ("VISIBILITY UNKNOWN.  {0}" -f $vis.Detail)
+                  Write-Host '  This check fails closed. Confirm in a signed-out browser before pushing.' }
+}
+
+if ($visOk -and $result.Hits.Count -eq 0) {
     Write-Host ("Safe to push. {0} file(s) checked." -f $result.Count)
     exit 0
 }
-Write-Host ("NOT SAFE TO PUSH - {0} finding(s):" -f $result.Hits.Count)
-foreach ($h in ($result.Hits | Select-Object -Unique)) { Write-Host "  $h" }
+
+Write-Host ''
+Write-Host 'NOT SAFE TO PUSH.'
+if (-not $visOk) { Write-Host '  - the repository is not confirmed private (see above)' }
+if ($result.Hits.Count -gt 0) {
+    Write-Host ("  - {0} finding(s) in files:" -f $result.Hits.Count)
+    foreach ($h in ($result.Hits | Select-Object -Unique)) { Write-Host "      $h" }
+}
 exit 1

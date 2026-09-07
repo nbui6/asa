@@ -895,6 +895,40 @@ Two corollaries worth holding:
   produces something that runs — a mockup, a diagram, a script, a dashboard — the same rule binds
   the assistant, and nobody will have written that down.
 
+### And its mirror: when a rule IS followed, check that it binds the right actor
+
+**The scope diagnostic above catches a rule that failed by being too narrow. This is the other
+direction, and it is harder to see, because nothing fails.** A rule that is obeyed exactly as
+written, by someone it was never about, looks like the process working.
+
+*2026-09-03.* A rule read:
+
+> *"Nico runs every `git` and `flutter` command himself, in Windows PowerShell. Never through an
+> assistant's device bridge — one left a stale `.git/index.lock` on 2026-08-26."*
+
+One sentence, two claims, and the second is the stated reason for the first. **The incident was the
+deciding session, reaching the machine through a bridge that cannot delete a file it creates.** The
+**building session** runs in a real shell and has no such limitation — and it had been quoting this
+rule for a morning as the reason it could not run a test, handing every `flutter test` back to the
+Boss to type. On a test-iteration loop.
+
+> **When a rule names an incident as its reason, check that the actor it constrains is the actor
+> from the incident.** A rule written as *"assistants must not X"* after **one** assistant hit a
+> **mechanism-specific** problem over-applies to every assistant, forever — and the
+> over-application is invisible, because the rule still reads as prudent.
+
+**The tell, and it is worth memorising: a rule whose cost is paid by someone the rule does not
+mention.** That one constrained two assistants, cited one incident, and **billed the human** — on
+every check of every round.
+
+**Two corollaries:**
+
+- **A prohibition should name the mechanism, not the category of actor.** *"Never through the device
+  bridge"* is correct and stays true forever. *"Assistants never run commands"* was never what the
+  incident showed.
+- **The audit question at every retrospective:** *who is actually paying for each rule?* If the
+  answer is someone the rule does not name, the rule is pointed at the wrong actor.
+
 ### When something has never fired, check that it is installed before theorising about its trigger
 
 **Dormancy has a boring cause and an interesting one. Check the boring one first, because it takes
@@ -1223,6 +1257,41 @@ found no button, ran two commands that failed, and said:
 
 The capability was available and unused for a whole session.
 
+### Three roles, and the one with no name is the one that gets left implicit
+
+**With two assistant sessions and one human there are three roles, not two** — and the human's is
+the easiest to leave unwritten, which is why its absence causes the confusion.
+
+| | Does | Never |
+|---|---|---|
+| **The deciding session** | decisions, sketches, specs, records, boundary checks | writes the product's code |
+| **The building session** | writes the code, **and runs the checks on it** | pushes anything outward |
+| **The Boss** | **looks at the result and says yes or no.** Runs whatever leaves the machine | is the message bus between the two sessions |
+
+**Two things collapse into each other if this is not written down, and collapsing them makes both
+unusable:**
+
+1. **"Hand code work to the building session"** — about *who writes what*.
+2. **"Do not make the Boss carry text between sessions"** — about *the channel*. The handover file
+   is the channel; a person is not.
+
+**Neither of those says the Boss types the commands.** *2026-09-03: stated as two roles, the
+instructions read as a contradiction — "hand code work to Code" against "here is a command for
+you" — and the Boss said so: "but that is code work? It is working right now, so I am confused."*
+**He was right to read it that way.**
+
+**Who runs what, and the split is deliberate:**
+
+| | Who |
+|---|---|
+| The machine check and everything inside it — format, analyse, unit tests, feature tests, clean, dependency resolution | **the building session, itself.** It touches no remote and nothing outside the repository |
+| Running the app | the session launches it; **the Boss looks.** The looking is the part that cannot be delegated |
+| Staging and committing | **the building session, and only after the Boss has said yes.** The approval gate is about approval, not about who types |
+| Anything that leaves the machine — a push, a deploy, a send | **the Boss.** One command, one human hand on the last step |
+
+**This is configuration, not weakening.** No check is removed and the gate does not move. What
+changes is who types the commands that only ever report.
+
 ### There are exactly two reasons to ask the Boss for anything
 
 Not a list of exceptions — two categories, and everything else is a defect.
@@ -1352,10 +1421,22 @@ round's commit stalled there.
 | **Prefer a command that fails loudly** over one that drops into an interactive editor or prompt | Anything that can silently wait for input |
 | **Say what a normal run prints**, so a wall of warnings is not read as failure | Handing over a command and nothing else |
 | **Name the way out** of anything interactive, before it opens | Assuming the tool is familiar |
+| **A command in prose is still a handover.** Paste the runnable form — with the `cd`, the interpreter and the flags the project already documents. | Naming a script or a tool in a sentence and leaving the reader to reconstruct the line |
 
 **The general rule: if a command can strand them, it is not ready to hand over.** Rewrite it so that
 the worst case is an error message they can read — and where the fragile part is text, move the text
 into a file, which is work the assistant can do.
+
+> **The failure this rule keeps having is not a bad command — it is a command written in a
+> sentence.** *2026-09-02: an assistant asked for `check-shareable.ps1 -SelfTest`. In PowerShell a
+> bare script name is not a command, and the repository's own `CLAUDE.md` already carried the
+> runnable form — `powershell -NoProfile -ExecutionPolicy Bypass -File check-shareable.ps1`. The
+> safe form existed, was written down, and was abbreviated anyway on the way into a paragraph.*
+>
+> **So the test is mechanical: could this line be pasted into a cold terminal and work?** If a
+> `cd`, an interpreter or a flag has to be remembered, it is prose about a command, not a command.
+> **Where a project has already written the runnable form, that form is the only one that gets
+> quoted** — reformatting it is not helping.
 
 ### When the blocker is access, ask for access once — not for the chore repeatedly
 

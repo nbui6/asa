@@ -3,11 +3,10 @@
 // Scanning the disk is not tested here — it has no rules, and a test that
 // needs real folders is a test that breaks for the wrong reasons.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/projects_scan.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 final now = DateTime(2026, 8, 24, 12);
 
@@ -36,7 +35,11 @@ void main() {
         summary('middling', daysAgo: 7),
       ], now);
 
-      expect(sorted.map((s) => s.project.name), ['ancient', 'middling', 'fresh']);
+      expect(sorted.map((s) => s.project.name), [
+        'ancient',
+        'middling',
+        'fresh',
+      ]);
     });
 
     test('puts unknown last, whatever the others are', () {
@@ -49,10 +52,7 @@ void main() {
     });
 
     test('sorts several unknowns by name so the order is stable', () {
-      final sorted = sortByStaleness([
-        summary('zeta'),
-        summary('alpha'),
-      ], now);
+      final sorted = sortByStaleness([summary('zeta'), summary('alpha')], now);
 
       expect(sorted.map((s) => s.project.name), ['alpha', 'zeta']);
     });

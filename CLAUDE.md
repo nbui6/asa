@@ -11,36 +11,41 @@ built to accept them, and naming them is the entire investment.
 `ARCHITECTURE.md` is the map of the code. Read it before adding a file, and update it in the
 same commit as the part it describes.
 
-**The `## Where we are` section below is ASCII only.** That is the only part the orient hook
-prints into the session's opening context (`hooks/orient.ps1`, `Get-MarkdownSection -Heading
-'Where we are'`), and Windows PowerShell 5.1 mangles anything else.
+**The `## Where we are
 
-*Corrected 2026-09-02: this said "this file is ASCII only", which was never true - rules 16, 17
-and 18 have carried em dashes for over a week with no ill effect, because the hook never reads
-them. A constraint stated wider than it is real gets ignored where it is real too.*
+**v0.1 is built, the machine check is green, and nothing is committed.** 2026-09-03.
 
----
+`check.ps1` passed all four - format, `flutter analyze --fatal-infos`, 70 unit tests,
+`flutter test integration_test` - after `flutter clean` cleared a build cache left behind by the
+move from `dev\asa` on 2026-09-01. The app runs and lists all nine projects.
 
-## Where we are
+**Rejected by the Boss, and being rebuilt now:** the Decisions tab does not match `asa-v01b`, the
+sketch he approved. Eight differences, listed in `HANDOVER.md`, downstream half. The building
+session has the spec; the approved sketch is the spec, and no new sketch is being drawn.
 
-**Round 2 is committed and verified.** Commit `0fd717c`, 2026-08-24. Every project in the
-projects folder appears on one screen, most stale first, unknown git state last and labelled.
-A row opens the Round 1 detail screen.
+**Fixed before the commit, by the deciding session:**
 
-**Verified with:** `flutter analyze` clean, `flutter test` 26 passing, and one scan against the
-real projects folder (2 projects, correct order, `_to_delete` ignored, no read errors).
+- The folder picker. The button said "Choose folder..." and opened nothing; with an empty box it
+  did nothing at all. Now "Use this folder", and every path says why. `file_selector` was tried
+  and reverted - no Flutter plugin builds here without Developer Mode. A `pickFolder` seam is left
+  in so a machine that has it can supply the real dialog in three lines.
+- Test fixtures carried real internal decision content. Structure kept verbatim, prose replaced.
+  **Rule 8 refined: test against the real shape, never the real content.**
 
-**Two things are open, and both are named rather than hidden:**
+**Open, and none of it is hidden:**
 
-1. **Round 2's human line was never checked.** Nobody has looked at the running window. To
-   close it: `flutter run -d windows`, expect two rows, staleness on the right, click `Asa`.
-2. **Round 2's acceptance criteria were never written down.** The verification above ran
-   against criteria reconstructed from `ROADMAP.md`. Rule 1 exists because of this.
+1. **Nothing is committed.** Rule 19 - the Boss sees the rebuilt tab, says yes, then commit.
+2. **`check-shareable.ps1 -SelfTest` has never been run** and must pass, with nothing waived,
+   before any push. That closes rule 16's three-line exception.
+3. **7 of 10 real ADR files have no heading literally named `## Why`**, so most decisions show an
+   empty why. Flagged, not papered over. His call whether that is a defect.
+4. **Does `projects\` get its own local-only git repository, never pushed?** Open since a helper
+   file destroyed a project note on 2026-09-01.
 
-**Next:** Round 3, the handoff - open the project in VS Code and put a session opener with the
-current state on the clipboard. Before any code: write the criteria (rule 1).
+**Next after v0.1:** v0.1.1 - the seam for a second developer. `Project.extra`, `lib/local/`, and
+`FOR-YOUR-FORK.md` marked as shipped. See `projects\asa\decisions\0010`.
 
-**Last moved:** 2026-08-24
+**Last moved:** 2026-09-03
 
 ---
 
@@ -103,9 +108,20 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
 16. **Nothing is pushed without `check-shareable.ps1` passing.** The repository is shared; the
     projects Asa reads are not. Run it, read the output, then push:
     `powershell -NoProfile -ExecutionPolicy Bypass -File check-shareable.ps1`
-    **Two checks always run — a machine path and an email address — and the name list starts
-    empty.** The repository is private and shared with people who already know the project names,
-    so nothing there is secret from them; add a name only if that changes. Same shape as
+    **Three checks always run: a machine path, an email address, and whether the repository is
+    actually private.** The name list starts empty.
+
+    > **The visibility check exists because the premise was false.** On 2026-09-02 this repository
+    > was found to be **public**. It had been believed private for two days, and that belief was
+    > written into this rule and into the script as the *justification* for the empty list and for
+    > the waiver below. Nobody had checked. The script now asks GitHub's public API, with no token,
+    > whether a stranger can read the repository - and **fails closed** if it cannot find out.
+    > **A security property that nothing verifies is a hope.**
+
+    The list stays empty for a narrower reason than before: the two built-in checks catch what is
+    genuinely damaging wherever this ends up, and a hand-maintained list was tried twice and
+    thrown away both times because a noisy check gets switched off. Add a name when something
+    turns up that a reader should not see - not pre-emptively. Same shape as
     `kit/check-boundaries.ps1`, including the `-SelfTest` that proves it still catches things.
     *Two more elaborate versions were written and thrown away first — one with a hand-maintained
     list, one that derived the list from folder names, git and the private notes. Both solved a
@@ -170,6 +186,26 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     (§14, *Done is not delivered*) - after *installed is not fired*, *tested is not compiled* and
     *rendered is not seen*. Same shape every time: **completion leaves an artefact, delivery does
     not.**
+
+20. **The second developer's fork is one-way, and the boundary runs both ways.** A colleague
+    builds her own features into her own fork of this repository. She keeps them; we never see
+    them.
+
+    | | |
+    |---|---|
+    | **Never fetch, pull, merge or cherry-pick from her fork.** Not to look, not to help, not to back it up. | The only code that comes back is a pull request **she** opened. |
+    | **Nothing about her projects enters this repository.** | Not an issue, not a test fixture, not a doc comment. Our own data rule, pointed the other way. |
+    | **`lib/local/` is empty here and stays empty.** | It exists so her screens live where our releases never write. A non-empty `local/` in this repo is a leak, not a feature. |
+    | **`lib/core/`'s public surface is a contract.** | Her code compiles against it. Every release names what moved in `core/`; a rename is no longer free. |
+
+    *`projects\asa\decisions\0010-second-developer-and-forks.md`, and `FOR-YOUR-FORK.md` is the
+    page she reads. The seams are agreed and land in v0.1.1 - two of the three are not built yet,
+    and that file says so rather than describing them as if they shipped.*
+
+> **The list is now at 20, which is the cap.** The next rule added has to say which one retires.
+> Candidates when that happens: **10** (UTF-8 BOM in `.ps1`) belongs in `workshop\MACHINE.md` -
+> it is a fact about this machine, not about this project; **12** (a retired term is a banned term)
+> belongs in the kit's glossary discipline.
 
 ## At the end of every session
 

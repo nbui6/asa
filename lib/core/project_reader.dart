@@ -6,7 +6,7 @@ library;
 
 import 'dart:io';
 
-import 'project.dart';
+import 'package:asa/core/project.dart';
 
 /// Reads the project home note inside [projectFolder].
 ///
@@ -16,7 +16,7 @@ import 'project.dart';
 Future<ProjectReadResult> readProject(String projectFolder) async {
   final folder = Directory(projectFolder);
 
-  if (!await folder.exists()) {
+  if (!folder.existsSync()) {
     return ProjectReadResult(error: 'No folder at: $projectFolder');
   }
 
@@ -38,7 +38,11 @@ Future<ProjectReadResult> readProject(String projectFolder) async {
 
   final fields = parseFrontmatter(contents);
   return ProjectReadResult(
-    project: projectFromFields(fields, noteFile.path),
+    project: projectFromFields(
+      fields,
+      noteFile.path,
+      links: parseLinks(contents),
+    ),
     rawFrontmatter: raw,
   );
 }
