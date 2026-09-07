@@ -294,9 +294,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// superseded. The pill shows a short canonical word, not the raw parsed
   /// status text (which can run to a whole sentence, e.g. asa/0007's
   /// "proposed - needs Nico's decision") — the full text is one tap away,
-  /// on the detail screen.
+  /// on the detail screen. Uses `displayStatus`, not the raw header field —
+  /// ADR 0011: a recorded verdict overrides a stale `proposed` header.
   Widget _statusPill(Decision decision) {
-    final status = decision.status!;
+    final status = decision.displayStatus;
     final lower = status.toLowerCase();
     final Color background;
     final Color foreground;

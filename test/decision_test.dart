@@ -310,4 +310,81 @@ void main() {
       expect(result.decision!.isProposed, isFalse);
     });
   });
+
+  group('verdict — ADR 0011\'s appended "## Your call" section', () {
+    test('a "## Your call" example inside a fenced code block is not read as '
+        'a real verdict — the actual bug found using this feature on '
+        "ADR 0011's own file, which documents its own shape this way", () {
+      final result = parseDecision(
+        '# ADR 0011 - Title\n\n**Date:** 2026-09-07 · **Status:** '
+            'accepted\n\n## Decision\n\nShape, always appended:\n\n'
+            '```\n## Your call\n\n**Accepted** — 2026-09-07\n\n'
+            '<the typed reason, verbatim, or "No reason given." if left '
+            'empty>\n```\n\n`**Rejected**` for the other verdict.\n',
+        '0011.md',
+      );
+      expect(result.decision!.verdict, isNull);
+      expect(
+        result.decision!.decision,
+        contains('## Your call'),
+        reason: 'the example must still read as ordinary Decision text',
+      );
+    });
+
+    test('an accepted verdict is parsed, and overrides isProposed', () {
+      final result = parseDecision(
+        '# ADR 0005 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+            'proposed\n\n## Your call\n\n**Accepted** — 2026-09-07\n\n'
+            'Windows was always the real target.\n',
+        '0005.md',
+      );
+      final verdict = result.decision!.verdict!;
+      expect(verdict.accepted, isTrue);
+      expect(verdict.date, '2026-09-07');
+      expect(verdict.reason, 'Windows was always the real target.');
+      expect(result.decision!.isProposed, isFalse);
+    });
+
+    test('a rejected verdict is parsed', () {
+      final result = parseDecision(
+        '# ADR 0005 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+            'proposed\n\n## Your call\n\n**Rejected** — 2026-09-07\n\n'
+            'No reason given.\n',
+        '0005.md',
+      );
+      final verdict = result.decision!.verdict!;
+      expect(verdict.accepted, isFalse);
+      expect(verdict.reason, 'No reason given.');
+    });
+
+    test('no ## Your call section leaves verdict null', () {
+      final result = parseDecision(
+        '# ADR 0005 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+            'proposed\n',
+        '0005.md',
+      );
+      expect(result.decision!.verdict, isNull);
+      expect(result.decision!.isProposed, isTrue);
+    });
+
+    test('displayStatus shows the header status when there is no verdict', () {
+      final result = parseDecision(
+        '# ADR 0001 — Title\n\n**Date:** 2026-08-22 · **Status:** accepted\n',
+        '0001.md',
+      );
+      expect(result.decision!.displayStatus, 'accepted');
+    });
+
+    test('displayStatus shows the verdict, not the stale proposed header — '
+        'ADR 0011: the header is never corrected', () {
+      final result = parseDecision(
+        '# ADR 0005 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+            'proposed\n\n## Your call\n\n**Accepted** — 2026-09-07\n\n'
+            'A reason.\n',
+        '0005.md',
+      );
+      expect(result.decision!.status, 'proposed');
+      expect(result.decision!.displayStatus, 'accepted');
+    });
+  });
 }

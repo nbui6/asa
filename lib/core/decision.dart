@@ -21,6 +21,24 @@
 ///   Decision` falling back to the title.
 library;
 
+/// The recorded answer to a proposed decision — ADR 0011. Appended by Asa,
+/// never edited by it; reading it back is the only way to learn it exists.
+class Verdict {
+  const Verdict({
+    required this.accepted,
+    required this.date,
+    required this.reason,
+  });
+
+  final bool accepted;
+  final String date;
+
+  /// Verbatim as typed, or `"No reason given."` — `decision_writer.dart`
+  /// writes that literal fallback, so an empty reason never round-trips
+  /// as an empty string.
+  final String reason;
+}
+
 /// A decision. Every field but [title] and [sourceFile] may be empty or
 /// null — absence is normal, not an error. See the notes at the top of
 /// this file for why.
@@ -36,6 +54,7 @@ class Decision {
     this.status,
     this.supersedes,
     this.supersededBy,
+    this.verdict,
   });
 
   final String? number;
@@ -69,16 +88,32 @@ class Decision {
   /// came from — the same obligation the provenance block already carries.
   final String sourceFile;
 
-  /// Whether the status text says `proposed` — the one status-based signal
-  /// this codebase currently exposes for "this decision wants something
-  /// from you." The other half of that question — an accepted decision
-  /// with a fired condition — has no data source yet:
-  /// [whatWouldChangeThis] is raw prose, and nothing records whether one
-  /// of its conditions has actually happened. See
-  /// `asa-v01b-NOT-IN-V0.1.md`. The one canonical place this check is
+  /// The `## Your call` section, if Asa has appended one — ADR 0011. The
+  /// header's own `**Status:**` line is never corrected to match; this is
+  /// the effective answer, read from the end of the file, not the top.
+  final Verdict? verdict;
+
+  /// Whether this decision still wants something from you: the header
+  /// says `proposed`, **and** nothing has been recorded yet. A verdict
+  /// overrides the header rather than the other way round — ADR 0011 is
+  /// explicit that the header is never corrected. The other half of "wants
+  /// something from you" — an accepted decision with a fired condition —
+  /// has no data source yet: [whatWouldChangeThis] is raw prose, and
+  /// nothing records whether one of its conditions has actually happened.
+  /// See `asa-v01b-NOT-IN-V0.1.md`. The one canonical place this check is
   /// made — `project_screen.dart`'s status pill uses it too, rather than
   /// re-deriving its own.
-  bool get isProposed => (status ?? '').toLowerCase().contains('proposed');
+  bool get isProposed =>
+      (status ?? '').toLowerCase().contains('proposed') && verdict == null;
+
+  /// What to show as the status, accounting for a recorded verdict — never
+  /// the raw [status] directly. Falls back to [status] (or `''`) when
+  /// there is no verdict, so callers do not need to null-check twice.
+  String get displayStatus {
+    final recorded = verdict;
+    if (recorded != null) return recorded.accepted ? 'accepted' : 'rejected';
+    return status ?? '';
+  }
 }
 
 /// What happened when we tried to parse one decision file, or one section of
@@ -151,6 +186,8 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
       title;
   final whatWouldChangeThis =
       _section(afterHeading, 'What would change this') ?? '';
+  final yourCall = _section(afterHeading, 'Your call');
+  final verdict = yourCall == null ? null : _parseVerdict(yourCall);
 
   return DecisionReadResult(
     decision: Decision(
@@ -164,9 +201,28 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
       decision: decisionText,
       whatWouldChangeThis: whatWouldChangeThis,
       sourceFile: sourceFile,
+      verdict: verdict,
     ),
     rawText: text,
     sourceFile: sourceFile,
+  );
+}
+
+/// Reads `**Accepted** — 2026-09-07` (or `**Rejected**`) as the first line
+/// of a `## Your call` section, and everything after it as the reason —
+/// ADR 0011's exact appended shape. Null when the section does not start
+/// with that line, rather than guessing at a malformed one.
+Verdict? _parseVerdict(String sectionText) {
+  final match = RegExp(
+    r'^\*\*(Accepted|Rejected)\*\*\s*[—-]\s*(\S+)',
+    caseSensitive: false,
+  ).firstMatch(sectionText);
+  if (match == null) return null;
+
+  return Verdict(
+    accepted: match.group(1)!.toLowerCase() == 'accepted',
+    date: match.group(2)!,
+    reason: sectionText.substring(match.end).trim(),
   );
 }
 
@@ -259,16 +315,19 @@ String? _headingSection(String text, String heading) {
     multiLine: true,
     caseSensitive: false,
   );
-  final match = pattern.firstMatch(text);
+  final match = _firstUnfencedMatch(pattern, text);
   if (match == null) return null;
 
   final rest = text.substring(match.end);
   var end = rest.length;
 
-  final nextHeading = RegExp(r'^#{1,6}\s', multiLine: true).firstMatch(rest);
+  final nextHeading = _firstUnfencedMatch(
+    RegExp(r'^#{1,6}\s', multiLine: true),
+    rest,
+  );
   if (nextHeading != null && nextHeading.start < end) end = nextHeading.start;
 
-  final rule = RegExp(r'^---\s*$', multiLine: true).firstMatch(rest);
+  final rule = _firstUnfencedMatch(RegExp(r'^---\s*$', multiLine: true), rest);
   if (rule != null && rule.start < end) end = rule.start;
 
   return rest.substring(0, end).trim();
@@ -279,17 +338,47 @@ String? _inlineLabel(String text, String label) {
     '\\*\\*${RegExp.escape(label)}:\\*\\*\\s*',
     caseSensitive: false,
   );
-  final match = pattern.firstMatch(text);
+  final match = _firstUnfencedMatch(pattern, text);
   if (match == null) return null;
 
   final rest = text.substring(match.end);
-  final next = RegExp(
-    r'\n\s*\n\s*(?:\*\*[^*\n]+:\*\*|#{1,6}\s|---\s*$)',
-    multiLine: true,
-  ).firstMatch(rest);
+  final next = _firstUnfencedMatch(
+    RegExp(r'\n\s*\n\s*(?:\*\*[^*\n]+:\*\*|#{1,6}\s|---\s*$)', multiLine: true),
+    rest,
+  );
 
   final end = next?.start ?? rest.length;
   return rest.substring(0, end).trim();
+}
+
+/// The first match of [pattern] in [text] that does not sit inside a
+/// fenced code block. A `## Your call` (or any other heading) written as
+/// an *example*, inside triple backticks, is not a real section — ADR
+/// 0011's own file demonstrates this exact shape in its own text, and
+/// reading that example as a recorded verdict is the bug this exists to
+/// prevent, not a hypothetical one.
+RegExpMatch? _firstUnfencedMatch(RegExp pattern, String text) {
+  final fences = _fencedRanges(text);
+  for (final candidate in pattern.allMatches(text)) {
+    if (!_isFenced(candidate.start, fences)) return candidate;
+  }
+  return null;
+}
+
+/// Start/end offsets of every ```` ``` ````-fenced block in [text].
+List<(int, int)> _fencedRanges(String text) {
+  final ranges = <(int, int)>[];
+  for (final match in RegExp(r'```[\s\S]*?```').allMatches(text)) {
+    ranges.add((match.start, match.end));
+  }
+  return ranges;
+}
+
+bool _isFenced(int position, List<(int, int)> fences) {
+  for (final fence in fences) {
+    if (position >= fence.$1 && position < fence.$2) return true;
+  }
+  return false;
 }
 
 String _firstParagraph(String sectionText) {

@@ -8,7 +8,9 @@ Last checked against the folder tree: 2026-09-07.
 ## In one sentence
 
 A Windows desktop app that reads project state out of plain markdown files and out of git, and
-shows it. It writes only structured fields, never prose.
+shows it. It writes structured fields to its own settings, and — since ADR 0011 — may append one
+dated, append-only verdict section to a decision file. It never edits, deletes, or reorders
+anything that already exists on disk.
 
 ## The layers
 
@@ -32,7 +34,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | `hubs/` may import `core/`. Never the reverse, never each other. | Review, for now. A lint is the trigger at the second hub. |
 | **`lib/local/` is empty in this repository.** It exists so a fork has somewhere to put its own screens that our releases never touch. | `check-shareable.ps1` — a non-empty `local/` here means someone else's work has arrived in our repo, which is a leak. *Planned for v0.1.1; not built yet.* |
 | **`core/`'s public surface is a contract with a second developer.** Renaming a public field breaks someone else's build. | The release note names what moved in `core/`. See `projects\asa\decisions\0010-second-developer-and-forks.md`. |
-| Asa writes only structured fields, never prose | Review. `settings.dart` is the one thing that writes, and it writes Asa's own settings file — never a project note. |
+| **A decision file's existing bytes are never modified, deleted or reordered — only appended to.** | `decision_writer.dart`'s `appendVerdict`: read, concatenate, write to a temp file, rename over the original. A feature test asserts the file's content before the new section is byte-identical to what it was. See `projects\asa\decisions\0011-append-only-verdicts.md`. |
+| Every other write stays structured fields only, never prose | Review. `settings.dart` writes Asa's own settings file — never a project note. |
 
 ## Where things live
 
@@ -40,7 +43,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 |---|---|
 | change what the projects list shows, the home screen, or the folder picker | `lib/hubs/product/projects_screen.dart` |
 | change what one project's detail screen shows, or its tabs | `lib/hubs/product/project_screen.dart` |
-| change what a single decision's detail screen shows | `lib/hubs/product/decision_detail_screen.dart` |
+| change what a single decision's detail screen shows, or the accept/reject "Your call" UI | `lib/hubs/product/decision_detail_screen.dart` |
 | change which folders count as projects, or the staleness sort and labels | `lib/core/projects_scan.dart` |
 | change how frontmatter is parsed, including `parent`/`priority`/`deadline`/`jira`/`links` | `lib/core/project.dart` |
 | change how the one-line description is derived from a note's body | `lib/core/project.dart`'s `deriveDescription` |
@@ -49,6 +52,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how one decision (an ADR file, or one log section) is parsed | `lib/core/decision.dart` |
 | change how decisions are found on disk, their merge and sort order, or the "Needs a look" / "Settled" trial grouping | `lib/core/decisions_reader.dart` |
 | change where or how Asa's own settings are read or written | `lib/core/settings.dart` |
+| change how a verdict is appended to a decision file, or re-read afterward | `lib/core/decision_writer.dart` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
@@ -67,7 +71,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | A state-management package | Every screen has its own `setState`. A folder path or a `Decision` passes down through a constructor; nothing is shared any other way. | State that two screens both write |
 | A YAML package | The frontmatter is a flat list of strings, plus one small hand-rolled reader for `links`' nested list (`project.dart`'s `parseLinks`). Ten lines of code beats a specification to learn. | Frontmatter nesting beyond one list |
 | A folder-picker package | `projects_screen.dart`'s "Choose folder…" reuses the existing path `TextField` rather than a native OS dialog — the acceptance criterion is "choose a folder without editing source," not "browse for one." | If pasting a path proves too rough for the teamlead's first run |
-| Writing to any project note | `settings.dart` writes Asa's own settings file. `projects\` is never written to. ADR 0007, which would allow writing structured fields into a project note, is proposed and not accepted. | ADR 0007 being accepted |
+| Editing, correcting or reformatting anything already in a decision file | ADR 0011 allows *appending* one verdict section — never touching a byte that was already there. The stale `**Status:** proposed` header is deliberately never corrected; `Decision.displayStatus` overrides it for display instead. | Reported as a real, recurring point of confusion, per ADR 0011's own "what would change this" — its own separate ADR, not a quiet widening of this one |
+| Writing anything at all to a project's own notes (not its decisions) | ADR 0007, which would allow writing structured fields into a project note, is proposed and not accepted. | ADR 0007 being accepted |
 | A database | The markdown files are the database | Nothing foreseeable |
 
 ## Known differences between this map and reality

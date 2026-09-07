@@ -1006,3 +1006,154 @@ this test is a real action on a real, currently-open decision about this project
 a throwaway click. Flag that explicitly when asking for the verdict, so it isn't decided by
 accident while testing the button.
 
+---
+
+### 2026-09-07 — round built, real bug found and fixed, one item routed to Cowork
+
+**Built and shown.** Accept/reject on a proposed decision, per the spec above — `decision_writer.dart`
+(`appendVerdict`, `canAppendVerdict`, `rereadDecision`), the `## Your call` field and `Verdict` class
+in `decision.dart`, and the three-state UI in `decision_detail_screen.dart`. Shown to Nico on the
+real `asa` project.
+
+**Real bug found on the real screen, from a real screenshot Nico sent — not caught by any test
+until now.** `0011-append-only-verdicts.md` — the ADR that specifies this very feature — documents
+the exact appended-verdict shape as a fenced code example inside its own `## Decision` section:
+
+```
+## Your call
+
+**Accepted** — 2026-09-07
+
+<the typed reason, verbatim, or "No reason given." if left empty>
+```
+
+The section parser (`_headingSection`, `_inlineLabel`) matched `## Your call` and `**Why:**`-style
+labels anywhere in the text, fence or not. So opening ADR 0011's own detail screen showed the
+placeholder text `<the typed reason, verbatim, or "No reason given." if left empty>` rendered as if
+it were a real, recorded verdict — garbled, wrong text on the one file that most needed to render
+correctly, because it is the file explaining the feature.
+
+**Fix.** Both section-parsing helpers now skip any match that falls inside a triple-backtick fenced
+block (new helpers in `decision.dart`: `_fencedRanges`, `_isFenced`, `_firstUnfencedMatch`). A
+regression test reproduces the exact real file shape — the fenced `## Your call` example must not
+parse as a verdict, and the surrounding prose must still read as ordinary `## Decision` text.
+`check.ps1` is green on all four steps with the fix and the new test in place.
+
+**Not fixed, not attempted — routed to Cowork.** Nico's own words after seeing this: *"If a decision
+was made and then changed in the chat, it should also be shown briefly or something."* That's a new
+idea, not a bug fix — showing when a decision's verdict was reached or changed through conversation
+(as opposed to, or alongside, this UI's Accept/Reject buttons) is a design question: what counts as
+"changed in the chat", where it would need to be recorded for Asa to ever see it, and what "shown
+briefly" looks like on the screen. **This needs a decision from Cowork before it's built — I have
+not designed or built anything toward it.** Flagging it here for the next downstream round.
+
+**State of this round.** Built, fixed, `check.ps1` green, but not re-shown/re-approved after the
+fix — per rule 19, the round isn't over until Nico says yes to what's on screen now. Not committed.
+`0005-stack-reopened.md` was not touched by this session's testing — Nico had already decided it by
+hand before this feature existed to do it any other way (see the update above), so there was no
+live proposed decision in the real project to demo the Accept/Reject buttons against; the shown
+screen was ADR 0011 itself, read-only (it already carries a hand-written verdict), to demonstrate
+the bug and the fix on the exact file that exposed it.
+
+
+---
+
+### 2026-09-07 — next round: the front-page Tasks view, real data, seven rounds of sketching
+
+**Why this round exists.** Nico: *"I want to have a v1 asa, and it cant work without the front
+page."* The front page has two views, toggled — Bars (status/priority/deadline, already specified
+and partly sketched in `sketches/asa-front2.html`) and Tasks (nested checkboxes, drag-reorder).
+This entry specs **Tasks** only. Bars is unchanged from the existing front-page sketch.
+
+**Sketches, in order, all in `projects/asa/sketches/` (mirror also under this session's mockups
+folder as `asa-tasks-real-v1.png` through `v7.png`):** v1 (real data, no design changes) → v2
+(collapse + hide-done, real "Asa" group idea, cross-project link idea) → v3 (assignee marker,
+parent/child nesting) → v4 (dropped per-project and mine/code chip rows — "too busy," Nico's words
+— replaced with collapse-all/expand-all + mark-all-done) → v5 (brought back a single checkbox for
+code-tasks specifically, since a checkbox doesn't grow with the project count the way per-project
+buttons do — that was the actual busy part) → v6 (converted every action control to an icon,
+Nico's request: *"text overwhelms me"*) → v7 (four corrections: mark-all-done icon moves before
+the group name not after; "Show completed" reverts to text, an icon alone didn't read; expand-all
+/collapse-all becomes one small menu instead of two icons; the code toggle gets a text label since
+it's the one control that changes the whole screen, not just one group). **v7 is the approved
+shape.** Approved 2026-09-07, live in this chat, not yet re-shown as a build.
+
+**Real data to build against — already written into the real files, not invented for a demo:**
+
+- `projects/partner-trial-process/partner-trial-process.md` — `## Tasks`: Test forms · Ask partner
+  to confirm emails are correct · Talk to M about design · **Create the License object — needs the
+  schema from `[[license-commerce-integration]]`** (added today, real dependency, see below).
+- `projects/data-deletion-policy/data-deletion-policy.md` — `## Tasks`, 5 flat items, unchanged.
+- `projects/asa/asa.md` — **new `## Tasks` section, added today**: Show Nico the accept/reject fix,
+  get a yes · Commit it · Rebuild the .exe from the committed state · Build this Tasks view. This
+  is what makes the "Asa" group in the Tasks view real instead of illustrative — it is Asa's own
+  actual next steps, in the same file, same format, as any other project.
+- `projects/vibe-coding-kit/vibe-coding-kit.md` — no `## Tasks` yet. Real `parent: asa` in its
+  frontmatter, and `asa.md` has real `parent: other`. Used for the nesting rule below; nothing to
+  render there yet since there's nothing in it.
+
+**Parsing, additive to whatever already reads `## Tasks` checkbox lines and indentation:**
+
+1. **A task line containing `[[some-project-slug]]` is a cross-project reference**, not a
+   parent/child relationship and not the same task duplicated in two places. Render the whole
+   trailing fragment (from the em dash or `[[` onward — exact split is an implementation choice) as
+   a small distinct chip after the task text, monospace, showing the project name. **Not required
+   for v1: making the chip clickable/navigating to that project.** Static display is enough; treat
+   navigation as a fast-follow if it's cheap, otherwise leave it for later.
+2. **A task line ending in a parenthetical `(Code)`** (case-insensitive, trailing) marks that task
+   as not Nico's — strip it from the displayed text and show a small `</>` marker instead, same
+   glyph used for the global toggle in point 4. No tag at all is the default and means it's Nico's;
+   this is the common case and most files will never need the tag.
+3. **Parent/child nesting**: a project's task group nests indented under its parent's task group
+   **only if the parent also has a non-empty `## Tasks` section**. A parent with no `## Tasks` (like
+   `other`, which will never have one — it's a folder, not a project worked in) contributes no row
+   at all, at any depth. This is the same rule the Bars view already uses for grouping by `parent`;
+   Tasks should reuse the identical parent-chain read, not a second implementation of "what is this
+   project's parent." Confirmed real chain: `other` (no tasks, never shows) → `asa` (has tasks, top
+   level) → `vibe-coding-kit` (has `parent: asa`, would nest under it once it has its own `## Tasks`
+   — nothing to build against yet, just don't special-case `other` away with a one-off rule; let it
+   fall out of "no tasks = no row").
+
+**UI, per the v7 sketch:**
+
+- Each group: collapse triangle, then a small checkmark icon ("mark all done" — writes every open
+  `- [ ]` in that project's `## Tasks` to `- [x]`; does **not** touch the project's `status:`
+  frontmatter field, two separate facts, never auto-linked), then the group name as text.
+- Checking a task removes it from view immediately (not strikethrough-and-stay). A group with any
+  done tasks shows a plain text link "Show completed (N)" underneath its open tasks; clicking shows
+  them, dated if a date is easy to get, plain if not.
+- One small menu button (three-dot/stacked-lines glyph, standard "more" affordance — Nico's
+  suggestion, an actual dropdown, not a fly-out palette) opens two text items: "Expand all" /
+  "Collapse all", each acting on every group at once. Each group's own triangle keeps working
+  independently after that — the menu is a bulk action, not a mode.
+- One global control, a labelled pill/checkbox reading "Code tasks" (icon `</>` plus that text —
+  the one place on this screen Nico asked to keep a text label, since unlike everything else it
+  changes what's visible across every group at once, not just one): on (default) shows everything,
+  off hides every task marked `(Code)` everywhere. A group left with nothing to show once code
+  tasks are hidden collapses to a one-line note ("Asa · N tasks hidden, marked code") instead of
+  disappearing outright — Nico should never have to wonder whether a project vanished or just has
+  nothing to show right now.
+- Icons: use Flutter's built-in Material icon set (`Icons.check`, `Icons.expand_more` or similar),
+  not hand-picked Unicode glyphs — the sketch used plain Unicode purely because it's an HTML mockup.
+  Every icon gets a tooltip with its plain-English label (Flutter's `Tooltip` widget) — the sketch
+  drops the on-screen words specifically because hover-labels replace them, not because the labels
+  stopped mattering.
+
+**Tests, minimum:** reading `[[project]]` out of a task line and rendering the chip without
+breaking the plain-task case (no `[[...]]` present). The `(Code)` suffix strips cleanly and doesn't
+false-positive on a task that happens to contain the word "code" elsewhere in its text — anchor the
+match to a trailing parenthetical, not a substring search. Mark-all-done writes exactly the open
+lines in one project's own `## Tasks` block and does not touch another project's file or that
+project's `status:` field. The parent-chain nesting reuses whatever the Bars view already reads for
+`parent` — a shared helper, not two versions of the same lookup logic drifting apart later like the
+`schema.md`/`decisions.md` duplication problems this whole kit exists to avoid.
+
+**Not in this round, explicitly parked:** Google Tasks/Calendar sync — logged in
+`projects/asa/BACKLOG.md`, 2026-09-07 entry, not before real use of the plain Tasks view says it's
+worth it. Making the `[[project]]` chip clickable/navigable — nice-to-have, not required. Whether a
+subtask can be dragged out from under its parent to become its own top-level task — raised in an
+earlier round's sketch callout, never answered, still open, not blocking this one since none of the
+real data currently has real subtasks (the only subtask example so far was illustrative).
+
+**What "done" means:** build it, run `check.ps1`, show it per rule 19 — against the three real
+files above, not fabricated demo data. Nico reviews against `asa-tasks-real-v7.png` for the shape.
