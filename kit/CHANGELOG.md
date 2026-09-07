@@ -8,6 +8,50 @@ Versions are dated. The current one is at the top.
 
 ---
 
+## v1.26 — 2026-09-04 — the drawing, the spec, and which one wins
+
+**A screen was built twice against something the Boss had not agreed to, and both rounds obeyed
+their instructions.** Full audit in the kit's own project folder,
+`ANALYSIS-2026-09-04-built-the-wrong-version.md`. The short version: **the spec never contained the
+design, and then the design was used as the acceptance criterion.**
+
+Of eight reported "differences", **zero were the building session disobeying anything.** Seven were
+the spec being silent about form — it said *"each row — title, status, date"*, which is data, not
+layout. **The eighth was the build obeying the spec** (*"the provenance block stays below both,
+unchanged"*) while the drawing showed no provenance block at all, and the review calling that
+obedience a defect.
+
+**Changed — six fixes, and only the last one prevents rather than detects**
+
+- **`templates/SESSION-HANDOVER.md`: which document wins, declared.** *The prose owns data,
+  behaviour and scope. The image owns form.* Where they disagree about form the image wins; where
+  they disagree about data the prose wins **and the image is redrawn before the round starts.** A
+  builder who has to guess this follows the document addressed to them, every time, and is right to.
+- **The gate row became a check.** It had read *"Sketch approved? Yes — `<path>`"*, which is
+  satisfied by typing. **The path had never existed, and was cited for three days.** The row now
+  names the image *and its source*, and both are verified by **`check-refs.ps1`** — new, self-tested,
+  deliberately narrow. `PLAYBOOK.md` §14 already said *a field that can be satisfied without being
+  true is not yet a check*; this template had been committing that error on its most important row.
+- **`templates/APPROVED.md`** — new. One row per drawing that actually got a yes: file, source,
+  date, who, which screens, **and one sentence on what it must look like.** Rejected and superseded
+  rows stay, because an argument about *"what we agreed"* is unanswerable without the history.
+- **Filing is step four of sketching**, in both sketch skills. **Render → send → get a yes → file**,
+  the image *and* its source, in the project's own folder. A `.png` can only be redrawn.
+  **Shown is not saved** — the fifth entry in that row, and the most expensive.
+- **`PLAYBOOK.md` §8's `Approved?` line gained a precondition:** if the round touched a screen, the
+  approved drawing goes **next to the screenshot** before the question is asked. Two images in one
+  message is the cheapest gate in this kit.
+- **`PLAYBOOK.md` §14: reconcile the drawing and the spec before handover.** Read one against the
+  other, list every disagreement and how it was resolved. **This is the only fix that prevents the
+  failure**, because it attacks the lossy step — a human turning a picture into prose, unchecked,
+  and then using the picture as the exam.
+
+**And the rule that outlives the incident:** *never let one person draw the sketch, write the spec,
+and judge the result.* That chain had five roles and one actor. The kit has a reviewer for code and
+a persona check for screens; **it has nothing that checks a spec against the design it came from.**
+
+---
+
 ## v1.25 — 2026-09-03 — the rule that billed the human
 
 **One finding, and it had been costing a copy-paste round-trip on every check of every round.**

@@ -65,7 +65,7 @@ formats are on disk right now.**
 
 | Source | Shape |
 |---|---|
-| **A folder** | `decisions/0001-slug.md`, one decision per file |
+| **A folder** | <code>decisions/&lt;nnnn&gt;-&lt;slug&gt;.md</code>, one decision per file |
 | **One log** | `decisions.md`, one `## 0001 - Title` section per decision |
 
 **Both are read. Neither is converted. A project with both yields one merged list, each item
@@ -330,6 +330,114 @@ All by the deciding session, all unverified by any build:
 5. **`check.ps1`** — `-Fresh` switch, `flutter pub get` always, numbered steps, and a failure
    message naming the step.
 
+## ⬇ Downstream — 2026-09-04. One line, and v0.1 is finished.
+
+**This is not a third attempt at the Decisions tab.** Six of the eight rows from the drift table
+are built and were accepted as built — including the collapsed provenance line and the
+`→ replaced by 0008` note. **They are not being redone.** The round is **one addition**: the
+one-line description under the project name, which no previous round could reach.
+
+**Scope confirmed by Nico, 2026-09-04**, after two facts came out:
+
+1. **`PLAN.md` is unsigned** — it was reopened on 2026-09-02 for ADR 0010 and never re-signed. So
+   the ordering was genuinely open, not settled.
+2. **The front page cannot be built yet, and that is why decisions came first.** `asa-front2.png`
+   shows segmented progress bars with phase names and a Tasks view with draggable checkboxes.
+   **Neither phases nor tasks exist as data** — no model in `core/`, nothing in any note. Groups,
+   status, priority, deadline and the Jira chip *do* exist. Building the front page therefore means
+   either inventing two data models or building a subset — **and a subset is a different drawing**,
+   which is exactly the mistake that produced the rejected `asa-v01`.
+
+**Why the two earlier rounds were rejected, for the record:** both obeyed their instructions. Audit
+in `projects\vibe-coding-kit\ANALYSIS-2026-09-04-built-the-wrong-version.md`. Of eight reported
+"differences", **zero were disobedience** — seven were the spec being silent about form, and one was
+the build obeying the spec while the drawing said otherwise. **This section is written to the kit's
+v1.26 rules so that cannot recur.**
+
+### Gate
+
+| Check | State |
+|---|---|
+| Does this change the structure of a screen? | **yes** |
+| Sketch seen and approved by the Boss? | **yes** — approved 2026-09-01, **re-confirmed 2026-09-04** after recovery |
+| The image, and its source | `projects\asa\sketches\asa-v01b.png` · `projects\asa\sketches\asa-v01b.html` |
+| Do both paths resolve on disk? | **yes — checked, not typed.** *They did not exist until 2026-09-04; the second attempt was built against a recreation. Verify with `kit\check-refs.ps1` if in any doubt.* |
+| Prose read against the image, disagreements resolved? | **yes — three, all settled.** Listed in `projects\asa\sketches\asa-v01b-NOT-IN-V0.1.md` |
+| Approval record | `projects\asa\sketches\APPROVED.md` |
+
+### Which document wins
+
+> **This file owns data, behaviour and scope. `asa-v01b.png` owns form** — layout, weight, order,
+> spacing, what is a pill and what is a line of text, where the date sits, what colour a warning is.
+>
+> **Where they disagree about form, the image wins.** Where they disagree about data or scope, this
+> file wins. **Do not guess which.** If something in the image cannot be built from the data that
+> exists, say so here and stop — that is what happened correctly twice already.
+
+### What to build
+
+**Open `asa-v01b.png` and build the first panel.** The sentence that was missing from both previous
+specs, and it is the whole brief:
+
+> **A quiet typographic list.** Name and back arrow in the page body, not an app bar · a one-line
+> description under the name · tabs as plain text with a thin underline, left-aligned · one decision
+> per row with a hairline between, never cards · status as a small inline pill straight after the
+> title · date right-aligned and humanised — `today`, `1 Sep`, `22 Aug` · **nothing else on the
+> screen.**
+
+**Six of the eight rows are already built and were accepted as built** — rows 1, 3, 4, 5, 6 and 8
+of the drift table, including the collapsed provenance line and the `→ replaced by 0008` note
+beside the pill. **Do not redo them.** Read `lib/hubs/product/project_screen.dart` first; most of
+this round is one addition.
+
+### The one thing to add
+
+**The one-line description under the project name.** The drawing shows it; no previous round could
+build it because nothing exposed the note's body.
+
+- **Source:** the first paragraph of ordinary text in the project note, after the `# Heading`.
+- **Absent → the line does not appear.** No placeholder, no empty space.
+- **`lib/core/` may be touched for exactly this and nothing else.** `project_reader.dart` currently
+  reads the whole file and keeps only the frontmatter; `ProjectReadResult` never carries the body.
+  Expose it, derive the summary, test it in `test/` against the real notes.
+- **Derived, not typed.** No new frontmatter field. *A field that has to be maintained is out of
+  date exactly when it is needed.*
+
+### Deliberately not in this round
+
+**The `⚠ 3 of its conditions have happened` flag on a decision row.** It is in the approved drawing
+and it is **deferred, not forgotten** — there is no data for it, and inventing one by reading prose
+would be confidently wrong. **It needs a format decision and its own ADR first.** Reasoning in
+`asa-v01b-NOT-IN-V0.1.md`.
+
+**Also untouched:** the front page (its own approved sketch, `asa-front2.png`, is now on disk and is
+a later version), the Details tab's contents, the decision detail screen, and anything in
+`lib/core/` other than the summary above.
+
+### Before it is shown
+
+| | |
+|---|---|
+| `check.ps1` | green, all four. **You run it yourself now** |
+| The deviation table in the upstream half | filled in, including whether the annotation file was updated |
+| **The approved image beside the screenshot** | **new in v1.26.** Put `asa-v01b.png` and what is on screen in the same message, then ask. Not a link — the two pictures together |
+
+### Known, and not your problem this round
+
+- **`check-shareable.ps1` reports ~44 findings, of which 38 are `ios/` and `.idea/` scaffold** that
+  was tracked early in this repo's history and never ignored. **Real leaks: zero.** It needs its own
+  small round — extend `.gitignore`, and decide whether an iOS scaffold belongs in a
+  Windows-only repository at all.
+- **The `~25x` repeated test line** in `test --coverage` step 3. Flagged, not chased.
+
+---
+
+### SUPERSEDED — the 2026-09-03 rebuild spec
+
+*Kept because the eight-row table it contains is still the accurate account of what differed, and
+because the audit refers to it. **Do not build from this section** — it names an image that did not
+exist when it was written.*
+
 ### THE ROUND'S REMAINING WORK — the Decisions tab does not match its approved sketch
 
 **Rejected by the Boss on 2026-09-03: *"it doesnt look anything like the UI we agreed on, try
@@ -489,7 +597,7 @@ new `decision_detail_screen.dart` for the tap-through view · `check.ps1` (new, 
 - **`## What would change this` is absent from `0004` and `0006`**, both accepted, real decisions
   — not the "one of five" the spec's template implied. Confirmed absent-tolerant handling matters
   more in practice than the spec's own phrasing suggested.
-- **The real header line packs more than Date and Status.** `partner-trial-process/decisions.md`
+- **The real header line packs more than Date and Status.** `projects\partner-trial-process\decisions.md`
   puts `**Decided by:** Nico` on the *same line* as Date and Status
   (`**Date:** ... - **Status:** accepted - **Decided by:** Nico`). A first implementation that cut
   status off only at `**Status:**` would have wrongly captured `"accepted - **Decided by:** Nico"`
@@ -497,7 +605,7 @@ new `decision_detail_screen.dart` for the tap-through view · `check.ps1` (new, 
   whichever field that is," not "the next occurrence of `**Status:**` specifically." Caught by
   tracing a real fixture by hand, not by running a test suite I do not have permission to run.
 - **`links:` has no real usage anywhere yet** — the only example is illustrative text inside
-  `asa/decisions/0008-project-links.md`'s body, not a real project's frontmatter. `parseLinks`
+  `projects\asa\decisions\0008-project-links.md`'s body, not a real project's frontmatter. `parseLinks`
   follows that shape unchecked against an actual file; it is the one piece of this contract rule 8
   could not apply to, because there is no real payload yet.
 - **Six occurrences of the owner's username, not the "three lines" `CLAUDE.md` rule 16 names** —
@@ -647,3 +755,41 @@ table) but cannot mark the image.
 **Not shown yet — rule 19.** This session does not run `flutter`. Nobody has looked at the running
 screen, and `check.ps1` has not been run since this change. Both are needed before this can be
 called anything but written.
+
+### 2026-09-04, later — shown, checks green, UI rejected, committed
+
+**Shown per rule 19.** `check.ps1` now run by the building session itself (permission granted
+above): `pub get`, `dart format` (clean), `analyze --fatal-infos` (no issues), `test --coverage`
+(77 passed), `test integration_test -d windows` (passed) — **PASS, all four, for real, not
+reconstructed.** One thing flagged rather than hidden: `"a pasted path is accepted by the button"`
+printed as if it ran ~25 times in one pass, everything else once; suite still went green. Not yet
+understood — worth a look before trusting that test's shape long-term. `flutter run -d windows`
+launched, the Boss looked.
+
+**His verdict: *"it works, but the UI isnt what I agree on with cowork."*** Not a fix request —
+routed back to the deciding session rather than guessed at again. Per "Who does what," redesigning
+the Decisions tab is a deciding-session job (decisions, sketches, specs), not a building-session
+one. **Whoever picks up the downstream half next needs an updated, confirmed spec — ideally a real
+`asa-v01b.png`, not the DRIFT recreation this round built against** — before another attempt is
+worth making. Building against a second-hand reconstruction of a lost sketch, that then still
+didn't match what was actually agreed, is the same failure this file's deviation-table rule exists
+to catch; it caught it.
+
+**Committed, not pushed.** `ce76a55`, 35 files, on top of `04a7338`. `git status` clean.
+`check-shareable.ps1` (also rewritten this round, 44 → real leaks: 0) is not fully clean — see the
+finding below — waived for this commit with the Boss's explicit yes, not silently.
+
+**Left for whoever's next:**
+- **The Decisions tab spec needs to go back through the deciding session** before it's built a
+  third time — see above.
+- **`check-shareable.ps1` needs calibrating, not just re-running:** it has no allowance for
+  deliberate placeholder paths (`C:\Users\test\...`, `C:\Users\someone\dev` — both intentional test
+  fixtures, not leaks), and `ios/`, `.idea/` are pre-existing tracked scaffold artifacts from early
+  in this repo's history that were never `.gitignore`d and now that the check scans more file
+  types, show up as 38 of the 44 findings. Real leaks found this round: **zero.** Worth its own
+  small round: extend `.gitignore`, decide whether `ios/`/`android/` belong in a Windows-only repo
+  at all, and give the check a documented way to allow a known-neutral placeholder without
+  loosening the real-username pattern.
+- **`git push` is still Nico's alone** — two commits ahead of `origin/main`, nothing pushed this
+  session, per the standing rule and his own restatement of it.
+- **The ~25x repeated test line in step 3** — flagged above, not chased down.

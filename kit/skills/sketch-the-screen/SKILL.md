@@ -64,6 +64,19 @@ excuse being used and what it cost.
    seen it**, not when the screenshot comes out clean.
 6. **Short enough to take in at a glance.** Before and after, one question, no headings. See the
    size rule below — this is the one that gets violated by being helpful.
+7. **Filed in the project's own folder the moment it is approved — the image *and its source*.**
+   Render, send, get a yes, **file.** Four steps, and the fourth is the only one that survives the
+   conversation.
+
+   > *2026-09-04: an approved sketch lived in a chat and in a temporary cloud workspace, and was
+   > cited by path in a gate table, a spec and a drift report for three days. **The path never
+   > existed.** A whole round was then built against a recreation of it, drawn from source code a
+   > day later, and rejected undiagnosably — because "it doesn't match what we agreed" cannot be
+   > answered when the thing agreed no longer exists. **Shown is not saved.***
+
+   **File both formats.** A `.png` can only be redrawn; the source can be re-rendered. And record
+   the approval — `sketches/APPROVED.md`, one row: file, date, who, which screen, and the one line
+   saying what it must look like. **Approval that lives only in a conversation is not a record.**
 
 Then the question, and it is one question: **is this the screen?** Not "does this look nice."
 
@@ -93,6 +106,14 @@ one line and takes ten seconds.
 not a verdict from `persona-check` on the sketch — a yes from the person who will use the screen.
 When a build is being handed to a second session, the handover file says so in its first lines, or
 the second session starts building against an unapproved drawing.
+
+**And three more conditions, each earned the expensive way on 2026-09-04:**
+
+| | |
+|---|---|
+| **The file exists** | The handover names the image *and* its source, and **both paths are checked, not typed.** `check-refs.ps1` |
+| **The prose has been read against the image** | Every disagreement listed and resolved in the handover **before the round starts.** Prose cannot carry layout, so the disagreements are always there |
+| **The image goes beside the screenshot** | Before *"is this right?"* is asked. Two pictures in one message, not a link |
 
 ## Where it sits in the session
 

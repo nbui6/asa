@@ -2149,3 +2149,107 @@ that was already gone - all of it typed by hand by the one participant whose tim
 
 **The tell to look for:** a rule whose cost is paid by someone who is not mentioned in it. Here the
 rule constrained two assistants, cited one incident, and **billed the human.**
+
+### 2026-09-04 — the approved sketch was never on disk, and a whole round was built against a copy of it
+
+**Bucket: how we build. Fifth instance of the same row, and the most expensive one so far.**
+
+`HANDOVER.md`'s gate table said, in as many words:
+
+> *Sketch seen and approved? **Yes** — `projects\asa\sketches\asa-v01b.png`*
+
+**That file did not exist.** The sketches folder held `asa-v01.png` (the *rejected* first attempt)
+and a drift annotation drawn a day later. **Nothing named `asa-v01b` had ever reached the disk.**
+It had been rendered in a cloud container, sent into the chat, approved, and never mirrored —
+while every other sketch in that folder had been.
+
+**The building session found it before writing a line, said so, and built against the only thing
+available: the left half of the drift image — a recreation of the approved screen, drawn from
+source code by the deciding session a day later.** It also wrote down, unprompted, that this was
+*"not the same thing as the original approved artifact surviving"* and that nobody who approved the
+original had seen the recreation.
+
+**The round was then rejected again:** *"it works, but the UI isnt what I agree on with cowork."*
+
+**The row this belongs to, now five long:**
+
+| | Completed, and it left a trace | Delivered — and it did not |
+|---|---|---|
+| *installed is not fired* | the agent file was written | nothing installed it |
+| *tested is not compiled* | 24 tests passed | the app would not build |
+| *rendered is not seen* | the sketch rendered clean | it was never sent |
+| *done is not shown* | the code was written, the note was full | the Boss never saw the result |
+| **shown is not saved** | **the sketch was sent, looked at and approved** | **it never reached the folder the record lives in** |
+
+**Why this one is worse than the others.** The previous four cost a round-trip. This one cost a
+**whole rebuild against a second-hand copy** — and then produced a rejection that cannot be
+diagnosed, because *"it doesn't match what we agreed"* is unanswerable when the thing agreed no
+longer exists to compare against. **A lost reference does not fail loudly. It quietly turns every
+later disagreement into an argument about memory.**
+
+**And the gate table actively concealed it.** *"Sketch seen and approved? Yes — <path>"* is a field
+that can be satisfied by typing a path. `PLAYBOOK.md` section 14 already says: **a field that can
+be satisfied without being true is not yet a check.** This is that, on the single most important
+row of the gate.
+
+**The repairs:**
+
+1. **The original was recovered.** The container that rendered it still had the HTML. Both
+   `asa-v01b.png` and `asa-v01b.html` are now in the sketches folder — **the artefact itself, not a
+   recreation.** *Recovered by luck: the same container was still alive three days later. It is not
+   a recovery method.*
+2. **A sketch is not approved until it is in the project's folder.** Rendering, sending and getting
+   a yes are three steps; **filing is a fourth, and it is the only one that survives the
+   conversation.** Mirror the `.html` as well as the image — a source file can be re-rendered, a
+   PNG can only be redrawn.
+3. **The gate row must name a file that is checked, not typed.** *Does the path in this row exist?*
+   is one line of script, and it would have caught this on 2026-09-01.
+
+**The uncomfortable part, stated plainly.** The deciding session wrote the rule *rendered is not
+seen* on 2026-09-01, after failing to send a sketch. **It then failed to file the very next sketch
+it rendered, and spent three days citing that file by name in specs, gate tables and drift
+annotations without once checking it was there.** A rule learned about one step of a pipeline does
+not transfer to the next step by itself.
+
+### 2026-09-04 — a self-test passed seven times and the first real run crashed
+
+**Bucket: how we build. Same root as the fixtures finding earlier the same day, pointed at a
+different target — so, second instance, and acted on.**
+
+`check-refs.ps1` was written to turn a typed gate row into a real check. Its self-test went green,
+seven passes. **The first run against the actual repository died on line 57:**
+
+```
+Exception calling "GetExtension" with "1" argument(s): "Illegal characters in path."
+```
+
+**The sample the self-test ran on was invented, and it was clean.** Real markdown is full of
+backticked strings that look like paths and are not: regex patterns
+(`C:\Users\[A-Za-z0-9._-]+`), alternations (`(test|someone|you)`), quoted fragments, angle
+brackets mid-string. Several of those characters cannot legally appear in a Windows path, and the
+path API throws rather than returning nothing.
+
+**Two fixes, and the second is the one that matters:**
+
+1. **Filter path-illegal characters before any path API sees the string**, and take the extension
+   with a regex rather than `GetExtension`. **No input can throw now.**
+2. **The self-test's sample is now drawn from this repository's own files** — the exact strings that
+   crashed it — rather than from what the author imagined a document contains.
+
+**The rule, and it is rule 8 pointed at a new target:**
+
+> **Rule 8 says test against the real contract. That applies to a self-test's own sample.** A
+> self-test built from an invented sample tests the code against its author's imagination, which is
+> the same imagination that wrote the bug.
+>
+> **Draw the sample from the corpus the tool will actually run on.** One paste, and it is the
+> difference between seven green passes and seven green passes that mean something.
+
+**Worth noting what the green self-test cost.** It was used as grounds to hand the script over as
+ready. **A check that has only ever been run on its own fixtures has not been run** — the same
+shape as *tested is not compiled* and *rendered is not seen*, one level down: **self-tested is not
+exercised.**
+
+*Also: the handover claimed "eight PASS lines". There were seven. A count stated from memory rather
+than from the script - the same class as the concept counts in the learning ledger, which are now
+produced by `grep -c` for exactly this reason.*

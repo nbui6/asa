@@ -27,6 +27,40 @@ half.**
 |---|---|
 | Does this work change the structure of a screen? | yes / no |
 | If yes, has the sketch of that screen been **seen and approved by the Boss**? | approved on `<date>` / **not yet — do not start** |
+| **The image file, and its source** | `<path/to/sketch.png>` · `<path/to/sketch.html>` |
+| **Do both paths resolve on disk?** | **checked with `check-refs.ps1`, not typed** / **no — do not start** |
+| **Has the prose below been read against that image, and every disagreement resolved here?** | **yes, and they are listed under *Where the drawing and the prose disagreed*** / **not yet — do not start** |
+
+### Which document wins
+
+> **The prose in this file owns data, behaviour and scope. The image owns form** — layout, weight,
+> order, spacing, what is a pill and what is a line of text.
+>
+> **Where they disagree about form, the image wins.** Where they disagree about data or scope, this
+> file wins **and the image must be redrawn or annotated before the round starts.** Neither session
+> guesses which.
+
+### Where the drawing and the prose disagreed
+
+*Fill this in, or say "nothing" and mean it. Empty because nobody looked is the failure this table
+exists to catch.*
+
+| The image shows | This file says | Resolved as | Image updated? |
+|---|---|---|---|
+| | | | |
+
+> *Added 2026-09-04, after a screen was built twice against something the Boss had not agreed to.
+> **Both rounds obeyed their instructions.** The spec said "each row — title, status, date" and
+> "the provenance block stays below both, unchanged"; the approved drawing showed pills, hairlines,
+> humanised dates and no provenance block at all. **Prose cannot carry layout, so the layout did
+> not survive being written down** — and the result was then judged against the drawing. Of eight
+> reported "differences", **zero were the building session disobeying anything.** One of them was
+> it obeying the spec.*
+>
+> *The second round failed differently and worse: the image path in this table had never existed on
+> disk, so the build went against a recreation of it. **A gate row that can be satisfied by typing
+> a path is not a check** — `PLAYBOOK.md` §14 says so, and this template had been committing that
+> error on its most important row.*
 
 <Link the sketch. A review of the sketch, or a persona verdict on it, is not an approval.>
 

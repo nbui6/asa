@@ -132,6 +132,19 @@ is worse than none. Date it. When it stops matching the product, either redraw i
 
 ---
 
+## 5b. File it the moment it is approved
+
+**Render, send, get a yes, file.** The fourth step is the only one that survives the conversation,
+and it is the one that gets skipped — because the first three feel like the work.
+
+- **The image *and* its source**, in the project's own folder. A `.png` can only be redrawn.
+- **A row in `sketches/APPROVED.md`**: file, date, who approved it, which screens it covers, and one
+  line on what it must look like.
+
+> *2026-09-04: an approved sketch was cited by path in a gate table, a spec and a drift report for
+> three days. The path had never existed. A round was built against a recreation and rejected
+> undiagnosably. **Shown is not saved** — `KIT-LOG.md`.*
+
 ## 6. Then run persona-check on it
 
 The sketch and the persona check are different questions and both are cheap here:

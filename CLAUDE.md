@@ -128,6 +128,14 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     problem this project does not have. The second was written while the proven checker sat
     unread in the folder it had just been copied into.*
 
+    > **Named exception, open until the scaffold round. Added 2026-09-04.** The check reports
+    > **~44 findings, of which 38 are `ios/` and `.idea/` files** tracked early in this repository's
+    > history and never ignored. They surfaced only because the check now scans more file types.
+    > **Real leaks: zero.** Pushing is allowed past these, **and only these**, until the small round
+    > that extends `.gitignore` and decides whether an iOS scaffold belongs in a Windows-only
+    > repository at all. *A gate that is routinely overridden is not a gate, so this waiver has an
+    > end condition and a count: 38. If the number changes, stop and read the new ones.*
+
     > **Named exception, open until v0.1 ships.** The check fails on **three lines** — the default
     > folder in `projects_screen.dart` and two fixtures in `test/project_test.dart` — which contain
     > the owner's Windows username. Known, accepted in a private repository, and **removed by

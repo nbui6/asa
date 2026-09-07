@@ -456,7 +456,11 @@ Approved?  — shown 14:10, asked, yes at 14:18  →  and only now, commit
   mock that looks real gets tested as if it were real, and that costs a session.
 - **Approved?** — **the last line, and the only one that is not about the code.** The result was
   **shown**, the question *"is this right?"* was actually **asked**, and the answer came back. The
-  order is the rule: **show → ask → fix or commit.** If the answer names a fix, the fix is made
+  order is the rule: **show → ask → fix or commit.**
+  **If the round touched a screen, the approved drawing goes next to the screenshot before the
+  question is asked** — not afterwards, and not as a link. *Added 2026-09-04: a screen was rejected
+  twice for not matching a drawing nobody had put beside it. Two images in one message is the
+  cheapest gate in this kit.* If the answer names a fix, the fix is made
   and shown again — this line goes green only on a yes. *Added 2026-09-02, after a session
   reported a version done having shown nothing and committed nothing. §14, "Done is not
   delivered".*
@@ -894,6 +898,45 @@ Two corollaries worth holding:
 - **Rules that say "verify" almost always bind the human by default.** Wherever the assistant
   produces something that runs — a mockup, a diagram, a script, a dashboard — the same rule binds
   the assistant, and nobody will have written that down.
+
+### The drawing and the spec are two encodings of one screen, and nobody compares them
+
+**A visual round has three documents: a drawing, a prose spec, and code.** The drawing is approved.
+The spec is then written from it, by hand, usually by the same person — and **prose cannot carry
+layout.** Flat list against cards, a pill against a line of grey text, `today` against
+`2026-09-02`, where the date sits on the row: none of that survives being written down unless
+someone writes it down on purpose, and nothing measures what was lost.
+
+Then the code is built from the spec, and **judged against the drawing.**
+
+*2026-09-04.* A screen was built twice and rejected twice. The spec said:
+
+> *"Each row — title, status, date… **the provenance block stays below both, unchanged.**"*
+
+The approved drawing showed pills, hairlines, humanised dates, and **no provenance block at all.**
+Of eight reported differences, **zero were the building session disobeying an instruction.** Seven
+were the spec being silent about form. **The eighth was the build obeying the spec, and the review
+calling that a defect.**
+
+> **When a drawing and a spec describe the same screen, one of them is a copy — and nobody has
+> compared them.** Compare them, on purpose, **before either is handed to anyone**, and write down
+> every disagreement and how it was resolved.
+
+**This is the only fix in that incident that prevents rather than detects.** Filing the drawing,
+checking the path resolves, putting the image next to the screenshot — all good, all make the
+failure visible sooner. **Only the reconciliation stops it happening**, because it attacks the
+lossy step itself.
+
+**Two rules that fall out of it:**
+
+- **Declare which document wins, per class of question.** *Prose owns data, behaviour and scope.
+  The image owns form.* Where they disagree about form, the image wins; where they disagree about
+  data, the prose wins **and the image gets redrawn before the round starts.** A builder who has to
+  guess this will follow the document addressed to them, every time, and be right to.
+- **Never let one person draw the sketch, write the spec, and judge the result.** That chain had
+  five roles and one actor, with no independent step. The kit has a reviewer for code and a persona
+  check for screens; **it has nothing that checks a spec against the design it came from** — the
+  most error-prone translation in a visual round.
 
 ### And its mirror: when a rule IS followed, check that it binds the right actor
 
