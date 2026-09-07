@@ -3,10 +3,20 @@
 /// Round 2. This is the home screen.
 library;
 
+import 'package:asa/core/decisions_reader.dart' show DiskFileAccess;
+import 'package:asa/core/project.dart';
 import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/settings.dart';
+import 'package:asa/core/task.dart';
+import 'package:asa/core/task_writer.dart';
+import 'package:asa/core/tasks_reader.dart';
 import 'package:asa/hubs/product/project_screen.dart';
+import 'package:asa/hubs/product/tasks_view.dart';
 import 'package:flutter/material.dart';
+
+/// The front page has two views onto the same project scan — Bars (this
+/// screen's original flat list) and Tasks, added 2026-09-07.
+enum _ViewMode { bars, tasks }
 
 class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key, this.settingsPath, this.pickFolder});
@@ -46,7 +56,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   final _rootField = TextEditingController();
 
   ScanResult? _scan;
+  List<TaskGroup>? _taskGroups;
   bool _loading = false;
+  _ViewMode _viewMode = _ViewMode.bars;
 
   // First run: nobody has chosen a folder yet, so there is nothing to load
   // and no hardcoded path to fall back on — a default that does not exist
@@ -151,15 +163,59 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     setState(() {
       _loading = true;
       _scan = null;
+      _taskGroups = null;
     });
 
     final scan = await scanProjects(_rootField.text.trim());
+    final taskGroups = scan.error == null
+        ? await buildTaskGroups(scan.projects, const DiskFileAccess())
+        : const <TaskGroup>[];
 
     if (!mounted) return;
     setState(() {
       _scan = scan;
+      _taskGroups = taskGroups;
       _loading = false;
     });
+  }
+
+  /// Rebuilds the Tasks groups from disk after a write — never trusts that
+  /// a checkbox flip or mark-all-done happened as assumed. Cheap: a
+  /// handful of small markdown reads, not a full rescan of git state.
+  Future<void> _reloadTaskGroups() async {
+    final scan = _scan;
+    if (scan == null || scan.error != null) return;
+
+    final taskGroups = await buildTaskGroups(
+      scan.projects,
+      const DiskFileAccess(),
+    );
+    if (!mounted) return;
+    setState(() => _taskGroups = taskGroups);
+  }
+
+  Future<void> _toggleTask(Project project, Task task) async {
+    try {
+      await setTaskDone(
+        project.sourceFile,
+        rawLine: task.rawLine,
+        done: !task.done,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _reloadTaskGroups();
+  }
+
+  Future<void> _markAllDone(Project project) async {
+    try {
+      await markAllTasksDone(project.sourceFile);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _reloadTaskGroups();
   }
 
   @override
@@ -171,6 +227,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       appBar: AppBar(
         title: const Text('Asa — Product Hub'),
         actions: [
+          if (scan != null && scan.error == null) ...[
+            _viewToggle(),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             onPressed: _loading ? null : _load,
             icon: const Icon(Icons.refresh),
@@ -230,13 +290,77 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 child: Text(scan!.error!),
               ),
             if (scan != null && scan.error == null) ...[
-              _projectsTable(sortByStaleness(scan.projects, now), now),
-              if (scan.skipped.isNotEmpty) ...[
-                const SizedBox(height: 32),
-                _skippedTable(scan.skipped),
-              ],
+              if (_viewMode == _ViewMode.bars) ...[
+                _projectsTable(sortByStaleness(scan.projects, now), now),
+                if (scan.skipped.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  _skippedTable(scan.skipped),
+                ],
+              ] else if (_taskGroups == null)
+                const Center(child: CircularProgressIndicator())
+              else
+                TasksView(
+                  groups: _taskGroups!,
+                  onToggleTask: _toggleTask,
+                  onMarkAllDone: _markAllDone,
+                ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Bars / Tasks — `asa-front2.png`. Still icon-only, with a hover
+  /// tooltip carrying the plain-English label, same as every other icon
+  /// control on this screen.
+  Widget _viewToggle() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _viewToggleButton(
+            icon: Icons.view_agenda_outlined,
+            mode: _ViewMode.bars,
+            tooltip: 'Bars view',
+          ),
+          _viewToggleButton(
+            icon: Icons.checklist,
+            mode: _ViewMode.tasks,
+            tooltip: 'Tasks view',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _viewToggleButton({
+    required IconData icon,
+    required _ViewMode mode,
+    required String tooltip,
+  }) {
+    final selected = _viewMode == mode;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => setState(() => _viewMode = mode),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? Colors.indigo.shade900 : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: selected ? Colors.white : Colors.grey.shade700,
+          ),
         ),
       ),
     );

@@ -21,6 +21,8 @@
 ///   Decision` falling back to the title.
 library;
 
+import 'package:asa/core/markdown.dart';
+
 /// The recorded answer to a proposed decision — ADR 0011. Appended by Asa,
 /// never edited by it; reading it back is the only way to learn it exists.
 class Verdict {
@@ -306,31 +308,7 @@ String? _supersedes(String? status) {
 /// real shapes; falls back to the inline label because that is the only
 /// shape a decisions log uses.
 String? _section(String text, String heading) {
-  return _headingSection(text, heading) ?? _inlineLabel(text, heading);
-}
-
-String? _headingSection(String text, String heading) {
-  final pattern = RegExp(
-    '^#{2,3}\\s*${RegExp.escape(heading)}\\s*\$',
-    multiLine: true,
-    caseSensitive: false,
-  );
-  final match = _firstUnfencedMatch(pattern, text);
-  if (match == null) return null;
-
-  final rest = text.substring(match.end);
-  var end = rest.length;
-
-  final nextHeading = _firstUnfencedMatch(
-    RegExp(r'^#{1,6}\s', multiLine: true),
-    rest,
-  );
-  if (nextHeading != null && nextHeading.start < end) end = nextHeading.start;
-
-  final rule = _firstUnfencedMatch(RegExp(r'^---\s*$', multiLine: true), rest);
-  if (rule != null && rule.start < end) end = rule.start;
-
-  return rest.substring(0, end).trim();
+  return sectionText(text, heading) ?? _inlineLabel(text, heading);
 }
 
 String? _inlineLabel(String text, String label) {
@@ -338,47 +316,17 @@ String? _inlineLabel(String text, String label) {
     '\\*\\*${RegExp.escape(label)}:\\*\\*\\s*',
     caseSensitive: false,
   );
-  final match = _firstUnfencedMatch(pattern, text);
+  final match = firstUnfencedMatch(pattern, text);
   if (match == null) return null;
 
   final rest = text.substring(match.end);
-  final next = _firstUnfencedMatch(
+  final next = firstUnfencedMatch(
     RegExp(r'\n\s*\n\s*(?:\*\*[^*\n]+:\*\*|#{1,6}\s|---\s*$)', multiLine: true),
     rest,
   );
 
   final end = next?.start ?? rest.length;
   return rest.substring(0, end).trim();
-}
-
-/// The first match of [pattern] in [text] that does not sit inside a
-/// fenced code block. A `## Your call` (or any other heading) written as
-/// an *example*, inside triple backticks, is not a real section — ADR
-/// 0011's own file demonstrates this exact shape in its own text, and
-/// reading that example as a recorded verdict is the bug this exists to
-/// prevent, not a hypothetical one.
-RegExpMatch? _firstUnfencedMatch(RegExp pattern, String text) {
-  final fences = _fencedRanges(text);
-  for (final candidate in pattern.allMatches(text)) {
-    if (!_isFenced(candidate.start, fences)) return candidate;
-  }
-  return null;
-}
-
-/// Start/end offsets of every ```` ``` ````-fenced block in [text].
-List<(int, int)> _fencedRanges(String text) {
-  final ranges = <(int, int)>[];
-  for (final match in RegExp(r'```[\s\S]*?```').allMatches(text)) {
-    ranges.add((match.start, match.end));
-  }
-  return ranges;
-}
-
-bool _isFenced(int position, List<(int, int)> fences) {
-  for (final fence in fences) {
-    if (position >= fence.$1 && position < fence.$2) return true;
-  }
-  return false;
 }
 
 String _firstParagraph(String sectionText) {

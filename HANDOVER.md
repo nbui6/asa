@@ -1157,3 +1157,56 @@ real data currently has real subtasks (the only subtask example so far was illus
 
 **What "done" means:** build it, run `check.ps1`, show it per rule 19 — against the three real
 files above, not fabricated demo data. Nico reviews against `asa-tasks-real-v7.png` for the shape.
+
+---
+
+### 2026-09-07 — round built and shown: the Tasks view, plus a scope mistake worth recording
+
+**Built.** `lib/core/markdown.dart` — the fence-aware `## Heading` section reader extracted out of
+`decision.dart` (the ADR 0011 bug fix), so `task.dart` and `task_writer.dart` reuse the one
+implementation instead of risking a second copy of that same bug. `lib/core/task.dart` (parses
+`## Tasks` checkboxes, a trailing `(Code)` tag, a `[[project]]` reference). `lib/core/tasks_reader.dart`
+(the parent-chain nesting — a project nests under its parent only when the parent also has a
+non-empty `## Tasks`). `lib/core/task_writer.dart` (per-task and mark-all-done writes, rewriting only
+the bytes inside the touched line(s), same atomic-write discipline as `decision_writer.dart`).
+`lib/hubs/product/tasks_view.dart`, wired into `projects_screen.dart` behind a new Bars/Tasks toggle
+in the app bar. `check.ps1` green — format, analyze, 132 unit tests (new: `markdown` reuse proven via
+`task_test.dart`'s own fence regression, `tasks_reader_test.dart`'s nesting rules, `task_writer_test.dart`'s
+byte-preservation), and the real Windows integration test.
+
+**Two deliberate deviations from the v7 sketch:** no drag-grip icon on task rows — reordering is
+explicitly parked in the spec and no real project note has a real subtask, so a grip that does
+nothing was left out rather than built as decoration. And the `</>` code marker does not appear
+anywhere yet against real data — `asa.md`'s own four tasks carry no `(Code)` tag today; that is the
+file's actual current content, not a bug, and adding tags to real project content is not this
+session's call to make.
+
+**A real, useful build-environment finding, unrelated to the feature itself:** a Debug build's
+window never becomes visible when launched by double-click (or any launch method) on this machine
+— the process starts, stays responsive, and never renders a first frame, most likely because the
+Debug Flutter engine waits on a VM-service handshake that only exists when launched via `flutter
+run`. **A Release build (`flutter build windows --release`) shows immediately.** Screenshotted and
+verified against the real `asa`, `data-deletion-policy`, and `partner-trial-process` projects this
+way — every group, task, and the `[[license-commerce-integration]]` cross-project chip on
+`partner-trial-process`'s fourth task all render exactly as the real files say. **Until this is
+looked into further, use the Release build to actually see the app by hand** — Debug remains fine
+for `check.ps1`'s automated checks, which never need a visible window.
+
+**A scope mistake, caught by Nico, worth recording so it does not repeat.** This entry's own line
+— "Bars is unchanged from the existing front-page sketch" — was written to mean "the Bars *design*
+is not being revised here," but was read as "the Bars *screen already matches that design*." It does
+not. What ships behind "Bars" today is still the flat, most-stale-first list from v0.1 — name,
+status text, next step, staleness — which predates `asa-front2.png` entirely and was never rebuilt
+against it. `asa-front2.png` specifies pills (status and priority), a Jira chip, a month-range
+deadline, a segmented per-project progress bar with phase names, and collapsible work/other
+groups — none of which exist in `project.dart` or anywhere else in `core/` yet. **This gap is not
+something this round introduced; it was only made visible by putting a toggle next to it.**
+
+**Confirmed with Nico, 2026-09-07:** ship the Tasks view now, with the old flat list staying behind
+the "Bars" toggle as a placeholder. **Building the real Bars view is its own round, not scoped or
+started here** — it needs its own spec (what in `project.dart` derives a "phase," what a Jira chip
+click does, the "solid pill = measured, dashed pill = you set it" distinction) before a builder picks
+it up. Flagging it here for Cowork rather than guessing at that spec.
+
+**State of this round:** built, shown (screenshots of the real Release build against real data),
+confirmed. Ready to commit.
