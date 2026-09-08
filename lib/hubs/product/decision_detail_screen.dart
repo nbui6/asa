@@ -9,6 +9,7 @@ library;
 
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decision_writer.dart';
+import 'package:asa/core/markdown.dart';
 import 'package:flutter/material.dart';
 
 class DecisionDetailScreen extends StatefulWidget {
@@ -42,7 +43,20 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   /// this session assumes it wrote — the same discipline ADR 0011 asks
   /// for, and the only way to be sure a half-written file never shows as
   /// decided when it is not.
+  ///
+  /// **The `if (_saving) return` guard is load-bearing, not defensive
+  /// filler.** Found on `0012-the-doorman.md`: five identical `## Your
+  /// call` blocks from one real Accept click. The button's own `onPressed:
+  /// _saving ? null : …` disables it, but only once a rebuild has actually
+  /// happened — two tap events recognised in the same frame, before that
+  /// rebuild lands, both reach this method while `_saving` is still
+  /// false. Checking `_saving` here, synchronously, before the first
+  /// `await`, closes that window: Dart runs the two calls one after the
+  /// other, never concurrently, so the second one always sees what the
+  /// first one just set.
   Future<void> _recordVerdict(bool accepted) async {
+    if (_saving) return;
+
     setState(() {
       _saving = true;
       _error = null;
@@ -246,7 +260,12 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        SelectableText(body),
+        // stripEmphasisMarkers: found on ADR 0012's real content — this
+        // screen shows prose as plain text, so a literal `**` on screen
+        // is a defect, not raw data worth preserving. The parsed
+        // Decision fields themselves stay verbatim; only the display
+        // strips markers.
+        SelectableText(stripEmphasisMarkers(body)),
       ],
     );
   }

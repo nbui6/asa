@@ -30,6 +30,34 @@ String? sectionText(String text, String heading) {
     multiLine: true,
     caseSensitive: false,
   );
+  return _sectionRangeForPattern(text, pattern);
+}
+
+/// Same as [sectionText], but the heading line may carry more after the
+/// heading name — `## Decision — proposed, three parts, in this order`
+/// still matches `Decision`. A real ADR 0012 heading shape the exact
+/// matcher does not survive. **Deliberately not used for `Why`**, which
+/// stays exact-match only — see `decision.dart`'s own note on why `##
+/// Why this is open` is correctly *not* read as `## Why`. The two fields
+/// need opposite tolerances: a qualified `Decision` heading still names
+/// the decision; a qualified `Why` heading may be answering a different
+/// question entirely.
+String? sectionTextByPrefix(String text, String heading) {
+  final range = sectionRangeByPrefix(text, heading);
+  if (range == null) return null;
+  return text.substring(range.$1, range.$2).trim();
+}
+
+(int, int)? sectionRangeByPrefix(String text, String heading) {
+  final pattern = RegExp(
+    '^#{2,3}\\s*${RegExp.escape(heading)}\\b.*\$',
+    multiLine: true,
+    caseSensitive: false,
+  );
+  return _sectionRangeForPattern(text, pattern);
+}
+
+(int, int)? _sectionRangeForPattern(String text, RegExp pattern) {
   final match = firstUnfencedMatch(pattern, text);
   if (match == null) return null;
 
@@ -46,6 +74,20 @@ String? sectionText(String text, String heading) {
   if (rule != null && rule.start < end) end = rule.start;
 
   return (match.end, match.end + end);
+}
+
+/// Removes `**bold**`/`__bold__` markdown emphasis markers for display,
+/// keeping the enclosed text. This app shows prose as plain text
+/// everywhere — `SelectableText`, no markdown renderer — so a literal
+/// `**` on screen is a rendering defect, not raw data worth preserving.
+/// Found on ADR 0012's real content: `- **The doorman ships...** → …`
+/// rendered with the asterisks still in it. The parsed `Decision` fields
+/// themselves stay verbatim; this is applied only where text is about to
+/// be shown, never inside the parser.
+String stripEmphasisMarkers(String text) {
+  return text
+      .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*'), (m) => m.group(1)!)
+      .replaceAllMapped(RegExp('__(.+?)__'), (m) => m.group(1)!);
 }
 
 /// The first match of [pattern] in [text] that does not sit inside a

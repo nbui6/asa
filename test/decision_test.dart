@@ -215,6 +215,25 @@ void main() {
         'One workspace root: asa / projects / workshop',
       );
     });
+
+    test('a trailing qualifier on the Decision heading does not fall back to '
+        'the title — the real bug found on ADR 0012: "## Decision — proposed, '
+        'three parts, in this order"', () {
+      final result = parseDecision(
+        '# ADR 0012 — What Asa is: the missing piece is a doorman\n\n'
+            '**Date:** 2026-09-07 · **Status:** proposed\n\n'
+            '## Decision — proposed, three parts, in this order\n\n'
+            '**1. Build the doorman.**\n\n'
+            '## What this does NOT decide\n\nSomething else.\n',
+        '0012.md',
+      );
+      expect(result.decision!.decision, contains('Build the doorman'));
+      expect(
+        result.decision!.decision,
+        isNot(contains('What Asa is')),
+        reason: 'must read the real section, not fall back to the title',
+      );
+    });
   });
 
   group('what would change this', () {

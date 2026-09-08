@@ -183,8 +183,8 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
 
   final why = _firstParagraph(_section(afterHeading, 'Why') ?? '');
   final decisionText =
-      _section(afterHeading, 'Decision') ??
-      _section(afterHeading, 'Recommendation') ??
+      _sectionByPrefix(afterHeading, 'Decision') ??
+      _sectionByPrefix(afterHeading, 'Recommendation') ??
       title;
   final whatWouldChangeThis =
       _section(afterHeading, 'What would change this') ?? '';
@@ -309,6 +309,13 @@ String? _supersedes(String? status) {
 /// shape a decisions log uses.
 String? _section(String text, String heading) {
   return sectionText(text, heading) ?? _inlineLabel(text, heading);
+}
+
+/// Same as [_section], but tolerates a trailing qualifier on the heading
+/// line — see [sectionTextByPrefix] for why `Decision` needs this and
+/// `Why` deliberately does not.
+String? _sectionByPrefix(String text, String heading) {
+  return sectionTextByPrefix(text, heading) ?? _inlineLabel(text, heading);
 }
 
 String? _inlineLabel(String text, String label) {
