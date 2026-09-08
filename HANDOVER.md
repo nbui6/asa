@@ -1210,3 +1210,235 @@ it up. Flagging it here for Cowork rather than guessing at that spec.
 
 **State of this round:** built, shown (screenshots of the real Release build against real data),
 confirmed. Ready to commit.
+
+---
+
+### 2026-09-07 — next round: the real Bars view, row layout only (no segmented bar yet)
+
+**Why.** Nico, looking at the shipped app: *"it looks good, but the front page still look
+wrong."* Confirmed against a screenshot — "Bars" is still the v0.1 flat list (name, raw status
+text, next-step, staleness), never rebuilt against the approved `sketches/asa-front2.png`. This
+was known and deliberately deferred when the Tasks view shipped; this entry is that deferred round.
+
+**Scope decision, confirmed with Nico 2026-09-07:** split the sketch in two. Ship the row layout —
+pills, Jira chip, deadline, collapsible groups — now, since every field it needs already exists in
+`Project` (`status`, `priority`, `deadline`, `jira`, `parent` are all parsed by `project.dart`
+today, per its own comment, "not shown anywhere yet"). **The segmented progress bar is not in this
+round.** It was meant to be drawn from a project's real milestone history, not invented phase
+labels ("understand/decide/configure" was the sketch's placeholder text, not real data) — and no
+project file has ever recorded more than its current `milestone:` value. There is nothing to
+segment yet. Milestone history (an append-only log, same shape as ADR 0011's verdict log — a new
+dated entry each time `milestone:` changes, existing entries never touched) is its own next round,
+started only once this one ships, so the bar has something real to draw once it's built.
+
+**Row layout, matching `asa-front2.png`, checked against real data across all 9 projects:**
+
+- **Name**, plus a **Jira chip** when `jira` is set (only `partner-trial-process` has one today:
+  `https://verbi.atlassian.net/browse/CRM-557`). Label the chip with the last path segment
+  (`CRM-557`), not the full URL; clicking opens it in the system browser. No `jira` → no chip, not
+  an empty one.
+- **Deadline**, right-aligned. Real values today are bare `YYYY-MM` (e.g. `learning`'s `2027-09`),
+  never a range — humanize to `Sep 2027`. Blank → an em dash, same as the current flat list's
+  honest-absence convention, never a placeholder guess.
+- **Status pill and priority pill**, both **dashed border** (per `asa-front2`'s own caption: "solid
+  pill = measured, dashed pill = you set it"). Every value here comes straight from what Nico typed
+  in frontmatter — nothing today is computed/measured — so **every pill is dashed for this round,
+  with no exceptions to implement.** Solid stays reserved for a future value Asa actually measures
+  itself; don't build a solid case that never fires. Real `status` values seen today: `in progress`,
+  `on hold`, `planning`, `idea`, `building` — five words, not the sketch's three
+  (`prog`/`hold`/`wait`). Bucket by simple substring match, most-specific first, so new words don't
+  crash the screen: contains "progress" or "building" -> blue; contains "hold" -> grey, dashed
+  emphasis; contains "planning" or "idea" -> neutral grey; anything else -> render the raw text in
+  the same neutral grey rather than guessing a color or hiding it. **Priority** is blank on 5 of 9
+  real projects (`data-deletion-policy`, `partner-trial-process`, `license-commerce-integration`,
+  `other`, `assistant-app`) — blank means no pill at all, same absence rule as deadline.
+- **Groups: "work" vs "other," collapsible.** Real signal already in the data, no new field: a
+  project with **no `parent`** is a real, standalone work project (`kundenakte`,
+  `data-deletion-policy`, `partner-trial-process`, `license-commerce-integration` — all four are
+  real VERBI work, all four have no `parent`). A project that *is* `other`, or has `parent: other`
+  (directly or through a chain — `asa` -> `other`, `vibe-coding-kit` -> `asa` -> `other`,
+  `learning` -> `other`, `assistant-app` -> `other`), is personal/tooling, grouped under "Other
+  project" and collapsed by default, same nesting reused from the Tasks view's parent-chain reader
+  — one implementation, not a second copy of "what is this project's parent."
+
+**Not in this round:** the segmented milestone-history bar (needs the history mechanism built
+first, its own round after this one). Making the Jira chip do anything beyond open the link.
+Anything about the Tasks side of the toggle, which already shipped and is unaffected by this.
+
+**Tests, minimum:** the status-bucket match against all five real words plus one unrecognized word
+(falls back cleanly, doesn't throw). Deadline humanizing for a real `YYYY-MM` and for blank.
+Jira-chip label extraction from the one real URL. The work/other grouping against the real
+9-project set — checked row by row: exactly `kundenakte`, `data-deletion-policy`,
+`partner-trial-process`, `license-commerce-integration` under "work," the rest under "Other
+project," `vibe-coding-kit` nested two deep under it via `asa`.
+
+**What "done" means:** build it, run `check.ps1`, show it per rule 19 — against the real 9-project
+folder, not fabricated demo data. No sketch image exists yet for this exact split (the closest is
+still `asa-front2.png`, which includes the bar this round deliberately excludes) — call out every
+place the shown screen omits the bar as a **declared** deviation from that picture, not a silent
+gap.
+
+---
+
+### 2026-09-07 — round built, handed to Cowork for review — not yet approved, not committed
+
+**Built.** `lib/core/project_tree.dart` (`ProjectNode`, `buildProjectForest` — the one shared
+parent-chain forest; `slugOf` moved here from `tasks_reader.dart`, which now imports it rather than
+keeping its own copy). `lib/core/project_bars.dart` (`jiraLabel`, `humanizeDeadline`,
+`statusEmphasis`, `splitByBucket`, `countDescendants` — all pure, all checked against the real
+9-project set). `lib/core/open_url.dart` (opens a Jira link via the OS's own `start` command,
+`Process.run`, no plugin — same reasoning as `git_state.dart`'s own `git` calls; a real plugin would
+not build here, see `pubspec.yaml`'s "NO PLUGINS" note). `lib/hubs/product/bars_view.dart`, replacing
+the dead `_projectsTable`/`_row`/`_stalenessColour` in `projects_screen.dart` entirely — deleted, not
+kept around unused. `check.ps1` green: format, analyze, 149 unit tests (new:
+`project_tree_test.dart`, `project_bars_test.dart`), the real Windows integration test.
+
+**One deliberate simplification, stated in the code's own doc comment:** `asa-front2.png`'s caption
+reads "solid pill = measured, dashed pill = you set it," but every value this round shows is typed
+frontmatter — nothing is measured yet, so every pill would be dashed with no exception. Flutter has
+no built-in dashed border, and adding a package for a distinction with no second case to contrast
+against yet was not worth it. Every pill renders as a plain outlined pill instead; build the actual
+dashed/solid contrast once the milestone-history round gives this screen its first measured value.
+
+**Screenshot verification did not work this time, for a new reason — not the earlier GPU/Debug-mode
+issue.** The Release build's window renders correctly (confirmed once, by chance, mid-session before
+the environment shifted under it), but `GetWindowRect` and `MoveWindow` started returning
+nonsensical, wildly-offset coordinates against this multi-monitor setup partway through — capturing
+the wrong window entirely, then failing to move it back to a sane position at all. This looks like a
+DPI-virtualization mismatch between the calling process and the target window's own monitor, not a
+code problem. **Nico was asked to launch `build\windows\x64\runner\Release\asa.exe` himself and
+check it against the real Work/Other split described above.**
+
+**State of this round: built, `check.ps1` green, NOT visually confirmed by either party in this
+session, NOT committed.** Nico's own words: *"Hand back to cowork, I comment there."* Review is
+continuing in the deciding session, not here — nothing further should be built or committed against
+this round until a decision comes back through this file's downstream half.
+
+---
+
+### 2026-09-08 — two rendering bugs found on ADR 0012's own screen, from Nico's screenshot
+
+**These are correctness bugs, not the UI redesign.** The redesign (density, drag, add-a-task,
+Project Hub rename) stays parked behind the doorman per ADR 0012. These two do not — a screen that
+shows the wrong text is broken, not merely unpolished.
+
+**1. Raw markdown leaks into the rendered text.** `**bold**` markers appear literally on screen in
+both "Why" and "What would change this" — e.g. `- **The doorman ships and the retrieval failures
+continue** → …`. The section text is being painted as plain text with its markdown intact. Either
+render the emphasis or strip the markers, but do not show them.
+
+**2. The "Decision" section shows the ADR's title instead of its decision.** ADR 0012's heading is
+`## Decision — proposed, three parts, in this order`. `_headingSection` almost certainly matches
+`## Decision` exactly, misses, and falls back to the title. **Same class as `0005-stack-reopened.md`
+having `## Why this is open` instead of `## Why`** — a real-file shape the parser does not survive,
+found the same way, on a real file. Match the heading *prefix* up to any trailing qualifier, and add
+a regression test using ADR 0012's literal heading text.
+
+**Working correctly, worth keeping:** the header line reads `accepted` although the file's own
+`**Status:**` still says `proposed`, because a `## Your call` section is present. That is the
+override rule from the accept/reject round doing its job on a real file.
+
+---
+
+### 2026-09-08 — a third bug found on ADR 0012's file, from the raw markdown: five duplicate `## Your call` sections
+
+**Also a correctness bug, same batch as the two above.** `0012-the-doorman.md` has **five**
+identical `## Your call` / `**Accepted** — 2026-09-08 / No reason given.` blocks appended, not one.
+Nico accepted this decision once. Whatever writes the override section on Accept is very likely
+appending on every screen open/rebuild/reload rather than only on the actual button press — check
+for a missing guard (e.g. re-running a "write the verdict" side effect on every build of the
+decision-detail widget, not just its `onPressed`). Append-only is working as designed for the
+*first* write; this is about a write happening more than once for one real click. Low urgency (the
+parser only reads the first match, per the "Working correctly" note above, so nothing is visibly
+broken) but worth a regression test before more decisions pick up the same habit.
+
+---
+
+### 2026-09-08 — session close: four ADRs settled, one still without an explicit yes
+
+**ADR 0013** (record never leaves the machine) and **ADR 0016** ("I don't understand" as a third
+outcome) — accepted the same day they were proposed, both already written with `Status: accepted`
+in the header.
+
+**ADR 0014** (roadmap → milestone → task, capture-never-classifies) and **ADR 0015** (shared
+milestones: state-vs-action test, one owner) — each went through a real revision after Nico caught
+a mistake in the first version (0014 wrongly proposed retiring `milestone:`; 0015 wrongly
+conditioned milestone-status on affecting more than one project). Both now carry an appended
+`## Your call — Accepted` section quoting his actual words, dated today. Their `**Status:**` header
+lines still read `proposed — needs Nico's decision`, untouched, same append-only convention as ADR
+0012 above (the override lives in `## Your call`, not in a rewritten header).
+
+**Not yet given a yes: `asa-decision-detail-v2.html/.png`** (the reformatted decision screen with
+the third button, built against ADR 0015's real content). Sent to Nico, not yet answered — per
+`sketches/APPROVED.md`'s own rule 1 ("a row is added the moment a yes arrives, and not before") it
+stays out of that table until he says so. Two open guesses in it, flagged to him and still
+unconfirmed: the "needs explaining" pill wording, and second-person phrasing in the body text.
+
+**Nothing here is a build spec yet.** The roadmap/milestone data model (0014/0015), the third
+decision outcome (0016), and the reformatted decision screen are all decided or sketched but none
+has a HANDOVER.md spec written for Code — that's separate, later work, not this entry.
+
+---
+
+### 2026-09-08 — correction to the 2026-09-07 Bars-view spec, before it ships to Code
+
+**Two real drifts found while checking the spec still matches reality, not touching the original
+entry (append-only) — build against this correction, not the status-bucket line above it.**
+
+1. **`kundenakte` → `Customer ID System`, `data-deletion-policy` → `Data Retention`.** Both the
+   folder and the identity file were renamed 2026-09-08. Every example in the entry above naming
+   them by their old name refers to the same real projects — nothing about the row-layout logic
+   changes, since it's driven by the `parent` field and live frontmatter, not by a hardcoded name.
+2. **`on hold` is not a real status value any more.** ADR 0017 unified the status enum;
+   `Customer ID System`'s real value is now `paused`. **The bucketing rule in the entry above is
+   wrong as written** — `contains "hold" -> grey` should read **`contains "paused" -> grey`**. Also
+   current per ADR 0017: `ongoing` is a sixth real value (`Data Retention` doesn't have it yet —
+   it's `building` while the register is still being assembled) and needs its own bucket, not the
+   "anything else" fallback: **contains "ongoing" -> a distinct steady-state colour, not blue
+   (blue means still-in-progress, which `ongoing` specifically isn't).**
+
+**Otherwise unchanged and ready to build**: the Jira chip, deadline humanising, pill dashing, and
+work/other grouping rules all stand as written 2026-09-07.
+
+---
+
+### 2026-09-08 — the three correctness bugs fixed and committed; the Bars correction read, not applied
+
+**Fixed, tested, committed (`a2adb5e`) — not the paused surface, per ADR 0012's own distinction.**
+
+1. **Decision heading with a trailing qualifier.** `sectionTextByPrefix` added to `markdown.dart` —
+   matches `## Decision — proposed, three parts, in this order` as `Decision`, using a word boundary
+   so it still does not cross-match `## Decisions`. Applied only to the `Decision`/`Recommendation`
+   lookups in `decision.dart`; `Why` stays exact-match, on purpose, per its own existing note — the
+   two fields need opposite tolerances. Regression test uses ADR 0012's real heading text verbatim.
+2. **Raw `**bold**` on screen.** `stripEmphasisMarkers` added to `markdown.dart`, applied in
+   `decision_detail_screen.dart`'s `_block` at display time only — the parsed `Decision` fields stay
+   verbatim, nothing in the parser changed.
+3. **Five duplicate `## Your call` blocks from one real Accept click.** Root cause was deeper than
+   expected: with the guard removed to verify the regression test, the two concurrent `appendVerdict`
+   calls didn't just double-write — they raced on the same `$path.tmp` file and left a locked handle
+   the test's own `tearDown` couldn't delete. A synchronous `if (_saving) return;` before the first
+   `await` in `_recordVerdict` closes this completely, not just narrows it: Dart runs the two calls
+   one after the other, never concurrently, so the second one always sees what the first just set.
+   Verified the regression test actually catches the bug before restoring the fix (temporarily
+   removed the guard, confirmed the test failed, put it back, confirmed green).
+
+`check.ps1` green: format, analyze, 159 unit tests (new: `markdown_test.dart` directly, plus a new
+widget test `decision_detail_screen_test.dart` — needed the same `runAsync` + real delay pattern
+`projects_screen_test.dart` already established for real `dart:io` I/O; `pumpAndSettle` alone left
+the first attempt reading zero writes back, not one), the real Windows integration test.
+
+**The Bars-view status-enum correction above: read, understood, not applied.** ADR 0012's own
+Decision, part 3: *"The app continues as the window, and pauses on new surface until 1 is done…
+The Bars-view spec written earlier today… stay specced and unbuilt for now."* The Bars-view code
+from 2026-09-07 (`project_tree.dart`, `project_bars.dart`, `open_url.dart`, `bars_view.dart`, its
+tests, and the `projects_screen.dart`/`tasks_reader.dart` wiring) is exactly as it was left — still
+uncommitted, still not visually confirmed by either party — and the 2026-09-08 correction to it
+(the renamed projects, the new six-value status enum) has not been applied on top. Both wait for the
+doorman round, not for lack of clarity on what to do next.
+
+**Nothing else to pick up right now.** The roadmap/milestone data model, the third decision outcome,
+and the reformatted decision-detail screen are all decided or sketched but none has a HANDOVER.md
+spec written for this session yet — per the 2026-09-08 session-close entry, that is deliberate,
+separate, later work. The doorman skill itself (`kit/skills/doorman/`) is Cowork's own file, not
+touched here.
