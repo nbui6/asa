@@ -1605,3 +1605,106 @@ Bars round (Debug build shows no window on this machine; Release works but windo
 coordinates have been unreliable this session). `project_screen.dart`'s Milestone field is a plain
 text row, easy to eyeball by running the Release build and opening the `asa` project directly —
 offering that rather than fighting the screenshot pipeline again for a one-line text change.
+
+---
+
+### 2026-09-08 — next round for Code: Round 7, the seam for a second developer (no UI)
+
+**Answering the drift question from the last entry, first, so it's closed:** `effectiveMilestone`
+was built correctly — "the oldest undone Round in file order" is the actual rule, and it correctly
+returns Round 2 today, not Round 6. The mismatch was in `asa.md`'s prose, not the code. Fixed:
+the "big goal right now" line in `asa.md` now says explicitly that it names what matters most, not
+what's oldest-undone, and that both Round 2's and Round 6's remaining work are paused behind the
+same wall (ADR 0012). Nothing to change in `roadmap.dart` or its tests.
+
+**Why Round 7, not Round 6's remaining items or a Roadmap/About-Asa screen:** ADR 0012's pause on
+new app surface still stands — the doorman-proven checkbox in Round 6 is still unchecked, and that
+gets proven by running a skill in a fresh conversation, not by Code. Round 7 is backend seam work
+only, no new screen, no new tab, so it doesn't trip the pause. `FOR-YOUR-FORK.md` already promises
+this deal to a future second developer; this round is building the two seams it admits aren't real
+yet.
+
+#### 1. `Project.extra` — every frontmatter key we don't already name
+
+`parseFrontmatter` (`project.dart`) already returns every flat `key: value` line as a
+`Map<String, String>`. `projectFromFields` currently reads ten of those keys by name and drops
+the rest on the floor. Change: anything in `fields` that isn't one of the ten known keys —
+`project`, `status`, `milestone`, `next-step`, `repo-path`, `updated`, `parent`, `priority`,
+`deadline`, `jira` — becomes `Project.extra`, a `Map<String, String>`, in the same insertion
+order `parseFrontmatter` produced. Empty map when there's nothing extra, never null — same
+"absent means empty, not missing" convention `links` and `roadmap` already use.
+
+No UI reads `extra` this round. This is the "needs nothing from us" seam `FOR-YOUR-FORK.md`
+already describes — a fork can write `project.extra['their_key']` in their own `lib/local/`
+screen the moment this lands.
+
+**Fixture, since no real project has a custom key yet:** add one to the test only — a literal
+frontmatter string in `project_test.dart` (or wherever `projectFromFields` is already tested)
+with an invented key, e.g. `owner: nico`, asserting `project.extra['owner'] == 'nico'` and that
+`owner` does **not** leak into any of the ten named fields. Also assert a real fixture (`asa.md`
+itself) produces an empty `extra` map, since it has no unknown keys today — that's the regression
+guard.
+
+#### 2. `lib/local/` — the folder, empty, wired so it *could* be used
+
+Not asking for a feature in it — asking for the seam itself, so a fork can drop files in without
+touching anything of ours. Minimum real:
+
+- `lib/local/local_hubs.dart` — one file, one clearly-empty extension point. Simplest shape that
+  satisfies `FOR-YOUR-FORK.md`'s own rule ("nothing imports `local/` except the one registration
+  point"): a single `List<Widget Function(BuildContext)>` (or similar — your call on the exact
+  type, it's empty either way) named something like `localHubs`, defaulting to `const []`.
+- **One place in `main.dart` (or wherever hubs are wired today) imports `local_hubs.dart` and
+  appends `localHubs` to whatever list already drives navigation.** That's the one registration
+  point. Nothing in `core/` or `hubs/` imports `local/`, ever — same direction as the existing
+  `core/` never imports `hubs/` rule, just one more layer.
+- A one-line comment in `local_hubs.dart` pointing at `FOR-YOUR-FORK.md` for the full deal, so
+  nobody has to guess why an empty list exists.
+
+**Acceptance:** app builds and runs identically to today with an empty `localHubs` — this round
+changes nothing anyone sees. The test is that the seam compiles and a fork *could* add one file
+here without editing ours, not that anything visibly changes.
+
+#### 3. `FOR-YOUR-FORK.md` — update the status line, nothing else
+
+Once 1 and 2 are shipped and `check.ps1` is green, replace the top status callout — currently
+*"Two of the three seams are not built yet"* — with which ones are real now and the commit
+hash(es), same pattern `v0.1-decisions.md` uses for its own shipped record. Don't touch anything
+else in the file; the deal itself doesn't change, only whether it's built.
+
+#### Out of scope, on purpose
+
+- Anything in `lib/hubs/` or a new screen/tab — paused, per above.
+- Reading or displaying `Project.extra` anywhere — no UI for it yet, that's the fork's job.
+- The `file_selector` plugin seam described later in `FOR-YOUR-FORK.md` — separate, not this round.
+- Backfilling `**Round:**` onto old ADRs, or building the doorman itself — neither is a Code task.
+
+**Done when:** `check.ps1` green, `Project.extra` covered by the fixture above, `lib/local/`
+exists and compiles with an empty `localHubs` wired into navigation, `FOR-YOUR-FORK.md`'s status
+line reflects reality. Commit, and this becomes Round 7 in `asa.md`'s roadmap once it's checked.
+
+---
+
+### 2026-09-08 — Round 7 built and committed (`e27c8c3`, `bc07550`)
+
+**Both seams, exactly as specced, nothing more.** `Project.extra` — a `Map<String, String>` of
+every frontmatter key outside the ten `projectFromFields` already names, in file order, empty
+(never null) when there's nothing extra. `lib/local/local_hubs.dart` — one `const
+List<WidgetBuilder> localHubs = []`, registered at the one point in `main.dart` that now builds a
+`hubs` list and shows `hubs.first`. No list like that existed before this — the app previously
+went straight to `home: const ProjectsScreen()` — so this round created the smallest version of
+"whatever list already drives navigation" the spec asked to append to, rather than assuming a
+richer structure that wasn't there. Visually identical: `hubs.first` is still the Product Hub,
+`localHubs` is empty, nothing anyone sees changed.
+
+`FOR-YOUR-FORK.md`'s status callout rewritten to say both seams are real, with the actual commit
+hash (`e27c8c3`) — one small follow-up commit (`bc07550`) once the hash existed, same as
+`v0.1-decisions.md`'s own pattern.
+
+`check.ps1` green: format, analyze, 181 unit tests (new: `extra` covered in `project_test.dart` —
+an invented key parses onto it, all ten named fields confirmed *not* to leak into it, and the
+common real case, nothing extra, stays an empty map, not null; `local_hubs_test.dart`, one
+assertion that the seam is empty), the real Windows integration test.
+
+**Nothing in `lib/hubs/` touched.** ADR 0012's pause stands; this was chosen specifically because
+it doesn't test it.
