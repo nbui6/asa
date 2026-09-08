@@ -4,7 +4,7 @@
 want them shared, and you do not want our releases trampling them. That is all fine and it is now
 written down.
 
-> **Status, honestly: all three seams are real now, shipped in `<pending — commit once merged>`.**
+> **Status, honestly: all three seams are real now, shipped in `e27c8c3`.**
 > `project.extra` reads any frontmatter key we don't already name. `lib/local/`, registered in
 > `lib/local/local_hubs.dart`, is wired into `main.dart` and empty by default — nothing here
 > changes what ships until you put something in it. The fork and the merge, which matter most,
