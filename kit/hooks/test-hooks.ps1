@@ -242,6 +242,74 @@ $out = Get-HookStdout $sandbox
 Check 'reports the recorded pass when there is one' ($out -match 'Last recorded passing machine check') 'the recorded pass was not mentioned'
 Clear-LastPass
 
+# --- orient: the Asa project-note block, found via the workspace shape --
+#
+# 2026-09-08. orient.ps1 fires reliably for a local session; the deciding
+# session has no hook at all. This block is this session's own half of the
+# fix: print Asa's real next-step from projects\asa\asa.md, found by
+# walking up to the three-sibling workspace shape (ADR 0006), not a
+# hardcoded path. Needs its own isolated fixture - $sandbox has no
+# projects\/workshop siblings and should not grow any for the sake of
+# this one case.
+
+Say ''
+Say 'orient.ps1 - the Asa project-note block'
+
+$workspaceRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("orient_ws_" + [guid]::NewGuid().ToString('N').Substring(0,8))
+$asaRepo = Join-Path $workspaceRoot 'asa'
+$projectsAsa = Join-Path $workspaceRoot 'projects\asa'
+New-Item -ItemType Directory -Path (Join-Path $asaRepo '.claude\hooks') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $asaRepo 'lib') -Force | Out-Null
+New-Item -ItemType Directory -Path $projectsAsa -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $workspaceRoot 'workshop') -Force | Out-Null
+
+Set-Content -LiteralPath (Join-Path $asaRepo 'CLAUDE.md') -Encoding ASCII -Value @'
+# CLAUDE.md
+
+## Where we are
+Round 7 shipped.
+'@
+Set-Content -LiteralPath (Join-Path $asaRepo 'lib\main.dart') -Encoding ASCII -Value 'void main() {}'
+
+$today = (Get-Date).ToString('yyyy-MM-dd')
+Set-Content -LiteralPath (Join-Path $projectsAsa 'asa.md') -Encoding ASCII -Value @"
+---
+project: Asa
+status: in progress
+next-step: Fire the doorman for real, then resume the window
+updated: $today
+---
+
+# Asa
+"@
+
+$code = Invoke-Hook 'orient.ps1' '{"hook_event_name":"SessionStart","how":"startup"}' $asaRepo
+Check 'exits 0 with the workspace shape present' ($code -eq 0) "expected 0, got $code"
+
+$out = Get-HookStdout $asaRepo
+Check 'prints the real status' ($out -match 'in progress') 'status missing from the Asa project-note block'
+Check 'prints the real next-step' ($out -match 'Fire the doorman for real') 'next-step missing from the Asa project-note block'
+Check 'humanises updated as today, for a same-day date' ($out -match '\(today\)') 'updated was not humanised'
+Check 'labels the block separately from CLAUDE.md, not merged into it' ($out -match 'asa\.md') 'the two sources were not distinguished'
+Check 'still prints CLAUDE.md''s own section too' ($out -match 'Round 7 shipped') 'the existing CLAUDE.md block was lost'
+
+Remove-Item -LiteralPath $workspaceRoot -Recurse -Force -ErrorAction SilentlyContinue
+
+# When the workspace shape cannot be found at all, say so plainly rather
+# than silently omitting the block or guessing a path.
+$isolated = Join-Path ([System.IO.Path]::GetTempPath()) ("orient_noshape_" + [guid]::NewGuid().ToString('N').Substring(0,8))
+New-Item -ItemType Directory -Path (Join-Path $isolated '.claude\hooks') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $isolated 'lib') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $isolated 'CLAUDE.md') -Encoding ASCII -Value "# CLAUDE.md`n`n## Where we are`nNothing yet.`n"
+Set-Content -LiteralPath (Join-Path $isolated 'lib\main.dart') -Encoding ASCII -Value 'void main() {}'
+
+$code = Invoke-Hook 'orient.ps1' '{"hook_event_name":"SessionStart","how":"startup"}' $isolated
+Check 'still exits 0 with no workspace shape found' ($code -eq 0) "expected 0, got $code"
+$out = Get-HookStdout $isolated
+Check 'says the workspace shape was not found, rather than guessing' (($out -match 'workspace root') -or ($out -match 'asa, projects and workshop')) 'no honest message when the shape is absent'
+
+Remove-Item -LiteralPath $isolated -Recurse -Force -ErrorAction SilentlyContinue
+
 # --- ranked work, and the plan gate, surfaced at session start ----------
 #
 # Added 2026-08-25. A ROADMAP item sat in Now, undone, for a whole session

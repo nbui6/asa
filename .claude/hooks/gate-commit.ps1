@@ -94,8 +94,30 @@ foreach ($dir in $watch) {
     }
 }
 
+# Make the path repo-relative for the message. The first version did
+# $newestFile.Replace($root, '') - a case-SENSITIVE string match that silently
+# does nothing when $root and the file's FullName disagree on casing, on a
+# trailing separator, or on slash direction. It printed the full path instead.
+#
+# Resolve-Path -Relative asks the filesystem instead of comparing strings, so
+# it is right whichever of those three it was - which matters, because the
+# cause was never actually confirmed. Fails back to the full path rather than
+# letting a cosmetic detail break a gate that is otherwise correct.
+function Get-RepoRelative {
+    param([string]$FullPath, [string]$Root)
+    try {
+        Push-Location -LiteralPath $Root -ErrorAction Stop
+        try {
+            $r = Resolve-Path -LiteralPath $FullPath -Relative -ErrorAction Stop
+            return ([string]$r) -replace '^\.[\\/]', ''
+        } finally { Pop-Location }
+    } catch {
+        return $FullPath
+    }
+}
+
 if ($newestFile -and $newestTime -gt $lastPass) {
-    $rel = $newestFile.Replace($root, '').TrimStart('\')
+    $rel = Get-RepoRelative -FullPath $newestFile -Root $root
     $passStr = $lastPass.ToString('yyyy-MM-dd HH:mm:ss') + ' UTC'
     $fileStr = $newestTime.ToString('yyyy-MM-dd HH:mm:ss') + ' UTC'
     Deny @"

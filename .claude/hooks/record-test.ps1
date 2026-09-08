@@ -54,10 +54,11 @@ if ($command.IndexOf($config.command, [StringComparison]::OrdinalIgnoreCase) -lt
 # some test runners exit 0 while reporting failures.
 #
 # PostToolUse names this field 'tool_response', and for Bash it is an object
-# with stdout and stderr rather than a string. Reading 'tool_output' - the name
-# this hook first guessed - meant it never recorded anything, and its own test
-# fed the same wrong name, so the test agreed with the bug. Every shape is
-# accepted now, and the test feeds the real payload.
+# with stdout and stderr rather than a string. The first version of this hook
+# read 'tool_output' - a name that does not exist - so it never recorded
+# anything, and its own test fed the same invented name, so the test agreed
+# with the bug. Verified against a captured live payload on 2026-08-24.
+# Every shape is accepted here because guessing once already cost a round.
 $output = ''
 $response = $hook.tool_response
 if (-not $response) { $response = $hook.tool_output }

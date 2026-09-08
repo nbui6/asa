@@ -49,6 +49,95 @@ function Get-MarkdownSection {
     return ($out -join "`n")
 }
 
+# Same idea for a "### <heading>" subsection. Kept as a separate function
+# rather than adding a -Level switch to the one above, because that one is
+# covered by tests that should not change shape to accommodate a new caller.
+function Get-MarkdownSubsection {
+    param([string]$Path, [string]$Heading)
+
+    if (-not (Test-Path $Path)) { return $null }
+
+    $lines = Get-Content -LiteralPath $Path -Encoding UTF8
+    $out = New-Object System.Collections.Generic.List[string]
+    $inside = $false
+
+    foreach ($line in $lines) {
+        if ($line -match '^#{1,3}\s') {
+            if ($inside) { break }
+            if ($line -match ('^###\s+' + [regex]::Escape($Heading) + '\s*$')) {
+                $inside = $true
+                $out.Add($line)
+                continue
+            }
+        }
+        if ($inside) { $out.Add($line) }
+    }
+
+    if ($out.Count -eq 0) { return $null }
+    return ($out -join "`n")
+}
+
+# workspace\ is a shape, not an address (ADR 0006): a folder holding
+# exactly three siblings named asa, projects, and workshop. Walk upward
+# from $From's parent until that shape is found, so this works from any
+# username, drive letter, or machine with nothing edited. Returns $null,
+# never a guess, when the search reaches the drive root without finding it.
+function Find-WorkspaceRoot {
+    param([string]$From)
+
+    $current = Split-Path -Parent $From
+    while ($current) {
+        $hasAsa = Test-Path (Join-Path $current 'asa') -PathType Container
+        $hasProjects = Test-Path (Join-Path $current 'projects') -PathType Container
+        $hasWorkshop = Test-Path (Join-Path $current 'workshop') -PathType Container
+        if ($hasAsa -and $hasProjects -and $hasWorkshop) { return $current }
+
+        $next = Split-Path -Parent $current
+        if (-not $next -or $next -eq $current) { return $null }
+        $current = $next
+    }
+    return $null
+}
+
+# Reads one flat "key: value" frontmatter line from a markdown file. Good
+# enough for asa.md's own frontmatter, which is exactly that shape - not a
+# general YAML reader, on purpose, same reasoning project.dart's own
+# parseFrontmatter gives for staying hand-written.
+function Get-FrontmatterValue {
+    param([string]$Path, [string]$Key)
+
+    if (-not (Test-Path $Path)) { return $null }
+    $lines = Get-Content -LiteralPath $Path -Encoding UTF8
+    if ($lines.Count -eq 0 -or $lines[0].Trim() -ne '---') { return $null }
+
+    for ($i = 1; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($line.Trim() -eq '---') { break }
+        if ($line -match ('^' + [regex]::Escape($Key) + ':\s*(.*)$')) {
+            return $Matches[1].Trim().Trim('"').Trim("'")
+        }
+    }
+    return $null
+}
+
+# "today" / "1 day ago" / "N days ago" - same convention
+# projects_scan.dart's stalenessLabel already uses in the app itself, so
+# the hook and the app never describe the same gap two different ways. A
+# date this cannot parse, or one in the future, is returned as-is rather
+# than guessed at.
+function Get-HumanizedAge {
+    param([string]$DateString)
+
+    $parsed = [datetime]::MinValue
+    if (-not [datetime]::TryParse($DateString, [ref]$parsed)) { return $null }
+
+    $days = (Get-Date).Date.Subtract($parsed.Date).Days
+    if ($days -lt 0) { return $null }
+    if ($days -eq 0) { return 'today' }
+    if ($days -eq 1) { return '1 day ago' }
+    return "$days days ago"
+}
+
 $root = Get-ProjectRoot
 $claudeMd = Join-Path $root 'CLAUDE.md'
 
@@ -86,6 +175,64 @@ if (Test-Path $lastPass) {
     $parts.Add("Last recorded passing machine check: $stamp")
 } else {
     $parts.Add('No passing machine check has been recorded yet. A commit will be blocked.')
+}
+
+# Ranked work that is already waiting. Added 2026-08-25 for a specific
+# failure: an item sat in ROADMAP.md "Now" for a whole session, undone,
+# while the exact collision it described caused a real defect eight hours
+# later. Nothing surfaced it, because nothing read the file. Analysis that
+# is never re-read is analysis that did not happen.
+$roadmap = Join-Path $root 'ROADMAP.md'
+$now = Get-MarkdownSubsection -Path $roadmap -Heading 'Now'
+if ($now) {
+    $parts.Add('Ranked and waiting, from ROADMAP.md:')
+    $parts.Add($now)
+}
+
+# Stage 0b. A plan without a signature means no round may be written, and
+# that fact is worth more at the start of a session than at the end of one.
+# The date pattern is deliberate: the template ships with underscores in
+# this line, and underscores must not read as a signature.
+$planMd = Join-Path $root 'PLAN.md'
+if (Test-Path $planMd) {
+    $planText = Get-Content -LiteralPath $planMd -Raw -Encoding UTF8
+    if ($planText -match '(?m)^\s*Confirmed by:\s*([^\s_][^\r\n]*?)\s+on\s+(\d{4}-\d{2}-\d{2})') {
+        $parts.Add("PLAN.md confirmed by $($Matches[1]) on $($Matches[2]).")
+    } else {
+        $parts.Add('PLAN.md exists but is NOT confirmed. PLAYBOOK.md stage 0b: no round note may be written until the Confirmed by line is signed.')
+    }
+}
+
+# Asa's own real next-step, from the project note itself - a different
+# question than CLAUDE.md's "Where we are" prose above, and printed as its
+# own labelled block, never merged into one paragraph with it. Added
+# 2026-09-08: this hook fires reliably for a local session, but a
+# deciding/cloud session reaching the machine through a device bridge has
+# no hook at all, so projects\asa\asa.md's own next-step sat unread for a
+# full day. This fixes this session's half of that; the other half stays
+# open (see HANDOVER.md).
+$workspaceRoot = Find-WorkspaceRoot -From $root
+if ($workspaceRoot) {
+    $asaNote = Join-Path $workspaceRoot 'projects\asa\asa.md'
+    $status = Get-FrontmatterValue -Path $asaNote -Key 'status'
+    $nextStep = Get-FrontmatterValue -Path $asaNote -Key 'next-step'
+    $updated = Get-FrontmatterValue -Path $asaNote -Key 'updated'
+
+    if ($status -or $nextStep -or $updated) {
+        $parts.Add('Asa project note (projects\asa\asa.md), separate from CLAUDE.md above:')
+        if ($status) { $parts.Add("Status: $status") }
+        if ($nextStep) { $parts.Add("Next step: $nextStep") }
+        if ($updated) {
+            $age = Get-HumanizedAge -DateString $updated
+            if ($age) {
+                $parts.Add("Updated: $updated ($age)")
+            } else {
+                $parts.Add("Updated: $updated")
+            }
+        }
+    }
+} else {
+    $parts.Add('Could not find the workspace root (a folder with asa, projects and workshop as siblings) - skipping the Asa project-note block rather than guessing a path.')
 }
 
 $parts.Add('--- end injected state ---')
