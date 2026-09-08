@@ -13,6 +13,7 @@ import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
+import 'package:asa/core/roadmap.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -404,7 +405,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _Field('Status', project.status),
-        _Field('Milestone', project.milestone),
+        _Field(
+          'Milestone',
+          effectiveMilestone(project.roadmap, project.milestone),
+        ),
         _Field('Next step', project.nextStep),
         _Field('Note updated by hand', project.updated),
         _Field('Last moved (from git)', _lastMovedText(git)),

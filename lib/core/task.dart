@@ -59,37 +59,45 @@ List<Task> parseTasks(String fileContents) {
 
   final tasks = <Task>[];
   for (final line in section.split('\n')) {
-    final match = _checkboxLine.firstMatch(line);
-    if (match == null) continue;
-
-    final done = match.group(1)!.toLowerCase() == 'x';
-    var text = match.group(2)!.trim();
-
-    final isCode = _trailingCodeTag.hasMatch(text);
-    if (isCode) {
-      text = text.replaceFirst(_trailingCodeTag, '').trim();
-    }
-
-    String? crossProjectRef;
-    final refMatch = _crossProjectPattern.firstMatch(text);
-    if (refMatch != null) {
-      crossProjectRef = refMatch.group(1);
-      // Drop the whole trailing fragment naming the other project — the
-      // em dash introducing it, if there is one, and the reference itself.
-      final dashBefore = text.lastIndexOf('—', refMatch.start);
-      final cutAt = dashBefore == -1 ? refMatch.start : dashBefore;
-      text = text.substring(0, cutAt).trim();
-    }
-
-    tasks.add(
-      Task(
-        rawLine: line,
-        text: text,
-        done: done,
-        isCode: isCode,
-        crossProjectRef: crossProjectRef,
-      ),
-    );
+    final task = parseTaskLine(line);
+    if (task != null) tasks.add(task);
   }
   return tasks;
+}
+
+/// Parses one checkbox line — `- [ ] text` or `- [x] text`, any
+/// indentation — into a [Task], or null when the line is not a checkbox
+/// line at all. Shared by [parseTasks] (a flat `## Tasks` section) and
+/// `roadmap.dart`'s nested per-milestone task lines — one place reads a
+/// trailing `(Code)` tag and a `[[project]]` reference, not two.
+Task? parseTaskLine(String line) {
+  final match = _checkboxLine.firstMatch(line);
+  if (match == null) return null;
+
+  final done = match.group(1)!.toLowerCase() == 'x';
+  var text = match.group(2)!.trim();
+
+  final isCode = _trailingCodeTag.hasMatch(text);
+  if (isCode) {
+    text = text.replaceFirst(_trailingCodeTag, '').trim();
+  }
+
+  String? crossProjectRef;
+  final refMatch = _crossProjectPattern.firstMatch(text);
+  if (refMatch != null) {
+    crossProjectRef = refMatch.group(1);
+    // Drop the whole trailing fragment naming the other project — the
+    // em dash introducing it, if there is one, and the reference itself.
+    final dashBefore = text.lastIndexOf('—', refMatch.start);
+    final cutAt = dashBefore == -1 ? refMatch.start : dashBefore;
+    text = text.substring(0, cutAt).trim();
+  }
+
+  return Task(
+    rawLine: line,
+    text: text,
+    done: done,
+    isCode: isCode,
+    crossProjectRef: crossProjectRef,
+  );
 }

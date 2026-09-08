@@ -8,6 +8,7 @@
 
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/roadmap.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -141,6 +142,21 @@ repo-path: C:\Users\test\workspace\asa
       expect(project.links, hasLength(1));
       expect(project.links.first.type, 'relates to');
       expect(project.links.first.target, 'other');
+    });
+
+    test('roadmap defaults to an empty list', () {
+      final project = projectFromFields({}, 'asa.md');
+      expect(project.roadmap, isEmpty);
+    });
+
+    test('roadmap passed in is carried onto the project', () {
+      final project = projectFromFields(
+        {},
+        'asa.md',
+        roadmap: const [Milestone(title: 'Round 0', done: true)],
+      );
+      expect(project.roadmap, hasLength(1));
+      expect(project.roadmap.first.title, 'Round 0');
     });
 
     test('description is null unless passed in', () {

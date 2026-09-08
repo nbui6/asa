@@ -7,6 +7,7 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/project.dart';
+import 'package:asa/core/roadmap.dart';
 
 /// Reads the project home note inside [projectFolder].
 ///
@@ -43,6 +44,7 @@ Future<ProjectReadResult> readProject(String projectFolder) async {
       noteFile.path,
       links: parseLinks(contents),
       description: deriveDescription(contents),
+      roadmap: parseRoadmap(contents),
     ),
     rawFrontmatter: raw,
   );

@@ -4,6 +4,8 @@
 /// a running app, and it is the one architecture rule this project has.
 library;
 
+import 'package:asa/core/roadmap.dart';
+
 class Project {
   const Project({
     required this.name,
@@ -19,6 +21,7 @@ class Project {
     this.deadline,
     this.jira,
     this.links = const [],
+    this.roadmap = const [],
   });
 
   final String name;
@@ -46,6 +49,12 @@ class Project {
   final String? deadline;
   final String? jira;
   final List<ProjectLink> links;
+
+  /// The `## Roadmap` section, parsed — ADR 0014/0015. Empty when the
+  /// project has none yet; six of nine real projects are exactly that
+  /// case today. See `roadmap.dart`'s `effectiveMilestone` for what to
+  /// show instead of [milestone] once this is non-empty.
+  final List<Milestone> roadmap;
 }
 
 /// One typed, directional relationship to another project — `relates to`,
@@ -163,6 +172,7 @@ Project projectFromFields(
   String sourceFile, {
   List<ProjectLink> links = const [],
   String? description,
+  List<Milestone> roadmap = const [],
 }) {
   String field(String key) {
     final value = fields[key];
@@ -194,6 +204,7 @@ Project projectFromFields(
     deadline: optionalField('deadline'),
     jira: optionalField('jira'),
     links: links,
+    roadmap: roadmap,
   );
 }
 
