@@ -133,6 +133,41 @@ repo-path: C:\Users\test\workspace\asa
       expect(project.links, isEmpty);
     });
 
+    test('extra carries a frontmatter key none of the ten named fields '
+        "reads — Round 7's fork seam, FOR-YOUR-FORK.md", () {
+      final project = projectFromFields({
+        'project': 'Asa',
+        'owner': 'nico',
+      }, 'asa.md');
+
+      expect(project.extra['owner'], 'nico');
+      expect(project.name, 'Asa');
+    });
+
+    test('a named field never leaks into extra', () {
+      final project = projectFromFields({
+        'project': 'Asa',
+        'status': 'in progress',
+        'milestone': 'Round 2',
+        'next-step': 'Do the thing',
+        'repo-path': r'C:\code',
+        'updated': '2026-09-08',
+        'parent': 'other',
+        'priority': 'medium',
+        'deadline': '2026-12',
+        'jira': 'ASA-1',
+      }, 'asa.md');
+
+      expect(project.extra, isEmpty);
+    });
+
+    test('extra is empty, never null, when there is nothing extra — the '
+        'common case, every real project today', () {
+      final project = projectFromFields({}, 'asa.md');
+      expect(project.extra, isEmpty);
+      expect(project.extra, isNotNull);
+    });
+
     test('links passed in are carried onto the project', () {
       final project = projectFromFields(
         {},

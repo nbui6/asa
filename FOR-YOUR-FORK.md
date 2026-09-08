@@ -4,10 +4,11 @@
 want them shared, and you do not want our releases trampling them. That is all fine and it is now
 written down.
 
-> **Status, honestly: the deal below is agreed. Two of the three seams are not built yet.** They
-> are **v0.1.1**, and v0.1 does not have a green check yet. What works today is the fork and the
-> merge — which is the part that matters most. This file says what is agreed; it will say
-> "shipped in `<hash>`" when it is.
+> **Status, honestly: all three seams are real now, shipped in `<pending — commit once merged>`.**
+> `project.extra` reads any frontmatter key we don't already name. `lib/local/`, registered in
+> `lib/local/local_hubs.dart`, is wired into `main.dart` and empty by default — nothing here
+> changes what ships until you put something in it. The fork and the merge, which matter most,
+> have worked since before this file existed.
 
 ---
 

@@ -22,6 +22,7 @@ class Project {
     this.jira,
     this.links = const [],
     this.roadmap = const [],
+    this.extra = const {},
   });
 
   final String name;
@@ -55,6 +56,15 @@ class Project {
   /// case today. See `roadmap.dart`'s `effectiveMilestone` for what to
   /// show instead of [milestone] once this is non-empty.
   final List<Milestone> roadmap;
+
+  /// Every frontmatter key this file does not already name, in the order
+  /// `parseFrontmatter` found them — Round 7's fork seam,
+  /// `FOR-YOUR-FORK.md`: "put any key you like in your project's
+  /// frontmatter and read it as `project.extra['your_key']`. Needs
+  /// nothing from us." No screen in this codebase reads it; that is the
+  /// point. Empty, never null, when there is nothing extra — no real
+  /// project has a custom key yet.
+  final Map<String, String> extra;
 }
 
 /// One typed, directional relationship to another project — `relates to`,
@@ -189,6 +199,11 @@ Project projectFromFields(
     return (value == null || value.isEmpty) ? null : value;
   }
 
+  final extra = <String, String>{
+    for (final entry in fields.entries)
+      if (!_namedFields.contains(entry.key)) entry.key: entry.value,
+  };
+
   return Project(
     name: field('project'),
     status: field('status'),
@@ -205,8 +220,24 @@ Project projectFromFields(
     jira: optionalField('jira'),
     links: links,
     roadmap: roadmap,
+    extra: extra,
   );
 }
+
+/// The ten frontmatter keys [projectFromFields] already reads by name —
+/// everything else becomes [Project.extra].
+const _namedFields = {
+  'project',
+  'status',
+  'milestone',
+  'next-step',
+  'repo-path',
+  'updated',
+  'parent',
+  'priority',
+  'deadline',
+  'jira',
+};
 
 /// Parses the `links:` block out of frontmatter, if there is one.
 ///
