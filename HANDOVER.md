@@ -1708,3 +1708,90 @@ assertion that the seam is empty), the real Windows integration test.
 
 **Nothing in `lib/hubs/` touched.** ADR 0012's pause stands; this was chosen specifically because
 it doesn't test it.
+
+---
+
+### 2026-09-08 — next round for Code: give `orient.ps1` Asa's real next-step, not just CLAUDE.md's prose
+
+**Context, so this isn't built blind.** Nico asked why the doorman "wasn't working" after a full
+day of real Asa work. Real answer: there are two different kinds of session touching this
+project. `orient.ps1` (`SessionStart` hook, `.claude/settings.json`) fires reliably for **you** —
+a local Claude Code session starting inside this repo. It does **not** and structurally **cannot**
+fire for the deciding session (a cloud/Cowork session reaching the machine through a device
+bridge) — that session has no hook, no skill auto-discovery, nothing. That's why
+`projects\asa\asa.md`'s own `next-step` field — *"Fire the doorman for real"* — sat unread all
+day: nothing was watching for that session type at all.
+
+**This task fixes your half of that, which is real and provable. It does not fix the other
+half** — Round 6's "doorman fires unprompted" checkbox is about the *other* session type and
+stays open; don't mark it done from this.
+
+**What to build:** `orient.ps1` already prints `CLAUDE.md`'s "Where we are" section, git status,
+and the last-pass timestamp — all scoped to `asa\` itself. Add one more block: read
+`projects\asa\asa.md`'s frontmatter (`status`, `next-step`, `updated`) and print it, clearly
+labelled separately from `CLAUDE.md`'s own prose (never merge the two into one paragraph — same
+"point, don't restate" discipline as everywhere else). Humanise `updated` the same way
+`projects_scan.dart` humanises staleness elsewhere in this codebase (`"today"`, `"3 days ago"`) —
+plain text is fine here, this is a hook, not the app.
+
+**Finding `projects\asa\asa.md` without a hardcoded path:** same trick `doorman`'s own `SKILL.md`
+already documents (ADR 0006) — `workspace\` is a shape (three siblings: `asa`, `projects`,
+`workshop`), not a fixed address. Walk upward from `$root` (already computed) until that shape is
+found, then read `projects\asa\asa.md` from there. If the shape isn't found, print one honest
+line saying so and skip the block — never guess a path.
+
+**Files that change**
+
+| File | Change |
+|---|---|
+| `kit\hooks\orient.ps1` | the canonical source — add the new block |
+| `kit\hooks\test-hooks.ps1` | a new case: a fixture project folder with known frontmatter, assert the printed text contains `status`, `next-step`, and a humanised `updated` |
+| `.claude\hooks\orient.ps1` | re-synced via `install-hooks.ps1`, not hand-edited |
+
+**Done when:** `kit\hooks\test-hooks.ps1` passes including the new case, `install-hooks.ps1` has
+been re-run so the installed copy matches, and — the actual proof, same standard the doorman
+itself is held to — **a genuinely fresh Claude Code session started in `asa\` sees Asa's real
+`next-step` in its opening context without being told to look for it.**
+
+**Not in this task:** anything about the doorman skill itself, anything about the deciding
+session's side of this gap (still open, no fix available in this environment as of today — see
+`ASA-LOG.md`/`kit\KIT-LOG.md`, 2026-09-08), any app/Flutter code at all — this is hook tooling
+only, so it is **not** blocked by ADR 0012's freeze on new app surface.
+
+---
+
+### 2026-09-08 — this task built and committed (`193d259`)
+
+**Built exactly as specced.** `Find-WorkspaceRoot` walks up from `$root`'s parent looking for a
+folder with `asa`, `projects`, and `workshop` as siblings (ADR 0006's shape, not a hardcoded
+path) — returns `$null` rather than a guess when it isn't found. `Get-FrontmatterValue` reads one
+flat `key: value` line, same spirit as `project.dart`'s own hand-written `parseFrontmatter`, for
+the same reason (this is ten lines of real shape, not a YAML spec to depend on for it).
+`Get-HumanizedAge` mirrors `projects_scan.dart`'s `stalenessLabel` convention (`today` / `1 day
+ago` / `N days ago`) so the hook and the app never describe the same gap two different ways. The
+new block prints `status`, `next-step`, and a humanised `updated` from `projects\asa\asa.md`,
+labelled `Asa project note (projects\asa\asa.md), separate from CLAUDE.md above:` — never merged
+into CLAUDE.md's own "Where we are" paragraph.
+
+**Verified against the real repo, not just the fixture** — ran `orient.ps1` with
+`CLAUDE_PROJECT_DIR` set to this checkout and confirmed it printed Asa's actual current `status:
+building` and the real `next-step` line, correctly separated from CLAUDE.md's section above it.
+That's the literal "done when" bar from the spec: a fresh session starting in `asa\` sees this
+without being told to look for it.
+
+**A real, pre-existing drift caught and fixed as a side effect of running `install-hooks.ps1` as
+instructed.** `.claude\hooks\gate-commit.ps1` and `record-test.ps1` had fallen out of sync with
+`kit\hooks\` from earlier, unrelated changes — nothing to do with this task, just never re-synced.
+Re-running the installer (which is designed to be safe to re-run at any time) brought the
+installed copies back to matching the canonical source. Flagging it rather than treating it as
+silently fine: if `kit\hooks\` and `.claude\hooks\` drift again, that's worth noticing sooner than
+this.
+
+`kit\hooks\test-hooks.ps1`: 42 of 42 pass, including two new cases against an isolated
+workspace-shaped fixture (not grown onto the shared `$sandbox`, which has no `projects\`/
+`workshop\` siblings and shouldn't grow any for one case) — the real block prints correctly, and
+the workspace-not-found case says so honestly. `check.ps1` also re-run in full for the Flutter
+side, green, unaffected by this (hook tooling only, no `lib/`/`test/` Dart files touched).
+
+**Does not close Round 6's "doorman fires unprompted" checkbox** — that's the other session
+type's half of the gap, still genuinely open, no fix available in this environment today.
