@@ -1442,3 +1442,166 @@ and the reformatted decision-detail screen are all decided or sketched but none 
 spec written for this session yet — per the 2026-09-08 session-close entry, that is deliberate,
 separate, later work. The doorman skill itself (`kit/skills/doorman/`) is Cowork's own file, not
 touched here.
+
+---
+
+### 2026-09-08 — spec: the `## Roadmap` section, milestones with nested tasks, and the derived progress bar
+
+**Real fixtures exist now, not invented for this spec.** `projects\asa\asa.md` and
+`projects\partner-trial-process\partner-trial-process.md` both carry a real `## Roadmap` section as
+of today — use them as parsing fixtures directly, the same way ADR 0012's real heading text was
+used verbatim for the `sectionTextByPrefix` regression test in the 2026-09-08 entry above.
+
+**Decided by:** ADR 0014 (accepted, revised twice) and ADR 0015 (accepted, revised once) — both in
+`decisions\`. This spec is the code shape for what they already decided; it does not reopen either.
+
+#### 1. Parsing `## Roadmap`
+
+- A **top-level** `- [ ]` / `- [x]` line under `## Roadmap` is a **milestone**. Its text is wrapped
+  in `**...**` in both real fixtures today — strip it for the stored title (reuse
+  `stripEmphasisMarkers` from `markdown.dart`, already added 2026-09-08 for the decision-detail
+  screen) and bold it again at render time, not at parse time.
+- A line **indented two spaces** under a milestone is one of that milestone's **tasks** — same
+  checkbox syntax, same whitelist ADR 0007 already covers, one level of nesting only. Order within
+  a milestone is preserved as written.
+- Milestones are read **in file order**, not sorted or re-ranked by the app.
+- **No `## Roadmap` heading → an empty list, not an error and not a fallback guess.** Six of nine
+  projects have no roadmap today (ADR 0014's own survey) — that's the common case, not an edge case.
+
+#### 2. Data model
+
+```
+class Milestone {
+  final String title;      // stripped of ** markers
+  final bool done;
+  final List<Task> tasks;  // existing Task type, nested one level
+}
+```
+
+Add `List<Milestone> roadmap` to `Project` (parsed alongside `tasks`, same file read). Empty list
+when the section is absent — no `roadmap: []` needs typing anywhere, this is derived from the file
+like everything else `core/` reads.
+
+#### 3. `milestone:` frontmatter becomes derived, one source at a time (ADR 0014, point 3)
+
+- **If `project.roadmap` is non-empty:** the effective milestone shown anywhere in the UI (project
+  screen's `Milestone` field, any future front-page label) is **the first milestone in the list
+  where `done == false`.** The typed `milestone:` frontmatter value is **not read for display** in
+  this case — don't delete it from the file, just stop showing it once a real roadmap exists.
+- **If every milestone is done:** show the **last** milestone, with a "— done" suffix, rather than
+  showing nothing. (Not covered explicitly by either ADR; reasonable default, flag if it feels
+  wrong once a project actually finishes its roadmap — none has yet.)
+- **If `project.roadmap` is empty:** unchanged, current behaviour — read the typed `milestone:`
+  field as today.
+- Update `project_screen.dart` line ~407 (`_Field('Milestone', project.milestone)`) to read this
+  derived value instead of the raw typed field. `project.milestone` (the typed frontmatter string)
+  stays on `Project` for the empty-roadmap case above — don't remove it.
+
+#### 4. The progress bar — segments, never a percentage (ADR 0014, point 4 and its revision)
+
+- Counts **milestones only.** A milestone's own tasks do not move the bar — only ticking the
+  milestone itself does. (Sketches this session drew tasks as sub-detail under an unticked
+  milestone precisely to show this: 2 of a milestone's 5 tasks done still reads as that milestone
+  being 0/1 on the bar.)
+- Render as **discrete filled/unfilled segments, one per milestone**, labelled — not a continuous
+  percentage fill. `bars_view.dart` currently has no segment renderer at all (its own comment says
+  so: *"no segmented milestone-history bar yet"*) — this is new, not an extension of something
+  partial.
+- **No `## Roadmap` → no bar**, same absence rule as priority/deadline/the Jira chip. Don't draw an
+  empty bar or a bar with zero segments — omit the whole element.
+
+#### 5. Explicitly out of scope for this spec
+
+- **Quick capture** (Round 4 in `ROADMAP.md`, still "idea") and **drag-to-promote** a task into a
+  milestone (ADR 0014's capture-never-classifies addendum) — real, decided, but Nico is still
+  thinking through the exact shape of the capture UI as of tonight. Don't build either against this
+  spec; a separate one will follow once that's settled.
+- **Cross-project shared milestones** (ADR 0015, pointer not copy) — no two projects share one yet
+  in practice beyond the existing `[[license-commerce-integration]]` task-level link, which already
+  renders. Nothing new to build here until a second real instance exists (the ADR's own "rule of
+  two").
+- Reordering or dragging a milestone or its tasks — not asked for, not decided.
+
+#### Test fixtures
+
+Use `projects\asa\asa.md`'s real `## Roadmap` (7 milestones, 1 done, mixed nested task states) and
+`projects\partner-trial-process\partner-trial-process.md`'s (8 milestones, 0 done, no nesting) as
+the two parsing fixtures — real files, not synthetic markdown, same discipline as the existing
+decision-parsing tests.
+
+**Done when:** `project_screen.dart` shows Asa's derived milestone as "Foundation — the record can
+be trusted before anyone acts on it" (not the old typed string), and a segmented 1-of-7 bar renders
+for Asa with no code path that shows a bar for a project with no `## Roadmap` section.
+
+---
+
+### 2026-09-08 — correction: the Roadmap/Milestone spec above missed ADR 0012's own pause
+
+**Code asked the right question before building any of it. Answer, checked against ADR 0012's real
+text just now, not from memory:**
+
+ADR 0012, Decision part 3: *"The app continues as the window, and pauses on new surface until 1 is
+done... The Bars-view spec written earlier today, and Nico's five UI items, stay specced and
+unbuilt for now."* Part 1 ("1") is the doorman firing unprompted in a fresh conversation and
+catching one real stale thing — **still unchecked** on `asa.md`'s own Round 6 as of this entry. The
+pause is still in force.
+
+**The spec above is two different things under that rule, not one:**
+
+- **§1 (parsing `## Roadmap`), §2 (the `Milestone`/`Task` data model), §3 (deriving the `milestone:`
+  value shown in the existing `Milestone` field on `project_screen.dart`)** — **build these now.**
+  Nothing here is new surface: it's a `core/` parsing change, plus swapping which value an
+  already-existing field displays. No new screen, no new visual element.
+- **§4 (the segmented progress bar on `bars_view.dart`)** — **this is new surface, and it is
+  exactly what ADR 0012 paused.** `bars_view.dart` has no bar today; adding one is precisely the
+  Bars-view work part 3 named. **Do not build §4 yet.**
+
+**Revised "Done when"** (replacing the line at the end of the 2026-09-08 spec entry above, which
+wrongly included the bar): `project_screen.dart` shows Asa's derived milestone as "Round 6 —
+Foundation: the record can be trusted before anyone acts on it," parsed from the real
+`## Roadmap` section, with no bar built and no code path attempting to render one. The bar is
+**Round 4's own work** (already in the roadmap, tagged for Version v0.2) and waits behind Round 6
+like everything else on that list.
+
+**How this happened:** the spec was written without re-checking ADR 0012's actual text first — the
+same mistake named in `ASA-LOG.md`'s 2026-09-08 entry, one message earlier. Caught here by Code
+asking rather than building, which is the whole reason a question like that is worth asking out
+loud instead of guessing quietly.
+
+---
+
+### 2026-09-08 — round built and committed (`9903d8c`): Roadmap parsing, sections 1–3 only
+
+**Built exactly the split Nico confirmed:** `lib/core/roadmap.dart` (`Milestone`, `parseRoadmap`,
+`effectiveMilestone`), `Project.roadmap` (parsed in `project_reader.dart` alongside the existing
+frontmatter/description/links read — one file read, nothing new), and
+`project_screen.dart`'s Milestone field now shows `effectiveMilestone(project.roadmap,
+project.milestone)`. `task.dart`'s per-line checkbox parser was pulled out as `parseTaskLine` so a
+milestone's nested tasks reuse the exact same `(Code)`/`[[project]]` handling as `## Tasks`, not a
+second copy. **Section 4 (the progress bar) was not touched** — `bars_view.dart` is untouched by
+this commit, exactly as agreed.
+
+`check.ps1` green: format, analyze, 177 unit tests (new: `roadmap_test.dart`, using both real
+`## Roadmap` fixtures verbatim — `asa.md`, 12 milestones today, 3 done; `partner-trial-process.md`,
+8 milestones, none done, no bold markers, no nesting), the real Windows integration test.
+
+**A real drift found while testing, reported rather than papered over.** `asa.md`'s `## Roadmap`
+has grown since this spec and its correction were written earlier today — 12 milestones now, 3
+done (Round 0, 1, 5), not the "7 milestones, 1 done" either entry described. Run honestly against
+the file as it reads right now, `effectiveMilestone` returns **"Round 2 — every project on one
+screen (Home)"** — the actual first undone milestone in file order — not **"Round 6"**, the
+worked example both the original spec and its correction named as the expected result. The
+algorithm itself matches the written rule exactly ("the first milestone, in file order, that is
+not done"); the file just moved between the spec being written and being built. Recorded as a
+passing test that asserts the real, current output, with the discrepancy spelled out in its own
+description — not adjusted to force a match with the stale example, and not silently shipped
+without saying so. **Needs one of:** the rule is actually meant to be something other than
+"first undone in file order" (and Round 2 not really being "current work" is the tell), or Round
+2–4 need their own real status update, or "Round 6" in the examples was simply written loosely and
+the algorithm is fine as specified. Not resolved here — flagging for Nico/Cowork to say which.
+
+**State: committed, not yet shown to Nico with a screenshot** — same automation constraints as the
+Bars round (Debug build shows no window on this machine; Release works but window-capture
+coordinates have been unreliable this session). `project_screen.dart`'s Milestone field is a plain
+text row, easy to eyeball by running the Release build and opening the `asa` project directly —
+offering that rather than fighting the screenshot pipeline again for a one-line text change.
