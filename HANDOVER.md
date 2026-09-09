@@ -532,3 +532,151 @@ job to fix that.
 
 `check.ps1`: run clean end to end after the doc edits — confirms item 1's existing behaviour is
 intact and item 2 touched nothing it could have broken.
+
+
+---
+
+## ⬇ Downstream — 2026-09-09, next round for Code: README.md still describes 2026-09-01
+
+**Not new app surface — documentation only, no `lib/` or `test/` file.** Found by actually reading
+the file, not from a backlog description of it (see today's earlier correction — that's the rule
+now, applied here before writing this).
+
+**"Where it is right now" pins a commit and says nothing has changed since — that's false, and
+increasingly so.** It names `00dd66d` (2026-09-01) and states outright: *"nothing in the app has
+changed since."* Real `git log` since then includes at least Round 5 (accept/reject + Tasks view,
+shipped and pushed as v0.1, `2026-09-07`/`08`), Round 7 (the fork seam, `e27c8c3`/`bc07550`,
+pushed as v0.1.1), Round 11 (the real Windows `.exe`, `a4dda52`), the flaky-test fix (`b1394a2`),
+and today's doc round (`b4ed8d3`). The table underneath ("Built and committed" / "Written, not
+verified" / "Planned, in order") is built entirely on that one stale snapshot.
+
+**Also check whether the folder-path claim is still accurate.** The same section says the
+projects folder "is fixed in the source" and that "the folder picker... is written, not yet
+verified, not yet committed" — but `BACKLOG.md`'s real-folder-dialog entry describes a working
+paste-a-path seam already in the repository, and Nico has been running the app against his real
+`projects\` folder since at least Round 2's job-zero check. Read the real code
+(`lib/hubs/product/`, wherever the folder path is resolved) rather than carrying this claim
+forward — say plainly what's actually true today.
+
+**There's also a stray leftover paragraph** under "Running it" — *"This paragraph described the
+picker as if it shipped from 1 to 2 September 2026. It did not..."* — a correction-in-place from
+whatever prompted the original staleness. Once the section above is rewritten against real
+evidence, check whether that paragraph is still needed or now just confusing next to a corrected
+section; use your judgement and say what you did with it.
+
+**Done when:** every factual claim in "Where it is right now" and the folder-path paragraph in
+"Running it" matches something you actually checked — a real commit, a real read of the code —
+not carried forward from 2026-09-01. Keep the doc's own voice (early, honest about what's still
+rough, names a commit rather than a vague "recently"); this is a correction, not a rewrite into
+something more polished than the app currently is.
+
+**Not part of this round:** anything else in `README.md` you didn't find actually wrong: don't
+add new sections, don't touch `kit/`'s own description, no code changes anywhere.
+
+---
+
+### 2026-09-09 — README corrected against real evidence, not the 2026-09-01 snapshot
+
+**"Where it is right now" rewritten, pinned to `b4ed8d3`.** Every claim checked before writing it:
+`git log` for what's actually built and committed (the folder picker, the flat front page, the
+Tasks view, the Decisions tab with accept/reject, the Roadmap-derived Milestone field); a direct
+read of `projects_screen.dart` for the folder-path claim, which was flatly wrong — it said "fixed
+in the source," but the paste-a-path picker has been built and committed since v0.1 (`ce76a55`),
+long before this README was last touched. Replaced the stale table with one naming what's real
+today, and moved the redesigned front page (uncommitted, sitting in the working tree) into
+"written, not yet shown or committed" rather than leaving it absent.
+
+**Two more echoes of the same stale claim, found while fixing the first one, fixed too — not new
+scope, the same fact repeated in three places:** *"You will be told when the app is worth ten
+minutes"* and *"Right now the part worth trying is `kit/`, not the app"* both directly contradicted
+the corrected section the moment it said the app is worth trying now. Leaving them would have made
+the file internally inconsistent on the same page. Removed both rather than reworded, since
+neither said anything true left to keep.
+
+**The stray leftover paragraph** ("This paragraph described the picker as if it shipped from 1 to
+2 September...") — removed. It was a correction-in-place for a staleness that's now doubly
+resolved (the picker is real, long committed); keeping a footnote about an old correction next to
+a freshly corrected sentence would only confuse, not inform.
+
+**Not touched:** `kit/`'s own "v1.24, one outside test" claim — not asked to verify it and found
+nothing pointing at it being wrong; the rest of the file, including sections this round wasn't
+about.
+
+`check.ps1`: run clean on the second attempt. First attempt failed at step 3 with **both** known
+flaky tests at once — `projects_screen_test.dart` (already known) and, worth flagging plainly,
+`decision_detail_screen_test.dart` — the one polled instead of slept a fixed delay, last round
+(`b1394a2`). That fix was validated with three runs then; this is a fourth data point showing it
+still isn't fully reliable under load, not a new break from this docs-only round (which touched
+neither file). Not chased further here — out of scope for a README round — but the poll-based fix
+may need a longer timeout, a different wait condition, or a structural change; recording the
+recurrence so it isn't mistaken for solved.
+
+---
+
+## ⬇ Downstream — 2026-09-09, next round for Code: resume the Bars view — verify, show, commit
+
+**ADR 0012's freeze is lifted.** Nico, explicitly: *"code is done. we can continue. give me spec,
+yes let's do the paused work."* This is the first piece resumed, chosen because it isn't new work
+— it's already sitting in the working tree, uncommitted, from the 2026-09-07 round: `lib/core/
+project_bars.dart`, `project_tree.dart`, `open_url.dart`, `lib/hubs/product/bars_view.dart`,
+`test/project_bars_test.dart`, `test/project_tree_test.dart`, already wired into
+`projects_screen.dart` (`BarsView(` at line ~297). It stopped there deliberately — the file's own
+header comment says the next increment, a segmented progress bar, needs real measured milestone
+history that doesn't exist yet, and correctly left it alone. That boundary still holds; this round
+does not extend it.
+
+**1. Verify what's already there, don't rebuild it.** Run `check.ps1` clean. If anything in these
+six files doesn't build or doesn't pass as-is after nearly two days sitting uncommitted (a rebase
+drift, a stale import, anything), say exactly what and fix only that — this is a resume, not a
+redesign.
+
+**2. Show it, per rule 19 — the real running app, not a screenshot.** The last two rounds that
+tried automated screenshots of the real window both failed for reasons outside your control
+(Round 11's build report). Don't repeat that here: launch the built app yourself to confirm it
+opens and the Bars view renders against real project data with no crash, then ask Nico to look at
+the real running window himself and say yes — same pattern that worked for Round 11.
+
+**3. Commit only after that yes**, per rule 19's order. Not before.
+
+**Sketch it's built against:** `projects\asa\sketches\asa-front2.html`, approved
+`sketches\APPROVED.md` (2026-09-01 row) — open it yourself on the device rather than trusting a
+description of it. **One live caution, not new:** that sketch's project names are close to real
+work identifiers in places; `APPROVED.md`'s own note on it says to build against the current name
+in `projects\`, not whatever the picture shows, which is already what `bars_view.dart` does. Keep
+doing that — nothing from `projects\` content belongs in this repository, this file included.
+
+**Done when:** `check.ps1` passes clean; the real app, launched by you, shows the Bars view
+against real projects with no crash; Nico has looked at the real window and said yes; then, and
+only then, committed.
+
+**Not part of this round:** the segmented progress bar, milestone history, the other four of
+Nico's five UI items, or Round 2's own sketch-matching beyond what the Bars view already covers.
+One resumed piece at a time.
+
+
+### 2026-09-09 — correction to the round above: rename "Bars" to "Projects" throughout, per rule 12
+
+Nico, after seeing the sketch: *"the menu pannel is wrong. We also have changed the name Bars to
+Projects."* Clarified over a few turns: the front-page toggle itself stays two options — it's
+the label that's wrong, not the structure. (Plan/Strategy/HR are project-page tabs, confirmed —
+they don't belong on this toggle; ignore anything that suggested otherwise.)
+
+**Rule 12: a retired term is a banned term.** "Bars" is retired — rename it everywhere, not just
+the visible label. Checked the real code before writing this, so this list is what actually
+needs to change, not a guess:
+
+- The visible string: `projects_screen.dart`'s `_viewToggle()`, tooltip `'Bars view'` → `'Projects
+  view'`.
+- `enum _ViewMode { bars, tasks }` and every reference to `_ViewMode.bars` (three call sites today).
+- `class BarsView` / `_BarsViewState` in `lib/hubs/product/bars_view.dart` — rename the class,
+  and the file itself (your call on the exact new filename — `projects_view.dart` is the obvious
+  one, keep it consistent with whatever the class becomes).
+- `lib/core/project_bars.dart` — named after the same retired term, holds the helpers this view
+  uses (`jiraLabel`, `humanizeDeadline`, etc.). Rename it too, same reasoning.
+- `test/project_bars_test.dart` — follows the file it tests.
+- Comments naming "Bars" in `project_tree.dart`, `tasks_reader.dart`, and `projects_screen.dart`
+  itself (four found) — update the wording, not just the code.
+
+**Everything else in the previous entry stands unchanged:** verify with `check.ps1`, show Nico the
+real running window (not a screenshot), commit only after his yes. This is still one resumed
+round, not a new one — the rename rides along with it rather than becoming its own.

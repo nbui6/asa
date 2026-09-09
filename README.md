@@ -13,26 +13,22 @@ and shows them back to you. It does not ask you to fill anything in.
 
 ## Where it is right now
 
-*The app described here is the state committed on 1 September 2026, `00dd66d` — **nothing in the
-app has changed since.** This section names a commit on purpose: a status line that names nothing
-is quietly wrong, and one that names a hash is visibly out of date.*
+*The app described here is the state committed on 9 September 2026, `b4ed8d3`. This section names
+a commit on purpose: a status line that names nothing is quietly wrong, and one that names a hash
+is visibly out of date.*
 
-**Running the app is not worth your time yet, and you do not need to try.** It reads projects from
-a folder path that is **fixed in the source**, so on any machine but the owner's it finds nothing.
-The folder picker that fixes this is version 0.1 — written, not yet verified, not yet committed.
+**The app is worth trying now.** The projects folder is chosen once, on first run — paste a path
+into the box — and Asa remembers it in your own Windows app-data folder, never in this repository.
 
 | | |
 |---|---|
-| **Built and committed** | A Windows window · one project's state read from its own markdown and git · **every project on one screen, sorted by how long since anything moved** |
-| **Written, not verified** | **v0.1** — every decision of a project, read from the files that already hold it, with *why* and *what would change this*; plus the folder picker |
-| **Planned, in order** | state derived from git instead of typed, with progress per project · parked ideas, raised automatically when the same one is parked twice · the steps of a round, derived from the folder rather than listed · how projects relate to each other · tabs that appear only when they have content · priority and deadlines |
-| **Deliberately last** | packaging it so a second person installs and uses it. That is the final version, not the first — see *Two gates* in the plan. |
+| **Built and committed** | A Windows window · the folder picker (paste-a-path, persisted) · every project on one screen, sorted by how long since anything moved · a Tasks view alongside it (real project tasks, cross-project references, a filter for tasks that aren't yours) · a project's Decisions tab — every decision, *why*, *what would change this*, and, for a proposed one, an Accept/Reject that appends the verdict to the file itself, never overwriting anything · a project's Milestone field, derived from its own `## Roadmap` once it has one |
+| **Written, not yet shown to the owner or committed** | A redesigned front page — status and priority pills, a Jira chip, work/personal projects grouped — matching the approved sketch. The current flat list ships until this is confirmed. |
+| **Planned, in order** | a segmented progress bar per project, derived from real milestone history, once one exists · the rest of the five UI changes still open · quick capture · how projects relate to each other · an HR tab for skills and agents · packaging for a second person to install without a Flutter toolchain |
 
 **`kit/` is a different matter: it is usable today and needs none of the app.** It is at v1.24, it
-has been through one outside test, and everything that test produced is in it.
-
-**You will be told when the app is worth ten minutes.** Until then feedback on the kit is worth
-more, and the three questions under [For testers](#for-testers) apply to it just as well.
+has been through one outside test, and everything that test produced is in it. The three questions
+under [For testers](#for-testers) apply to it just as well as to the app.
 
 ---
 
@@ -108,21 +104,16 @@ flutter analyze
 flutter test
 ```
 
-**The folder your project notes live in is currently fixed in the source, not chosen.** On any
-machine but the owner's, the app opens and finds nothing. **A folder picker is version 0.1** —
-written, not verified; the choice will be stored in your own Windows app-data folder, never in
-this repository.
-
-*This paragraph described the picker as if it shipped from 1 to 2 September 2026. It did not: it
-was written in a working tree and the commit did not have it. A README describes the commit
-someone can clone, never the machine it was written on.*
+**The folder your project notes live in is chosen once, on first run** — paste a path into the
+box; there is no native dialog (see above). Asa remembers it in your own Windows app-data folder,
+never in this repository. Built and committed since v0.1 (`ce76a55`).
 
 ## For testers
 
 **You can read this repository and run the app. You cannot commit to it** — that is deliberate,
-not a lack of trust. **Right now the part worth trying is `kit/`, not the app** — see
-[Where it is right now](#where-it-is-right-now). One person and one assistant do the building, so that the record of why each
-thing was decided stays in one place.
+not a lack of trust. See [Where it is right now](#where-it-is-right-now) for what actually works
+today. One person and one assistant do the building, so that the record of why each thing was
+decided stays in one place.
 
 **Feedback is wanted and there is no wrong format.** A written note, a list of annoyances, a
 screenshot, or a sentence saying you opened it once and never again — that last one is genuinely
