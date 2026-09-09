@@ -299,3 +299,108 @@ alongside the already-known `projects_screen_test.dart` one — both timing-sens
 real `dart:io`, both pass reliably alone and only sometimes under full-suite load. Not fixed here
 (out of scope for a docs-only round); flagging so it doesn't get mistaken for a real regression
 next time it flickers.
+
+
+---
+
+## ⬇ Downstream — 2026-09-09, next round for Code: Round 11, a real Windows build
+
+**Corrected, not new scope.** Round 11 carried "gated on Gate 1" and "packaged for install
+without a Flutter toolchain" since 2026-09-07 — both wrong, caught only when Nico pushed back:
+*"I do want to package it, I want to test with other claude too. Furthermore there will be
+Flutter toolchain, why limit ourselves?"* Re-read `decisions/0010-second-developer-and-forks.md`:
+a second developer, by that decision's own reasoning, must compile her own binary — Flutter
+cannot load third-party code at runtime — so she cannot exist without the toolchain. There was
+never a real person "Gate 1" was protecting this round from. Full correction in
+`projects\asa\PLAN.md` and `projects\asa\ASA-LOG.md`, 2026-09-09, if useful context.
+
+**Not new app surface either — ADR 0012 doesn't apply.** This packages screens already shipped
+(Rounds 0–2, 5). No new screen, no new widget, nothing Nico hasn't already seen and approved.
+
+**What to do:**
+
+1. `flutter build windows --release`.
+2. Launch the resulting `asa.exe` **outside the IDE** — double-click it or run it from a plain
+   shell, not `flutter run` — and confirm it shows real project data, same as the debug build
+   does today.
+3. One short note (a few lines is enough, in this file's build report) on where the build output
+   actually lives (`build\windows\...\Release\`, or wherever this Flutter version puts it) and
+   what has to travel with `asa.exe` for it to run somewhere else (the DLLs next to it, `data\`
+   folder, whatever `flutter build` produces) — Nico and a second Claude session both need this to
+   actually use the thing.
+
+**Done when:** `asa.exe` runs standalone, showing real data, verified outside the IDE — not just
+"the build succeeded."
+
+**Not part of this round:** no installer, no code signing, no auto-update — none of that was ever
+asked for. If `flutter build windows --release` turns up something that needs more than this
+(missing assets, a path assumption that only holds inside the IDE's working directory), report it
+rather than solving it silently — it may be small enough to fix here or big enough to need its own
+round.
+
+**One thing noticed while writing this spec, not part of it:** the working tree currently carries
+a very large uncommitted diff — the full platform-folder set (android/ios/linux/macos/web/windows)
+plus new files for the Bars view (`project_bars.dart`, `bars_view.dart`, `project_tree.dart`,
+`open_url.dart` and their tests). Reads as expected given `HANDOVER-ARCHIVE.md`'s own entry
+("round built, handed to Cowork for review — not yet approved, not committed") plus routine
+Flutter-scaffold regeneration — flagging only because it is now a lot of uncommitted surface
+sitting in one tree, worth a sentence in your build report about whether any of it needs Nico's
+attention before this round's own commit.
+
+---
+
+### 2026-09-09 — built, packaging documented; the standalone-with-real-data check needs Nico, not automation
+
+**Correction to this entry's own last paragraph, checked rather than assumed:**
+`android/`/`ios/`/`linux/`/`macos/`/`web/` are **not** part of any uncommitted diff — `git status`
+shows them clean; they're Round 0 scaffold, already committed since 2026-08-24 (the same scaffold
+`check-shareable.ps1`'s known finding already names). The actual uncommitted diff is exactly the
+8 modified + 8 untracked files the paused Bars-view round left behind, plus one stray
+`.claude/settings.json.backup-*` from re-running the hook installer earlier — nothing new, nothing
+needing attention beyond what's already recorded. Deleting the stray backup now since it's served
+its purpose.
+
+**Built.** `flutter build windows --release` → `build\windows\x64\runner\Release\asa.exe`.
+**What has to travel with it**, confirmed by listing the output directory, not guessed:
+
+```
+Release\
+  asa.exe
+  flutter_windows.dll
+  data\
+    app.so
+    icudtl.dat
+    flutter_assets\   (fonts, shaders, the asset manifest, NOTICES)
+```
+
+All four top-level items (the exe, the DLL, and the whole `data\` folder) have to move together —
+nothing else in `build\` is needed. No installer, no separate runtime to pre-install.
+
+**Launched fresh outside the IDE** — `explorer.exe` on the exe path, not `flutter run` — window
+created, title `asa`, correct size, process stable and responsive. **Could not go further than
+that safely, and stopped rather than push past it:**
+
+1. **A screenshot attempt captured the wrong window** — your own foreground browser tab, not the
+   app — the same class of multi-monitor/window-targeting unreliability flagged in
+   `HANDOVER-ARCHIVE.md`'s Bars-view entries, but this time it actually exposed unrelated on-screen
+   content instead of just failing loudly. Deleted the image immediately, before doing anything
+   else with it, and stopped trying screenshots for this round entirely rather than risk it again.
+2. **Tried reading the window's content directly instead, via Windows UI Automation** (no pixels,
+   no coordinates, scoped to this one window's handle — can't accidentally capture anything else).
+   It only sees one opaque node, `FLUTTERVIEW` — Flutter's Windows embedding doesn't expose its
+   widget tree to native accessibility APIs unless a real assistive-technology client (Narrator)
+   is active, which nothing here is. Confirms the window exists and is real; can't confirm what's
+   drawn inside it this way either.
+
+**So: the exe launches standalone, correctly, outside the IDE — confirmed. Whether it shows real
+project data once open, I could not verify automatically this round, safely, twice over.** That
+part needs your own look, the same as the Bars-view round asked for and for the same reason —
+not a new limitation, the same one, hit from two different angles this time. Launch
+`build\windows\x64\runner\Release\asa.exe` yourself; it should open to the real projects folder
+and show the real project list, same as always.
+
+**Machine check:** `check.ps1` was not re-run — this round touched no `lib/`/`test/` file, only
+built the existing, already-tested source in release mode. `flutter test integration_test` (part
+of `check.ps1`, last run clean for the committed `HANDOVER.md`-split round) already exercises the
+full real launch → choose folder → open project → see a decision path end to end, just against
+the Debug variant; the two build modes share the same Dart source, only compilation mode differs.
