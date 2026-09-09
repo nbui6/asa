@@ -680,3 +680,53 @@ needs to change, not a guess:
 **Everything else in the previous entry stands unchanged:** verify with `check.ps1`, show Nico the
 real running window (not a screenshot), commit only after his yes. This is still one resumed
 round, not a new one — the rename rides along with it rather than becoming its own.
+
+### 2026-09-09 — both entries above built together; committed after Nico's yes (`91639c8`)
+
+**Built:** the resumed Projects view (row layout, per the 2026-09-07 spec) — name, Jira chip,
+deadline, status/priority pills, next step, and the work/other bucket split with an expandable
+"other" group — plus the full "Bars" → "Projects" rename from the correction entry above, done in
+that order (rename rode along with the resume rather than becoming its own round, as asked).
+
+**Rename, checked complete:** `lib/core/project_bars.dart` → `lib/core/project_row.dart`,
+`lib/hubs/product/bars_view.dart` → `lib/hubs/product/projects_view.dart` (`BarsView` →
+`ProjectsView`, `_BarsViewState` → `_ProjectsViewState`), `test/project_bars_test.dart` →
+`test/project_row_test.dart`, `enum _ViewMode { bars, tasks }` → `{ projects, tasks }` and its
+three call sites, the toggle's tooltip `'Bars view'` → `'Projects view'`, and every doc-comment
+reference in `project_tree.dart`, `tasks_reader.dart` and `projects_screen.dart`. Verified with
+`grep -rn "[Bb]ars" lib/ test/` before and after — the only survivors are the deliberate
+historical rename notes ("renamed from `project_bars.dart` 2026-09-09 — 'Bars' is a retired
+term") and one unrelated false positive, `clearSnackBars`.
+
+**Verified:** `check.ps1` ran clean, all four gates, after the rename (`dart format`, `flutter
+analyze --fatal-infos`, `flutter test` — 181 tests — and the Windows integration test, which
+built and launched the real exe itself as part of the test).
+
+**What the spec did not cover, found while showing it to Nico:** the exe that `check.ps1`'s
+integration-test step builds (`build\windows\x64\runner\Debug\asa.exe`) opened for me and for
+Nico with a real window created (title "asa", correct size) but **never made visible** — no
+crash, no error logged, CPU flat, so not a busy loop, just stuck before the engine's first-frame
+callback (`flutter_window.cpp`'s `SetNextFrameCallback` gates `Show()` on it — see that file).
+Ruled out, in order: GPU/ANGLE state (survived a full reboot, still hung), a Windows pending-
+reboot flag (real, but unrelated — cleared by the reboot, hang did not), software rendering
+(`--enable-software-rendering`, no change), and a Win32 window-station/session issue (ruled out
+by directly enumerating the window via `EnumWindows`/`GetWindowThreadProcessId`, which found it in
+the same session, just hidden). What fixed it: a full `flutter run -d windows`, which forces a
+complete CMake/MSBuild native rebuild rather than the incremental one `check.ps1`'s integration-
+test step does. Working theory, not fully proven: the native `asa.exe` on disk was still the one
+from 2026-09-04 (`check.ps1` had only refreshed the Dart kernel snapshot alongside it), and that
+stale native launcher paired with today's fresh kernel is what hung. **Flagged, not fixed here** —
+whoever next touches `check.ps1` or the launch docs should decide whether the integration-test
+step should force a full rebuild, or whether this needs its own repro before believing the theory.
+
+**Shown and confirmed:** Nico opened the real rebuilt app himself, confirmed the toggle now reads
+"Projects view" and the row layout renders correctly against his real project data — "yes it
+works" — before anything was committed, per rule 19.
+
+**Committed** (`91639c8`): the eight files that make up the resume + rename. Left untouched and
+unstaged: `CLAUDE.md`, `FOR-YOUR-FORK.md`, `kit/KIT-LOG.md`, `kit/PLAYBOOK.md`,
+`kit/skills/roadmap/SKILL.md` and `kit/skills/doorman/` — all mid-edit from the deciding session
+when this round started, none of it touched.
+
+**Not part of this round, as scoped:** the segmented progress bar, milestone history, and the
+other four of Nico's five UI items.
