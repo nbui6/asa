@@ -1,0 +1,133 @@
+import 'package:asa/core/git_state.dart';
+import 'package:asa/core/project.dart';
+import 'package:asa/core/project_row.dart';
+import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/projects_scan.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+const _emptyGit = GitState(command: '', rawOutput: '');
+
+ProjectSummary _summary({
+  required String folder,
+  required String name,
+  String? parent,
+  String status = 'in progress',
+}) {
+  return ProjectSummary(
+    project: Project(
+      name: name,
+      status: status,
+      milestone: '',
+      nextStep: '',
+      repoPath: '',
+      updated: '2026-09-07',
+      sourceFile: '$folder/$name.md',
+      parent: parent,
+    ),
+    git: _emptyGit,
+    folder: folder,
+  );
+}
+
+void main() {
+  group('jiraLabel', () {
+    test('the one real Jira URL in use — partner-trial-process', () {
+      expect(
+        jiraLabel('https://verbi.atlassian.net/browse/CRM-557'),
+        'CRM-557',
+      );
+    });
+
+    test('null when there is no Jira value', () {
+      expect(jiraLabel(null), isNull);
+      expect(jiraLabel(''), isNull);
+      expect(jiraLabel('   '), isNull);
+    });
+  });
+
+  group('humanizeDeadline', () {
+    test("the real shape — bare YYYY-MM, e.g. learning's 2027-09", () {
+      expect(humanizeDeadline('2027-09'), 'Sep 2027');
+    });
+
+    test('every month renders, not just the one real example', () {
+      expect(humanizeDeadline('2026-01'), 'Jan 2026');
+      expect(humanizeDeadline('2026-12'), 'Dec 2026');
+    });
+
+    test('null or blank returns null — the row shows an em dash for that', () {
+      expect(humanizeDeadline(null), isNull);
+      expect(humanizeDeadline(''), isNull);
+      expect(humanizeDeadline('   '), isNull);
+    });
+
+    test('a shape that is not bare YYYY-MM is returned verbatim, not '
+        'mangled', () {
+      expect(humanizeDeadline('Q3 2026'), 'Q3 2026');
+    });
+  });
+
+  group('statusEmphasis — the five real words, plus one unrecognized', () {
+    test('in progress and building are active', () {
+      expect(statusEmphasis('in progress'), StatusEmphasis.active);
+      expect(statusEmphasis('building'), StatusEmphasis.active);
+    });
+
+    test('on hold, planning, and idea are neutral', () {
+      expect(statusEmphasis('on hold'), StatusEmphasis.neutral);
+      expect(statusEmphasis('planning'), StatusEmphasis.neutral);
+      expect(statusEmphasis('idea'), StatusEmphasis.neutral);
+    });
+
+    test('a status word never seen before falls back to neutral, rather '
+        'than throwing', () {
+      expect(statusEmphasis('archived'), StatusEmphasis.neutral);
+    });
+  });
+
+  group('splitByBucket — real chain, other -> asa -> vibe-coding-kit', () {
+    test(
+      'other and its whole subtree are separated from the flat work list',
+      () {
+        final other = _summary(folder: 'projects/other', name: 'other');
+        final asa = _summary(
+          folder: 'projects/asa',
+          name: 'asa',
+          parent: 'other',
+        );
+        final vibe = _summary(
+          folder: 'projects/vibe-coding-kit',
+          name: 'vibe-coding-kit',
+          parent: 'asa',
+        );
+        final kundenakte = _summary(
+          folder: 'projects/kundenakte',
+          name: 'kundenakte',
+        );
+
+        final forest = buildProjectForest([other, asa, vibe, kundenakte]);
+        final split = splitByBucket(forest);
+
+        expect(split.work, hasLength(1));
+        expect(split.work.single.project.name, 'kundenakte');
+        expect(split.other, isNotNull);
+        expect(split.other!.project.name, 'other');
+        expect(countDescendants(split.other!), 2); // asa + vibe-coding-kit
+      },
+    );
+
+    test(
+      'no "other" project in this scan at all yields a null other bucket',
+      () {
+        final standalone = _summary(
+          folder: 'projects/kundenakte',
+          name: 'kundenakte',
+        );
+        final split = splitByBucket(buildProjectForest([standalone]));
+
+        expect(split.other, isNull);
+        expect(split.work, hasLength(1));
+      },
+    );
+  });
+}

@@ -5,18 +5,23 @@ library;
 
 import 'package:asa/core/decisions_reader.dart' show DiskFileAccess;
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/settings.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
 import 'package:asa/core/tasks_reader.dart';
 import 'package:asa/hubs/product/project_screen.dart';
+import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
 import 'package:flutter/material.dart';
 
-/// The front page has two views onto the same project scan — Bars (this
-/// screen's original flat list) and Tasks, added 2026-09-07.
-enum _ViewMode { bars, tasks }
+/// The front page has two views onto the same project scan — Projects and
+/// Tasks. The Projects view got its real row layout (`asa-front2.png`)
+/// 2026-09-07, after the toggle shipped ahead of it and showed the old
+/// flat list was never actually rebuilt to match that sketch. Renamed
+/// from "Bars" 2026-09-09 — "Bars" is a retired term (rule 12).
+enum _ViewMode { projects, tasks }
 
 class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key, this.settingsPath, this.pickFolder});
@@ -58,7 +63,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   ScanResult? _scan;
   List<TaskGroup>? _taskGroups;
   bool _loading = false;
-  _ViewMode _viewMode = _ViewMode.bars;
+  _ViewMode _viewMode = _ViewMode.projects;
 
   // First run: nobody has chosen a folder yet, so there is nothing to load
   // and no hardcoded path to fall back on — a default that does not exist
@@ -221,7 +226,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   @override
   Widget build(BuildContext context) {
     final scan = _scan;
-    final now = DateTime.now();
 
     return Scaffold(
       appBar: AppBar(
@@ -290,8 +294,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 child: Text(scan!.error!),
               ),
             if (scan != null && scan.error == null) ...[
-              if (_viewMode == _ViewMode.bars) ...[
-                _projectsTable(sortByStaleness(scan.projects, now), now),
+              if (_viewMode == _ViewMode.projects) ...[
+                ProjectsView(
+                  forest: buildProjectForest(scan.projects),
+                  onOpenProject: (folder) => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ProjectScreen(folder: folder),
+                    ),
+                  ),
+                ),
                 if (scan.skipped.isNotEmpty) ...[
                   const SizedBox(height: 32),
                   _skippedTable(scan.skipped),
@@ -311,7 +322,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  /// Bars / Tasks — `asa-front2.png`. Still icon-only, with a hover
+  /// Projects / Tasks — `asa-front2.png`. Still icon-only, with a hover
   /// tooltip carrying the plain-English label, same as every other icon
   /// control on this screen.
   Widget _viewToggle() {
@@ -326,8 +337,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         children: [
           _viewToggleButton(
             icon: Icons.view_agenda_outlined,
-            mode: _ViewMode.bars,
-            tooltip: 'Bars view',
+            mode: _ViewMode.projects,
+            tooltip: 'Projects view',
           ),
           _viewToggleButton(
             icon: Icons.checklist,
@@ -364,104 +375,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         ),
       ),
     );
-  }
-
-  Widget _projectsTable(List<ProjectSummary> projects, DateTime now) {
-    if (projects.isEmpty) {
-      return const _Panel(
-        title: 'No projects here yet',
-        child: Text(
-          'A project is a subfolder containing a markdown note with '
-          'frontmatter.',
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${projects.length} projects — most stale first',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 12),
-        for (final summary in projects) _row(summary, now),
-      ],
-    );
-  }
-
-  Widget _row(ProjectSummary summary, DateTime now) {
-    final project = summary.project;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => ProjectScreen(folder: summary.folder),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 220,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      project.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      project.status,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(project.nextStep),
-                    const SizedBox(height: 4),
-                    Text(
-                      project.milestone,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 110,
-                child: Text(
-                  stalenessLabel(summary, now),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: _stalenessColour(summary.daysStale(now)),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Colour is a hint, never the only signal — the words say it too.
-  /// See the non-functional skill: meaning never carried by colour alone.
-  Color _stalenessColour(int? days) {
-    if (days == null) return Colors.grey;
-    if (days >= 21) return Colors.red.shade700;
-    if (days >= 7) return Colors.orange.shade800;
-    return Colors.green.shade700;
   }
 
   Widget _skippedTable(List<SkippedFolder> skipped) {

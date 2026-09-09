@@ -5,6 +5,7 @@ library;
 
 import 'package:asa/core/decisions_reader.dart' show FileAccess;
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_tree.dart' show slugOf;
 import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/task.dart';
 
@@ -30,8 +31,8 @@ class TaskGroup {
 /// (no tasks, never shows) → `asa` (has tasks, top level) →
 /// `vibe-coding-kit` (`parent: asa`, no `## Tasks` yet — nothing to nest).
 ///
-/// This is the one parent-chain read a later Bars-view grouping should
-/// reuse rather than re-implement — see the spec note above.
+/// This is the one parent-chain read the Projects view's own grouping
+/// reuses rather than re-implementing — see the spec note above.
 Future<List<TaskGroup>> buildTaskGroups(
   List<ProjectSummary> projects,
   FileAccess files,
@@ -74,9 +75,3 @@ Future<List<TaskGroup>> buildTaskGroups(
 
   return rootSlugs.map(build).toList();
 }
-
-/// The folder name a project is known by — what `[[double bracket]]`
-/// references and a `parent:` field both point at. Works with either path
-/// separator so a test fixture path (`/`) and a real Windows scan
-/// (`\`) resolve the same way.
-String slugOf(String folder) => folder.split(RegExp(r'[\\/]')).last;
