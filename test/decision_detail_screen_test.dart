@@ -37,14 +37,28 @@ void main() {
     await tester.pumpAndSettle();
 
     // No pump between the two taps — both are recognised before any
-    // rebuild has a chance to disable the button via _saving. runAsync
-    // plus a real delay is required here for the same reason
-    // projects_screen_test.dart needs it: pumpAndSettle alone does not
-    // reliably wait for a real dart:io Future to finish.
+    // rebuild has a chance to disable the button via _saving. runAsync is
+    // required here for the same reason projects_screen_test.dart needs
+    // it: pumpAndSettle alone does not reliably wait for a real dart:io
+    // Future to finish.
+    //
+    // Poll for the write landing rather than sleeping a fixed duration —
+    // 2026-09-09: a constant 500ms delay here flaked under the full
+    // suite's load (a real write taking longer than 500ms when the
+    // machine is busy, so the read below caught the file's original,
+    // pre-write content: 0 matches, not 1). Polling is deterministic
+    // given enough wall-clock time instead of a guess that has to be
+    // guessed larger every time the machine gets busier.
     await tester.runAsync(() async {
       await tester.tap(find.text('Accept'));
       await tester.tap(find.text('Accept'));
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (DateTime.now().isBefore(deadline)) {
+        final contents = File(path).readAsStringSync();
+        if (RegExp('## Your call').hasMatch(contents)) break;
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      }
     });
     await tester.pumpAndSettle();
 

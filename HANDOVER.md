@@ -404,3 +404,74 @@ built the existing, already-tested source in release mode. `flutter test integra
 of `check.ps1`, last run clean for the committed `HANDOVER.md`-split round) already exercises the
 full real launch → choose folder → open project → see a decision path end to end, just against
 the Debug variant; the two build modes share the same Dart source, only compilation mode differs.
+
+
+---
+
+## ⬇ Downstream — 2026-09-09, next round for Code: the newest flaky test, diagnosed not copy-fixed
+
+**Not new app surface, still inside ADR 0012.** Test reliability only.
+
+Your last build report flagged `decision_detail_screen_test.dart`'s double-tap test as flaky under
+full-suite load, alongside the already-known `projects_screen_test.dart` one. Checked both before
+writing this: `projects_screen_test.dart` and `integration_test/app_test.dart` already carry the
+2026-09-03 fix and explain it in a comment — no `tearDown` deleting the temp dir, because nothing
+races once nothing deletes out from under an in-flight write. **`decision_detail_screen_test.dart`
+does not have that bug.** It reads the file back and asserts *before* its `tearDown` runs, so the
+2026-09-03 race can't be what's happening here — don't copy that fix onto this file, it would be
+fixing the wrong thing.
+
+**The actual likely cause, read from the test itself:** a fixed `Future<void>.delayed(500ms)`
+inside `runAsync`, used to give the real disk write time to land before `readAsStringSync()` runs.
+A constant sleep as a synchronisation mechanism for real I/O is exactly the kind of thing that
+holds up in isolation and flakes under load — the write takes longer when the CPU is busy with
+the rest of the suite, 500ms stops being enough, and the assertion runs against a partial or
+stale read.
+
+**What to do:**
+
+1. **Reproduce first** — run this test file alongside the rest of the suite a handful of times
+   (or however you already confirmed the flake for the build report) and capture what actually
+   fails: a `FormatException`, a `0` match count, something else. Confirm the theory above before
+   fixing it, the same discipline as the 2026-09-03 note this round is deliberately not copying.
+2. **If it's the fixed delay:** replace `Future<void>.delayed(500ms)` with a poll — check the
+   file's content every ~20-50ms in a loop until `RegExp('## Your call').allMatches(contents).length
+   == 1` or a generous timeout (5s is plenty) elapses, then run the real assertion. This is
+   deterministic given enough wall-clock time, rather than a guessed constant that has to be
+   guessed larger every time the machine gets busier.
+3. **If reproduction shows something else**, fix that instead and say so in the build report —
+   this spec's theory is a starting point, not a conclusion.
+
+**Done when:** the full suite (`check.ps1`, not just this file alone) runs clean several times in
+a row under whatever load previously triggered the flake — say how you validated that, a single
+green run doesn't prove it.
+
+**Not part of this round:** `projects_screen_test.dart` and `integration_test/app_test.dart` — both
+already fixed, already correct, no action needed; mentioned only so you don't second-guess them
+while in this area.
+
+---
+
+### 2026-09-09 — fixed: polled instead of a fixed delay, theory confirmed against real evidence
+
+**Reproduction, not assumed — already had it.** Earlier this session, running the full suite with
+the fixed-delay version, this exact test failed once with `Expected: <1> Actual: <0>` — zero
+matches, not a partial or corrupted one. That's the theory in the spec above, precisely: the
+500ms delay ran out before the real write landed, so the read caught the file's original
+content — a plain, complete, valid read of the *wrong point in time*, not a torn read. Confirms
+the fix is a polling wait, not a bigger fixed number (which would only move the same failure
+further out under enough load, never remove it).
+
+**Fixed.** Replaced `Future<void>.delayed(const Duration(milliseconds: 500))` with a poll inside
+the same `runAsync` block: check the file every 25ms for up to 5 seconds until `## Your call`
+appears, then proceed to the real assertion outside `runAsync`. Deterministic given enough
+wall-clock time; a busy machine makes the write slower, not the test wrong.
+
+**Validated, not just green once:** ran the full `check.ps1` three times in a row. Two fully
+green. One had a single failure — `projects_screen_test.dart`'s already-known, already-fixed,
+out-of-scope flake named in this round's own spec — and the test this round exists to fix was not
+the one that failed. Not a rigorous stress test, but real repeated evidence under the same load
+this session has been running all day, not a single lucky pass.
+
+`check.ps1` (the passing runs): format clean, analyze clean, 181 unit tests, the real integration
+test. No other file touched.
