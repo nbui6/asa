@@ -97,6 +97,10 @@ flutter pub get
 flutter run -d windows
 ```
 
+**Moved or cloned this folder to a new location? Run `flutter clean` first.** The build cache
+holds absolute paths from wherever it was built before; skipping this after a move costs a
+confusing CMake error, not a fast failure.
+
 The machine check, in this order — the second alone is not enough:
 
 ```

@@ -32,6 +32,10 @@ git merge upstream/main
 `git merge` brings our changes in and leaves your files alone. If you keep your work inside the
 seams below, this is boring every time — which is the point.
 
+**Cloned or moved this folder anywhere? Run `flutter clean` before anything else.** The build
+cache holds absolute paths from wherever it was built last; skipping this costs a confusing CMake
+error instead of a clean rebuild.
+
 ## Where your code goes
 
 | | | |

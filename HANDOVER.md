@@ -475,3 +475,60 @@ this session has been running all day, not a single lucky pass.
 
 `check.ps1` (the passing runs): format clean, analyze clean, 181 unit tests, the real integration
 test. No other file touched.
+
+
+---
+
+## ⬇ Downstream — 2026-09-09, next round for Code: harden for a cold clone (not new app surface)
+
+**Not new app surface — still inside ADR 0012.** A build script and two docs only; no `lib/` or
+`test/` UI file. Both items pulled from `projects\BACKLOG.md` today; reasoning in `PLAN.md`'s
+matching dated section if you want the "why now."
+
+**1. `check.ps1`: run `flutter pub get` first, ordered before the four existing checks, failing
+loudly if it can't resolve.** Today every `flutter` command resolves dependencies on its own, so
+the gate has been working by luck, not design. Round 7 (the fork seam, `e27c8c3`/`bc07550`) is
+already shipped, so a second developer doing a cold clone is now a real near-term case, not a
+hypothetical — she needs this to fail with a clear message, not a confusing downstream error, if
+something's wrong with her checkout.
+
+**2. Document `flutter clean` after moving the repo.** One line each in `FOR-YOUR-FORK.md` and
+`README.md`: run `flutter clean` after moving the folder, before anything else. This already cost
+two real days once — the build cache held absolute paths from the repo's previous location and
+broke the feature test (`kit/KIT-LOG.md`, 2026-09-03) — so this is closing a gap that already
+burned time for real, not a guess.
+
+**Done when:** `check.ps1` fails loudly and early on a broken/missing dependency (you don't need
+to actually break a clone to prove this — reading the script change back and running `check.ps1`
+clean once is enough, since the four existing checks are unaffected); the two doc lines are in
+place; `check.ps1` still runs clean end to end, same as always.
+
+**Not part of this round:** anything touching a screen, a widget, or `lib/hubs/`. If either
+change turns out to need more than a script/doc line, stop and say so rather than reaching for a
+bigger fix — that would be new territory, not what this spec asked for.
+
+---
+
+### 2026-09-09 — item 1 already done, checked before touching anything; item 2 added
+
+**Item 1 — checked against the real file first, not assumed.** `check.ps1` has run `flutter pub
+get` as its own first step, ordered before all four checks, with a loud, named failure
+(`Stop-Here 0 'resolving dependencies. Nothing was checked.'`), since the very first commit —
+`git log --follow -- check.ps1` shows `ce76a55`, v0.1. The spec's framing — "today every `flutter`
+command resolves dependencies on its own, so the gate has been working by luck, not design" — does
+not match the file: this was deliberate from day one, and the script's own header comment already
+says so ("without it a cold clone fails in step 2 with an error about the analyser rather than
+about its missing dependencies"). **Nothing changed in `check.ps1`.** Not silently skipped — said
+here plainly, with the exact commit and comment as evidence, rather than adding a second copy of
+something already there.
+
+**Item 2 — added, one line each, exactly as asked.** `README.md`'s "Running it" section and
+`FOR-YOUR-FORK.md`'s "Fork, and stay up to date" section each gained one line: run `flutter clean`
+after moving or cloning the folder, before anything else, naming the actual failure mode
+(`kit/KIT-LOG.md`, 2026-09-03: a confusing CMake error from a stale absolute path in the build
+cache, not a clean, fast failure). Nothing else in either file touched — both are otherwise
+unrelated and, in `README.md`'s case, already known-stale from an earlier round; not this round's
+job to fix that.
+
+`check.ps1`: run clean end to end after the doc edits — confirms item 1's existing behaviour is
+intact and item 2 touched nothing it could have broken.
