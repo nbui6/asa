@@ -70,11 +70,28 @@ note with a real judgment call — no code needed.
 tool-agnostic onboarding file, so a fresh Claude session on another machine can bootstrap itself
 without this file. This file (`CLAUDE.md`) was reduced to point at it the same day.
 
+**Pushed to GitHub — 2026-09-13.** Before pushing, Code committed the deciding session's own
+pending edits on her behalf (`AGENTS.md`, `CLAUDE.md`, `FOR-YOUR-FORK.md`, `kit/KIT-LOG.md`,
+`kit/PLAYBOOK.md`, `kit/skills/roadmap/SKILL.md` — real files she'd written through the device
+bridge but never `git commit`s herself), then ran `check-shareable.ps1` — it exited 1, and every
+finding behind that exit code was individually read rather than pushed past: 38 are the existing
+`ios/`/`.idea/` waiver, unchanged; the other 11 all use the deliberate `test` placeholder or are
+prose describing that same pattern, none a real leak. **One real leak found and fixed while doing
+this, not part of the original ask:** `.claude/.kit-manifest.json` and
+`.claude/skills/.kit-version`, written by Round 24's install, baked in the real local username —
+now gitignored and untracked (`6eed49a`). Repo confirmed still private by a real, unauthenticated
+check (HTTP 404), not assumed. **Nico pushed it himself, per the standing role split** — 6 commits
+(`53e8a44`, `eba90b2`, `a3c2c1d`, `47db78e`, `2cda519`, `6eed49a`), confirmed by `.git`'s own
+remote-tracking ref moving to match local `main` (`device_bash` still can't run `git log` directly
+to double-check the commit-by-commit content, so this is ref evidence plus Nico's own word, not a
+full `git log origin/main` read).
+
 **Not done, still open, not hidden:**
 
 - **The actual test hasn't happened yet.** Everything above is proven on throwaway demo data and a
   real file listing — not on Nico's own real projects on the other laptop. That's the next real
-  milestone: bring real projects in per `AGENTS.md`, then edit them through Round 20, for real.
+  milestone: clone this repo there, bring real projects in per `AGENTS.md`, then edit them through
+  Round 20, for real.
 - Round 21 (Log tab), Round 22 (`next-step` from tasks), Round 23 (a decision shows whether it
   became work) — roadmapped, not yet specced.
 - The front page still does not match `asa-front2`, the sketch Nico signed off on.
@@ -175,12 +192,17 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     > repository at all. *A gate that is routinely overridden is not a gate, so this waiver has an
     > end condition and a count: 38. If the number changes, stop and read the new ones.*
 
-    > **Named exception, open until v0.1 ships.** The check fails on **three lines** — the default
-    > folder in `projects_screen.dart` and two fixtures in `test/project_test.dart` — which contain
-    > the owner's Windows username. Known, accepted in a private repository, and **removed by
-    > v0.1's folder picker.** Commits are allowed past it *only* for these three, and only until
-    > then. **A gate that is routinely overridden is not a gate**, so this exception has an end
-    > condition and a check: when v0.1 lands, the script must pass with nothing waived.
+    > **Retired 2026-09-13 — checked, not assumed, and the reason is gone.** This waiver named
+    > three lines (`projects_screen.dart`'s default folder, two fixtures in `test/project_test.dart`)
+    > that carried the owner's real Windows username. Code checked directly while pushing v1: the
+    > hardcoded default is already gone, and both fixtures already use the `test` placeholder every
+    > other test in this repo uses. **The waiver's own stated reason no longer applies to anything.**
+    > The checker still flags those two lines — its regex matches the *shape* of a Windows path, not
+    > whether the name in it is real, so `C:\Users\test\...` and a real path look identical to it —
+    > but that is the same, already-known limitation the waiver above (`ios/`/`.idea/`) already
+    > exists to hand-read past, not a new leak. Left here as a standing fact about the checker's own
+    > blind spot rather than a live exception with an expiry, now that there's nothing left to
+    > excuse.
 
 
 17. **The workspace has one root: `%USERPROFILE%\workspace\`.**
