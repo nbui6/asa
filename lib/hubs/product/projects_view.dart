@@ -37,6 +37,11 @@
 /// pills, shown only when a project has at least one parked task; more
 /// than one gets a stronger, filled treatment rather than a bigger
 /// number, so a pile-up reads as something to notice.
+///
+/// **2026-09-13, one more — an overdue signal.** `HANDOVER.md`, "an
+/// overdue signal for `deadline`". The deadline text itself switches to a
+/// warning colour once `isPastDeadline` says the month has passed — no
+/// new pill, no new icon, no new line.
 library;
 
 import 'package:asa/core/markdown.dart';
@@ -137,6 +142,11 @@ class _ProjectsViewState extends State<ProjectsView> {
     final emphasis = statusEmphasis(project.status);
     final phases = groupPhases(project.roadmap);
     final parkedCount = countParked(project.tasks);
+    final overdue = isPastDeadline(
+      project.deadline,
+      project.status,
+      DateTime.now(),
+    );
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
@@ -173,10 +183,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                           _jiraChip(jira, project.jira!),
                         ],
                         const Spacer(),
-                        Text(
-                          deadline ?? '—',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
+                        _deadlineText(deadline, overdue),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -280,6 +287,25 @@ class _ProjectsViewState extends State<ProjectsView> {
         ),
       ),
     );
+  }
+
+  /// The deadline, in a warning colour once it is overdue — `HANDOVER.md`,
+  /// "an overdue signal for `deadline`". No new pill, no new icon; just
+  /// this text's own colour changes. [ColorScheme.error] rather than a
+  /// literal red, so it reads correctly in both a light and dark Windows
+  /// theme, same requirement the phase bar and the parked badge already
+  /// met.
+  Widget _deadlineText(String? deadline, bool overdue) {
+    final text = Text(
+      deadline ?? '—',
+      style: TextStyle(
+        color: overdue
+            ? Theme.of(context).colorScheme.error
+            : Colors.grey.shade600,
+        fontWeight: overdue ? FontWeight.bold : null,
+      ),
+    );
+    return overdue ? Tooltip(message: 'Past its deadline', child: text) : text;
   }
 
   Widget _pill(String text, StatusEmphasis emphasis) {

@@ -132,6 +132,50 @@ void main() {
     );
   });
 
+  group('isPastDeadline — an overdue signal', () {
+    final now = DateTime(2026, 9, 13);
+
+    test('a deadline month strictly before now is overdue', () {
+      expect(isPastDeadline('2026-08', 'building', now), isTrue);
+    });
+
+    test('a deadline month after now is not overdue', () {
+      expect(isPastDeadline('2026-10', 'building', now), isFalse);
+    });
+
+    test("now's own month is not yet overdue — the month itself must be "
+        'over, not merely reached', () {
+      expect(isPastDeadline('2026-09', 'building', now), isFalse);
+    });
+
+    test('null, blank, or a shape that is not bare YYYY-MM is never '
+        'overdue — same honest-absence handling as humanizeDeadline', () {
+      expect(isPastDeadline(null, 'building', now), isFalse);
+      expect(isPastDeadline('', 'building', now), isFalse);
+      expect(isPastDeadline('Q3 2026', 'building', now), isFalse);
+    });
+
+    test('suppressed for shipped and dropped, whatever the date says', () {
+      expect(isPastDeadline('2020-01', 'shipped', now), isFalse);
+      expect(isPastDeadline('2020-01', 'dropped', now), isFalse);
+      expect(isPastDeadline('2020-01', 'Shipped', now), isFalse);
+    });
+
+    test('every other real status still gets the signal, paused '
+        'included — a paused project past its deadline is exactly what '
+        'this is for', () {
+      for (final status in [
+        'idea',
+        'discovery-done',
+        'building',
+        'paused',
+        'ongoing',
+      ]) {
+        expect(isPastDeadline('2020-01', status, now), isTrue);
+      }
+    });
+  });
+
   group('countParked — PLAN.md v0.3, "the rule of two"', () {
     const parked = Task(rawLine: '', text: 'Parked', done: false, parked: true);
     const open = Task(rawLine: '', text: 'Open', done: false);

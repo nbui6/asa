@@ -6,6 +6,11 @@
 /// layout only." Checked against all 9 real projects. Renamed from
 /// `project_bars.dart` 2026-09-09 — "Bars" is a retired term (rule 12);
 /// the front page's row layout is now called the Projects view.
+///
+/// **2026-09-13 — an overdue signal.** `HANDOVER.md`, "an overdue signal
+/// for `deadline`". `priority` and `deadline` already rendered; the real
+/// gap was that nothing signalled a *passed* deadline. `isPastDeadline`
+/// is that one pure check — no new field, no new pill.
 library;
 
 import 'package:asa/core/project_tree.dart';
@@ -56,6 +61,36 @@ String? humanizeDeadline(String? deadline) {
   if (monthIndex < 1 || monthIndex > 12) return trimmed;
 
   return '${_months[monthIndex - 1]} ${match.group(1)}';
+}
+
+/// True when [deadline] names a `YYYY-MM` that has fully passed relative
+/// to [now] — the month itself must be over, not merely reached; a
+/// deadline of `now`'s own month is not yet overdue. `now` is a parameter
+/// rather than `DateTime.now()` read inside, same reasoning as every
+/// other derivation in this file: a test passes a fixed date instead of
+/// depending on the clock.
+///
+/// A `deadline` that is null, blank, or does not match the bare `YYYY-MM`
+/// shape [humanizeDeadline] already parses is never overdue — same
+/// honest-absence handling, not a guess at a shape that isn't there.
+///
+/// Suppressed for `shipped` and `dropped`: a project that finished or was
+/// dropped has no deadline left to miss. Every other status — `paused`
+/// included — still gets the signal; a paused project sitting past its
+/// own deadline is exactly what this exists to surface, not hide.
+bool isPastDeadline(String? deadline, String status, DateTime now) {
+  final lowerStatus = status.toLowerCase();
+  if (lowerStatus == 'shipped' || lowerStatus == 'dropped') return false;
+
+  if (deadline == null || deadline.trim().isEmpty) return false;
+  final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(deadline.trim());
+  if (match == null) return false;
+
+  final month = int.parse(match.group(2)!);
+  if (month < 1 || month > 12) return false;
+  final year = int.parse(match.group(1)!);
+
+  return (year * 12 + month) < (now.year * 12 + now.month);
 }
 
 /// The status pill's colour bucket. Real `status:` values checked across
