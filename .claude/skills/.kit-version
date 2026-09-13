@@ -1,7 +1,0 @@
-kit version: 1.26
-installed:   2026-09-13T18:19:35Z
-from:        C:\Users\nico.bui\workspace\asa\kit
-scope:       project
-skills:      16
-agents:      3 (note-taker, reviewer, stack-review)
-manifest:    C:\Users\nico.bui\workspace\asa\.claude\.kit-manifest.json

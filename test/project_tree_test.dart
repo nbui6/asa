@@ -34,7 +34,7 @@ void main() {
     });
 
     test('works with a real Windows backslash path', () {
-      expect(slugOf(r'C:\Users\nico.bui\workspace\projects\asa'), 'asa');
+      expect(slugOf(r'C:\Users\test\workspace\projects\asa'), 'asa');
     });
   });
 

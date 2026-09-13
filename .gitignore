@@ -62,4 +62,15 @@ asa_settings.json
 # settings.json — same reasoning, same belt-and-braces entry.
 write-log.jsonl
 
+# install-skills.ps1's own manifest and version stamp bake in the exact local
+# path the kit was installed from (found 2026-09-13, pushing after Round 24:
+# check-shareable.ps1 missed .kit-manifest.json because its path is
+# JSON-escaped, C:\\Users\\..., which its pattern does not match — a real gap
+# in the checker, not a reason to trust it here). Same reasoning as settings
+# above: this is local install state, regenerated fresh by anyone who runs
+# the installer on their own machine, not something a shared repository
+# needs to carry.
+.claude/.kit-manifest.json
+.claude/skills/.kit-version
+
 # check-shareable.ps1 derives its private terms and keeps no list. Nothing to ignore.
