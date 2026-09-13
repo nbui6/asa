@@ -1,7 +1,4 @@
-/// Product Hub — front page, Projects view. Row layout only, per the
-/// 2026-09-07 scope split: no segmented milestone-history bar yet, since
-/// no project file has ever recorded more than its current `milestone:`
-/// value — there is nothing real to segment.
+/// Product Hub — front page, Projects view.
 ///
 /// Spec: `HANDOVER.md`, 2026-09-07 entry, "the real Bars view, row layout
 /// only" (that entry predates the 2026-09-09 rename — "Bars" is retired,
@@ -27,13 +24,22 @@
 /// something is hovering over it. The write itself (`moveTask`) lives in
 /// `ProjectsScreen` — this view only reports which task landed on which
 /// node.
+///
+/// **2026-09-13, later — the segmented bar, per project, when there is
+/// one.** `PLAN.md`'s "Open A" (2026-09-13) settled what a segment is: a
+/// **phase** — a `###` heading inside `## Roadmap` — never a Round, never
+/// a milestone. `PhaseBar` draws it, fed by `groupPhases(project.roadmap)`
+/// right here; a project with no phase groupings shows no bar at all,
+/// same absence rule as everything else on this row.
 library;
 
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/task.dart';
+import 'package:asa/hubs/product/phase_bar.dart';
 import 'package:flutter/material.dart';
 
 class ProjectsView extends StatefulWidget {
@@ -123,6 +129,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     final jira = jiraLabel(project.jira);
     final deadline = humanizeDeadline(project.deadline);
     final emphasis = statusEmphasis(project.status);
+    final phases = groupPhases(project.roadmap);
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
@@ -186,6 +193,10 @@ class _ProjectsViewState extends State<ProjectsView> {
                         ),
                       ],
                     ),
+                    if (phases.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      PhaseBar(phases: phases),
+                    ],
                   ],
                 ),
               ),

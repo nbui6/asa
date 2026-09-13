@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-13 (phases round).
+Last checked against the folder tree: 2026-09-13 (segmented-bar round).
 
 ---
 
@@ -58,6 +58,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how the inbox — `HOME.md`'s own unfiled `## Tasks` — is read | `lib/core/inbox.dart` |
 | change the quick-capture box or the unfiled list on the front page | `lib/hubs/product/inbox_panel.dart` |
 | change how a project's `## Roadmap` is parsed into milestones (Rounds), the derived "current milestone", or how `###` headings group milestones into phases | `lib/core/roadmap.dart` |
+| change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/phase_bar.dart` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
