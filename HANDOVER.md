@@ -730,3 +730,254 @@ when this round started, none of it touched.
 
 **Not part of this round, as scoped:** the segmented progress bar, milestone history, and the
 other four of Nico's five UI items.
+
+
+## ⬇ Downstream — 2026-09-13, next round for Code: Round 8 — quick capture (the inbox)
+
+**Why this one, why now:** four days quiet since the Projects-view rename shipped (`91639c8`,
+2026-09-09) — the pause was nobody writing the next spec, not a blocker. Checked against Nico's
+own 2026-09-08 redefinition of v1 (`PLAN.md`, "v1's objective redefined: usable, not packaged"):
+job zero and the real `.exe` build (Round 11) are both already done, and exactly three things
+stand between here and v1 — quick capture (this round), parked items + the rule of two, and
+priority/deadlines. This is the first of those three, and the only one already fully decided —
+ADR 0014's two 2026-09-08 addenda ("capture never classifies" and "one inbox, assignment is a
+drag too") settle the shape already. Nothing here is new design.
+
+**What to build**, per ADR 0014 (already decided, not open for redesign here):
+
+1. One capture input, always reachable, that takes free text and writes a line into a single,
+   unfiled task list — no project chosen, no classification prompt, no guessing at noun-vs-verb.
+2. That unfiled list — the inbox — lives in `HOME.md`, under a `## Tasks` heading (add it if it
+   doesn't exist yet; don't restructure anything else in the file). `HOME.md` was the only
+   candidate ADR 0014 named, and this spec makes that call so the round isn't blocked on it — flag
+   it plainly if you find a real reason `HOME.md` can't hold it.
+3. Assigning an inbox item to a project is a drag onto that project — same mechanism the Tasks
+   view already uses to promote a task to a milestone (ADR 0007, already whitelisted: checkbox
+   lines and their order). Sitting in the inbox is a normal resting state, not something shown as
+   broken or incomplete — same as a standalone task in `## Tasks` that never gets promoted.
+4. The inbox needs to be visible somewhere Nico actually sees it day to day — the front page is
+   the obvious place (a small "unfiled" count or section). Exactly how it surfaces on screen is
+   your call; keep it small, one glance, not a new tab or screen.
+
+**Not part of this round:** parked items / the rule of two, priority and deadlines (both Round 9),
+the segmented progress bar, or the rest of Round 6's match against `asa-front2`. One round at a
+time.
+
+**Verify → show → commit, rule 19, same as every round before this one:** `check.ps1` clean;
+launch the real app yourself, type something with no project open, confirm it lands in the inbox,
+drag it onto a real project and confirm it moves there; then Nico looks at the real running window
+himself and says yes; commit only after that yes.
+
+**Gate 2, standing:** nothing from `projects\`'s real project names or content belongs in this
+file, `HOME.md`, or any report back — same rule as every round before this one.
+
+**Done when:** the above, verified, shown, confirmed, committed.
+
+### 2026-09-13 — built and verified; not committed — real-window confirmation still needed
+
+**Built, all four items:**
+
+1. `core/task_writer.dart`'s `captureTask` — appends one open task to any file's `## Tasks`
+   section, creating the section (and the file) if neither exists yet.
+2. `core/task_writer.dart`'s `moveTask` — the write half of "drag it onto a project": removes the
+   line from the source file's `## Tasks` section, appends it unchanged (done-state, `(Code)` tag,
+   `[[project]]` reference all preserved) to the destination's. Writes the destination **before**
+   the source, so a failure partway duplicates rather than loses the task — same choice every
+   other write in this app makes.
+3. `core/inbox.dart` — reads `HOME.md`'s own `## Tasks` section exactly as any project's is read;
+   absent file or absent section both read as an empty inbox, not an error.
+4. `hubs/product/inbox_panel.dart` (new) — the capture box, always visible on the front page, and
+   the collapsed-by-default "N unfiled" list, each row a `Draggable<Task>`. `hubs/product
+   /projects_view.dart`'s rows are now `DragTarget<Task>`s, highlighting while something hovers;
+   dropping calls a new `onAssignTask` that `ProjectsScreen` wires to `moveTask`.
+
+**What the spec did not cover, found while building:**
+
+- **"Same mechanism the Tasks view already uses to promote a task to a milestone" — that
+  mechanism does not exist.** Checked `tasks_view.dart`, `project_screen.dart`: no `Draggable`,
+  no `DragTarget`, anywhere in the app before this round — `tasks_view.dart`'s own header comment
+  says reordering was deliberately parked, "an inert grip icon would promise a capability that is
+  not there." The spec's claim was wrong, not the feature it was asking for — built the actual
+  drag-to-assign mechanism from scratch rather than pretending to reuse code that isn't there.
+  Promoting a task to a milestone (`## Roadmap`) is still unbuilt; out of scope here, since the
+  spec's ask was assignment-to-project, not promotion-to-milestone.
+- **`ARCHITECTURE.md` was already stale before this round touched it.** Its "what deliberately
+  does not exist" table said writing to a project's own notes was "proposed and not accepted"
+  (ADR 0007) — ADR 0007 was accepted 2026-09-01, and `task_writer.dart` has written checkbox lines
+  to project notes since 2026-09-07. The page's own footer claimed "none — updated in the same
+  commit as v0.1." Corrected in this commit, not left for whoever notices next.
+- **ADR 0007's guardrail 3 — "every write is logged, a Log tab shows it" — has no implementation
+  anywhere.** Not for the checkbox writes that shipped 2026-09-07, not for the inbox writes added
+  now. Pre-existing, not introduced here. Flagged in `ARCHITECTURE.md`'s "known differences"
+  rather than quietly built — a logging surface is its own round.
+
+**Verified:** `check.ps1` clean, all four gates — 193 tests (up from 181; 12 new: `captureTask`
+and `moveTask` round-tripping real files, `readInbox` against a fake `FileAccess`, and two
+end-to-end widget tests against a real temp workspace — one for capture-with-no-project-open,
+one that drives an actual `TestGesture` drag from the inbox onto a real project row and asserts
+both files on disk afterward). The Windows integration test also passed.
+
+**Launched the real app myself** (`flutter run -d windows`, twice — the first instance connected
+and ran cleanly for over an hour before this conversation's own gap closed it; the second is the
+one left running) — confirmed it opens against real project data with no crash, and asked Nico to
+try the actual capture-and-drag on the real window.
+
+**Not confirmed, not committed.** Nico: *"I dont understand your question. Just keep working and
+hand me back to cowork."* Read as: he is not doing the manual real-window check right now, not as
+a yes. Per rule 19, nothing here is committed — the diff sits in the working tree, `check.ps1`
+green, waiting on either Nico looking at it later or Cowork picking this up from here. Stopped the
+running app rather than leave it open with nobody watching it.
+
+**Not part of this round, as scoped:** parked items / the rule of two, priority and deadlines,
+the segmented progress bar, the rest of Round 6's sketch match.
+
+
+## ⬇ Downstream — 2026-09-13, next round for Code: close the visible gaps before showing Nico again
+
+**Why:** Nico looked at the real running app today (four screenshots, not reproduced here or
+anywhere else — see `ASA-LOG.md`'s Gate 2 note) and said, plainly, it still doesn't look like what
+he agreed to. Checked the screenshots against what's actually been built and specced; found five
+real, structural things wrong — two of them known and sitting unfixed since job zero on
+`2026-09-09`, never turned into an actual instruction until now. Full account: `ASA-LOG.md`,
+2026-09-13 entries.
+
+**Open the actual approved files yourself before touching anything — don't work from this
+description alone:** `projects\asa\sketches\asa-front2.html` (the front page — status/priority
+pills, Jira chip, deadline, work/other grouping, a segmented bar with phase names under it, a
+Bars/Tasks toggle) and `projects\asa\sketches\asa-tasks-view.html` (the Tasks view — group
+checkmarks, "Show completed (N)", an expand/collapse-all menu, the "Code tasks" toggle, `[[ref]]`
+chips). Both are in `sketches\APPROVED.md`'s table, real yeses, not drafts. **One correction, found after re-checking `APPROVED.md` directly, not part of the five below:** the
+"Code tasks" chip visible in today's screenshots is not an unexplained element — it is exactly
+`asa-tasks-view`'s own approved toggle, named in the sketch itself, working as specced. Noted so it
+isn't mistaken for a sixth problem.
+
+**Fix the remaining four in the current working tree — Round 8's diff is already uncommitted, so
+there is nothing to disturb by fixing these alongside it. One clean look for Nico, not another
+partial one:**
+
+1. **A Tasks-view row is rendering raw Markdown source, backticks included**, instead of plain
+   text — visible directly in today's screenshots. Whatever reads `## Tasks` lines for that view
+   needs to strip or render the Markdown (code spans, at minimum) rather than showing the source
+   characters. Check whether the Projects view's own text fields have the same gap.
+2. **The window title still reads "Asa — Product Hub."** Flagged as a structural finding at job
+   zero, `2026-09-09` (`PLAN.md`'s v0.1 section), never actioned since. Decide and rename it — if
+   you're unsure what it should say instead, ask rather than guessing; don't leave it as is again.
+3. **The "Projects folder" path field with its own Load button** — flagged the same day as "not on
+   any signed sketch, origin unclear." Either it's load-bearing (say what it's for, in one line
+   near it) or it isn't (remove it). Don't let it sit unexplained a second time.
+4. **Nothing on screen shows that a project card or a task row can be dragged.** Round 8 built the
+   real mechanism; add a real visual cue (a grip icon, a hover state — your call on the smallest
+   one that actually reads as "this moves") so the capability is discoverable, not just present.
+5. **Confirm the "N unfiled" inbox list's actual on-screen state.** The build report says it's
+   always visible, collapsed by default; it is not visibly present in either front-page screenshot
+   Nico sent. Check whether it's genuinely there and just easy to miss at zero items, scoped to the
+   wrong view, or actually missing, and say plainly which one it turns out to be.
+
+**Not part of this round:** anything from Round 9, the segmented progress bar, the rest of the
+sketch match beyond these five items specifically. This is a fix pass, not a redesign.
+
+**Verify → show → commit, rule 19:** `check.ps1` clean; launch the real app yourself and confirm
+all five directly; then, and only then, ask Nico to look — one pass, not a partial one — and
+commit only after his yes.
+
+**Gate 2, standing:** nothing from `projects\` or from the screenshots Nico sent today belongs in
+this file, any commit message, or any report back.
+
+**Done when:** all five items above are visibly fixed in the real running app, `check.ps1` passes,
+Nico has looked once and said yes, and it's committed together with Round 8.
+
+
+## ⬇ Downstream — 2026-09-13, the plan for the rest of the front page: two more rounds after this one
+
+Nico asked to see everything he's actually approved again, and for a real round-by-round plan to
+close the gap — UI matched first, everyday features after. Checked `sketches\APPROVED.md`, the
+actual approval ledger (not `sketches\README.md`, which has a known gap for `asa-front2` and
+disagrees with it in places): **five screens have a real yes**, not the whole roadmap —
+`asa-front2` (front page), `asa-tasks-view` (Tasks view), `asa-v01b` (the v0.1 project-screen
+typographic style), `asa-decisions-v2` (Decisions grouping), `asa-decision-call` (accept/reject).
+The last three are already built and already confirmed by Nico in earlier rounds — nothing to do
+there. The front page and its Tasks view are the only two still open, and the round directly above
+this one (fix the five items) is the first step in closing them.
+
+**Two more rounds after that one, in order, each waiting on Nico's yes before the next starts:**
+
+**Round — milestone data, the minimum that can feed a real progress bar.** `asa-front2` shows "a
+segmented bar with phase names under it." `PLAN.md`'s v0.2 section has an old open question this
+depends on and that was never actually settled: **does one segment mean a Round, or a broader
+"phase" grouping several Rounds together?** The sketch's own label ("phase names") points at the
+second reading, not the first — worth Nico's explicit yes before it's built, since it's a real data
+-model choice, not a visual one, and guessing wrong here means rebuilding the model, not just the
+bar. **Do not build this round until that one line is confirmed** — ask directly rather than
+inferring it from the sketch alone.
+
+**Round — the segmented progress bar itself.** Once the milestone/phase data exists, build the bar
+`asa-front2` actually shows: one segment per phase, phase names underneath, filled up to wherever
+the project actually stands. This was deliberately left unbuilt until now because the data it
+needs didn't exist — it does after the round above.
+
+**After these two, plus the fix round above, the front page and its Tasks view should match
+`asa-front2.html` / `asa-tasks-view.html` closely enough for Nico to judge directly against the
+real files** — not a description of them. Nothing about Round 9 (parked items, priority/deadlines)
+starts before this is confirmed, per Nico's own instruction: UI right first, everyday features
+after, one small round at a time.
+
+**Gate 2, standing, same as every entry above:** open the sketch files yourself on the device;
+nothing from their content, or from any screenshot Nico has sent, goes into this file, a commit
+message, or any report back.
+
+### 2026-09-13 — the fix pass built and verified; still not committed, together with Round 8
+
+Opened `asa-front2.html` and `asa-tasks-view.html` directly, per the spec, before touching
+anything. All five items addressed:
+
+1. **The Markdown bug — real and confirmed**, not just theoretical: `asa.md`'s own real `## Tasks`
+   section has lines like `` "Fix `decision_detail_screen_test.dart`'s flakiness -- done
+   `2026-09-09` (`b1394a2`)" `` — exactly the raw-backtick rendering the screenshots showed.
+   `markdown.dart` gets a new `stripCodeSpanMarkers`, applied at display time only — the parsed
+   `Task.text` stays raw, same layering `stripEmphasisMarkers` already established for a decision's
+   body. Checked the Projects view's own `nextStep` text for the same gap, as asked: no real
+   project's `next-step:` field has a backtick today, but the code path has the identical
+   vulnerability, so both `stripCodeSpanMarkers` and `stripEmphasisMarkers` are applied there too —
+   one line, not a redesign.
+2. **Window title.** Renamed the AppBar's `"Asa — Product Hub"` to plain `"Asa"` — "Product Hub" is
+   this app's internal hub-naming vocabulary (`CLAUDE.md`'s "only the Product Hub exists"), not
+   something with a reason to appear as the thing Nico reads every time he opens the app. Not
+   asked directly per the spec's own "ask rather than guess" — flagging the reasoning here instead,
+   since it's a one-line, easily-reverted choice, not a structural one; happy to change it on a
+   word.
+3. **The "Projects folder" field.** It's load-bearing — the only way to point Asa at a folder or
+   reload it, given the no-plugins constraint. Added a one-line caption under the label saying so,
+   rather than removing it.
+4. **A visual cue that something can be dragged.** Already present in Round 8's build — each inbox
+   row has a grip icon (`Icons.drag_indicator`) — but see item 5 for why it was never seen. Added a
+   tooltip to it ("Drag onto a project to file it there") for a second, textual signal, per rule 7.
+5. **Diagnosed: genuinely there, invisible at zero items — not scoped wrong, not missing code.**
+   `InboxPanel`'s status line only rendered `if (widget.tasks.isNotEmpty)` — at zero unfiled tasks
+   (true in every one of Nico's screenshots, since nothing had been captured for real yet) the
+   entire line, and the grip icon inside it, never existed to be seen. Fixed: the panel now always
+   shows a line — "N unfiled — drag onto a project" or "Inbox empty — nothing unfiled right now." —
+   so its presence is never in question again.
+
+**Verified:** `check.ps1` — first run hit the pre-existing `decision_detail_screen_test.dart` flake
+(documented since 2026-09-09, unrelated to anything touched this round); second run clean, all
+four gates, 196 tests (three new: `stripCodeSpanMarkers`'s own tests in `markdown_test.dart`, plus
+two test updates for the always-visible inbox status line). Launched the real app myself
+(`flutter run -d windows`) — connected with no crash, against real project data including
+`asa.md`'s own backtick-laden tasks, the exact case the fix targets.
+
+**What "launch and confirm all five directly" actually means here, said plainly:** this
+environment has no reliable way for me to take a screenshot or read rendered text back from the
+window (a real privacy incident and a dead end with Windows UI Automation, both from Round 11 —
+see `HANDOVER-ARCHIVE.md`). "Confirmed" above means: the widget tests assert the exact rendered
+text and finders (e.g. `find.text('Asa')`, the stripped strings, the always-present status line)
+against the real widget tree, and the app launches without error against real data. It does not
+mean I looked at pixels. Left the window running rather than closing it unseen.
+
+**Not confirmed by Nico, not committed — together with Round 8's own diff, per that entry's own
+"done when."** Asked once already this session; Nico: *"I dont understand your question. Just keep
+working and hand me back to cowork."* Read as a deferral, not a yes — nothing committed. The
+working tree carries both rounds' changes, `check.ps1` green, ready for whichever session picks
+this up next to show it and get an actual yes.
+
+**Not part of this round, as scoped:** the two rounds after this one (milestone/phase data, the
+segmented bar) and everything in Round 9 — unchanged from the plan above.
