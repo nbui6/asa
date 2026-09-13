@@ -1,7 +1,11 @@
-# Skills — all 26, and which ones are real
+# Skills — all 27, and which ones are real
 
-**26 skills exist. 15 have ever fired.** This file exists so that number is visible instead of
+**27 skills exist. 16 have ever fired.** This file exists so that number is visible instead of
 implied, and so the dormant ones can be judged rather than quietly trusted.
+
+*Corrected 2026-09-13: this said 26/15. `doorman`, added 2026-09-08, was never counted here — it
+had already fired twice (see below) by the time anyone checked the real folder count against this
+file's own header.*
 
 Nothing is deleted here. A skill with a written trigger that has not fired yet is different from
 a skill nobody can find a use for — and the difference is what this file records.
@@ -15,12 +19,12 @@ a skill nobody can find a use for — and the difference is what this file recor
 > Fixed by `install-skills.ps1`. The counts are still true — they were just measuring one of the
 > two places the kit runs.
 
-> **Read this once, then only when a skill fails to fire.** You do not memorise 26 skills. The
+> **Read this once, then only when a skill fails to fire.** You do not memorise 27 skills. The
 > assistant loads them; you check this file when something you expected did not happen.
 
 ---
 
-## The 15 that have fired
+## The 16 that have fired
 
 These are proven on real work. If you only ever use these, the kit still works.
 
@@ -41,10 +45,13 @@ These are proven on real work. If you only ever use these, the kit still works.
 | `toolchain-map` | The second tool joins | Obsidian / VS Code / Claude Code / Asa |
 | `process-audit` | Process documents have grown | Found nine real defects |
 | `ship-it` | Something leaves the builder's machine | The first packaged copy, 2026-08-26. Found that the package had not been checked the way it claimed. |
+| `doorman` | Before any session reasons about a project — reads its note, `BACKLOG.md`, and sweeps `decisions\` for accepted-but-unbuilt | Caught ADR 0007 (accepted 2026-09-01, unbuilt for twelve days) via its own decisions-sweep, 2026-09-13; then caught a bug in its own header-vs-verdict check on that same sweep's first run |
 
-Fifteen rows, not nine — `kit-feedback`, `explain-as-we-go`, `obsidian-docs`, `toolchain-map` and
-`process-audit` fired after the count of 9 was taken, and `ship-it` fired on 2026-08-26.
-**The honest count today is 15 of 26.**
+Sixteen rows, not nine — `kit-feedback`, `explain-as-we-go`, `obsidian-docs`, `toolchain-map` and
+`process-audit` fired after the count of 9 was taken, `ship-it` fired on 2026-08-26, and `doorman`
+fired twice on 2026-09-13, the day it was finally installed somewhere Claude Code could load it
+from (see the correction note at the top of this file).
+**The honest count today is 16 of 27.**
 
 ### Two added 2026-08-31, from the first outside test
 

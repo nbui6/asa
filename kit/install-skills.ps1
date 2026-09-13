@@ -66,7 +66,16 @@ $coreSkills = @(
     'discovery', 'research', 'roadmap', 'stack-choice', 'toolchain-map',
     'persona-check', 'sketch-the-product', 'architecture-map',
     'first-test', 'debugging',
-    'obsidian-docs', 'process-audit', 'kit-feedback', 'explain-as-we-go'
+    'obsidian-docs', 'process-audit', 'kit-feedback', 'explain-as-we-go',
+    # Found missing 2026-09-13, while adding doorman below: SKILLS.md has
+    # named this one fired (the first packaged copy, 2026-08-26) since
+    # that date, but it was never added here - the exact "second source
+    # of truth" drift this list's own header comment warns against.
+    'ship-it',
+    # 2026-09-13: fired twice for real, caught by an actual decisions-sweep -
+    # ADR 0007 accepted 2026-09-01 and never built, then its own
+    # header-vs-verdict bug on that same sweep's first run. See ASA-LOG.md.
+    'doorman'
 )
 
 $ErrorActionPreference = 'Stop'
