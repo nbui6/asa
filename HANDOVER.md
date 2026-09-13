@@ -1282,3 +1282,27 @@ yes before committing.
 
 **Gate 2, standing:** nothing from `projects\`'s real content goes into this file, a commit
 message, or a test fixture. Invented data only.
+
+### 2026-09-13 — the overdue signal built, shown for real, confirmed, committed (`7d52a90`)
+
+**Built exactly what was asked, no more:** `project_row.dart`'s `isPastDeadline(deadline, status,
+now)` — a pure function, `now` passed in rather than read from the clock, same `YYYY-MM` shape
+`humanizeDeadline` already parses. Overdue means the deadline's own month has fully passed, not
+merely arrived — a deadline of the current month is not yet overdue. Suppressed for `shipped` and
+`dropped`; every other real status, `paused` included, still gets it. Wired into
+`projects_view.dart`: the existing deadline `Text` switches to `ColorScheme.error` and bold when
+overdue — no new pill, no new icon, no new line, matching the spec's own scope exactly.
+
+**Verified:** `check.ps1` clean, all four gates, first run, 237 tests (9 new — the five shapes the
+spec named directly: past month, future month, current month, a malformed value, and every real
+status word against `isPastDeadline`, plus three widget tests proving the colour actually switches
+in `ProjectsView`).
+
+**Shown for real:** two throwaway demo projects (never real ones, Gate 2) — one with a 2020
+deadline, one with a 2099 one — launched in the real app side by side. Nico looked: *"yes."*
+Committed after, per rule 19. Throwaway folder deleted immediately after.
+
+**This closes both pieces Cowork specced in this same conversation** — parked items (`13a4a1d`)
+and this. Round 9's remaining pieces (the process view, project relations, tabs-that-appear-with-
+content) and ADR 0019 (areas) are still open, not started, per the standing "nothing starts until
+Nico says what's next" line from the UI-plan closing entry.
