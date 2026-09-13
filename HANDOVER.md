@@ -1069,3 +1069,77 @@ has already had.
 
 **Not part of this round, as scoped:** the segmented progress bar itself (next), any front-page
 change, Round 9, ADR 0019.
+
+
+## ⬇ Downstream — 2026-09-13, next round for Code: the segmented progress bar itself
+
+**The data exists now** (`d07a56a`) — `Phase` and `groupPhases` are built, tested, and shown to
+Nico as real parse output. This round draws the bar `asa-front2.html` actually shows, on top of
+that data. Open the sketch yourself before starting, same as every round in this plan: one
+segmented bar per project, phase names underneath, filled up to wherever the project stands.
+
+**What to build:**
+
+1. **A bar widget on the front page, per project, only when `groupPhases` returns at least one
+   phase.** Zero phases (every real project's roadmap today, including `asa.md`'s own) means **no
+   bar at all** — absent, not empty. This is the case that must not regress; check it explicitly.
+2. **One segment per phase, in roadmap order**, filled by `doneCount`/`totalCount` — a phase with
+   3 of 5 Rounds checked is three-fifths filled, not a guess at percentage. The phase name renders
+   underneath its segment, matching the sketch's own layout.
+3. **A finished phase and an untouched one should read as different at a glance** — the sketch
+   distinguishes filled from empty visually; match that distinction, your call on the exact
+   treatment (color, fill vs outline) as long as it's legible in both a light and dark Windows
+   theme, since nothing in this app has assumed one theme only.
+4. **Where it sits on the project row** — `asa-front2` puts it under the existing name/pills/Jira
+   line. Follow the sketch's placement rather than inventing a new position.
+
+**Not part of this round:** anything in Round 9, ADR 0019 (still proposed, not accepted), any
+change to how phases are parsed or counted (that's settled, previous round).
+
+**Verify → show → commit, rule 19 — and this is the round Nico's deferred check actually covers.**
+He said, on the phase-data round: *"I will check after we are done with round 3."* That means
+**this round needs the real look before anything commits** — `check.ps1` clean is not enough by
+itself here, unlike the last two rounds he explicitly let through on data/verification alone. Add
+a `###` phase heading or two to a throwaway test project on his machine (never to a real one — Gate
+2) if there's nothing real to show the bar against yet, so there's something on screen to look at
+rather than asking him to imagine it.
+
+**Gate 2, standing:** nothing from `projects\`'s real content, or the sketch's own real-adjacent
+names, goes into this file, a commit message, or a test fixture. Invented data only.
+
+**After this commits:** the three-round UI plan (`PLAN.md`, `asa.md`'s Round 6 step 4) closes.
+Nothing on Round 9 or Round 18 (the four operating-layer gaps, just adopted) starts before Nico has
+looked at this round specifically and said yes.
+
+### 2026-09-13 — the bar built, shown for real, confirmed, committed (`20461b2`)
+
+**Built exactly what was asked:** `PhaseBar` (new, `hubs/product/phase_bar.dart`) draws one segment
+per phase, in roadmap order, filled by `doneCount / totalCount`, phase name underneath. Wired into
+`ProjectsView`'s row, under the existing name/pills/next-step line, matching `asa-front2.html`'s
+placement. Colours come from `Theme.of(context).colorScheme` rather than literal shades — legible
+in both a light and dark Windows theme, per the spec, even though nothing else in this app has
+needed that distinction before now.
+
+**The must-not-regress case, checked both ways:** a project whose roadmap has no `###` heading
+(every real project today) shows no bar at all — verified with a widget test using a real flat
+roadmap shape and one with no roadmap at all. A project whose roadmap does have phases shows the
+bar; verified with an invented one, per Gate 2.
+
+**Verified:** `check.ps1` — three attempts before green. First two hit
+`decision_detail_screen_test.dart`'s pre-existing flake, but a **different failure mode this time**
+worth naming honestly: a `PathAccessException` in its `tearDown`, Windows refusing to delete a temp
+folder still held open by another process — not the duplicate-verdict race that test was written
+to catch, and not caused by anything this round touched. Third run clean, all four gates, 209
+tests.
+
+**Shown for real this time, per the spec's own override of the last two rounds' deferral:** built a
+throwaway demo project (`_throwaway-phase-demo\`, outside `projects\`, never a real one) with two
+invented phases, launched the real app, pointed it at that folder so an actual segmented bar
+rendered on screen — two segments, one filled about two-thirds, one empty. Nico looked at the real
+window: *"yes I see that, right."* Committed after, per rule 19. Throwaway folder deleted
+immediately after.
+
+**This closes the three-round UI-first plan.** The front page and its Tasks view now match
+`asa-front2.html` and `asa-tasks-view.html` — the two screens this plan set out to close the gap
+on. Nothing on Round 9 or the four operating-layer gaps starts until Nico has said so separately,
+per the spec's own closing line.
