@@ -56,6 +56,58 @@ Future<void> setTaskDone(
   );
 }
 
+final RegExp _trailingParkedTag = RegExp(r'\s*\(parked\)\s*$');
+
+/// Toggles a task's trailing `(parked)` tag, matched by its exact original
+/// [Task.rawLine] — same discipline as [setTaskDone]: rewrites only that
+/// line, refuses with a [StateError] if [rawLine] can no longer be found
+/// (the file changed on disk since it was read). Every other byte on the
+/// line — the checkbox, a `(Code)` tag, a `[[project]]` reference — is
+/// untouched; parking is orthogonal to all three.
+Future<void> setTaskParked(
+  String path, {
+  required String rawLine,
+  required bool parked,
+}) async {
+  final content = await File(path).readAsString();
+
+  final range = sectionRange(content, 'Tasks');
+  if (range == null) {
+    throw StateError('No ## Tasks section in $path — nothing to update.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final index = section.indexOf(rawLine);
+  if (index == -1) {
+    throw StateError(
+      'That task line was not found in $path — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  final alreadyParked = _trailingParkedTag.hasMatch(rawLine);
+  final String newLine;
+  if (parked == alreadyParked) {
+    newLine = rawLine;
+  } else if (parked) {
+    newLine = '$rawLine (parked)';
+  } else {
+    newLine = rawLine.replaceFirst(_trailingParkedTag, '');
+  }
+
+  final newSection = section.replaceRange(
+    index,
+    index + rawLine.length,
+    newLine,
+  );
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+}
+
 /// Marks every open task in this project's own `## Tasks` section done.
 /// Already-done tasks, and every other line in the file, are untouched.
 /// Writes nothing at all when there is no `## Tasks` section, or every

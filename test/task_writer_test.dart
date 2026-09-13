@@ -68,6 +68,78 @@ void main() {
     });
   });
 
+  group('setTaskParked — PLAN.md v0.3, "the rule of two"', () {
+    test('appends (parked), touching no other line', () async {
+      File(path)
+          .writeAsStringSync('## Tasks\n\n- [ ] Untouched\n- [ ] Park me\n');
+
+      await setTaskParked(path, rawLine: '- [ ] Park me', parked: true);
+
+      final updated = File(path).readAsStringSync();
+      expect(updated, contains('- [ ] Untouched\n'));
+      expect(updated, contains('- [ ] Park me (parked)'));
+    });
+
+    test('removes (parked), leaving the checkbox and everything else '
+        'alone', () async {
+      File(path)
+          .writeAsStringSync('## Tasks\n\n- [x] Done and parked (parked)\n');
+
+      await setTaskParked(
+        path,
+        rawLine: '- [x] Done and parked (parked)',
+        parked: false,
+      );
+
+      final updated = File(path).readAsStringSync();
+      expect(updated, contains('- [x] Done and parked'));
+      expect(updated, isNot(contains('(parked)')));
+    });
+
+    test('parking an already-parked line, or unparking an already-open '
+        'one, is a no-op — writes the line back unchanged', () async {
+      const original = '## Tasks\n\n- [ ] Already open\n';
+      File(path).writeAsStringSync(original);
+
+      await setTaskParked(path, rawLine: '- [ ] Already open', parked: false);
+
+      expect(File(path).readAsStringSync(), original);
+    });
+
+    test('a (Code) tag on the same line survives parking untouched', () async {
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Ship it (Code)\n');
+
+      await setTaskParked(path, rawLine: '- [ ] Ship it (Code)', parked: true);
+
+      expect(
+        File(path).readAsStringSync(),
+        contains('- [ ] Ship it (Code) (parked)'),
+      );
+    });
+
+    test('throws when there is no ## Tasks section', () {
+      File(path).writeAsStringSync('# Example\n\nNothing here.\n');
+
+      expect(
+        () => setTaskParked(path, rawLine: '- [ ] Anything', parked: true),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('throws when the exact line is no longer there', () {
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Test forms\n');
+
+      expect(
+        () => setTaskParked(
+          path,
+          rawLine: '- [ ] A different task',
+          parked: true,
+        ),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
   group('markAllTasksDone', () {
     test('checks every open task, leaves already-done tasks alone', () async {
       File(path).writeAsStringSync(

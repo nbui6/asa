@@ -5,6 +5,7 @@
 library;
 
 import 'package:asa/core/roadmap.dart';
+import 'package:asa/core/task.dart';
 
 class Project {
   const Project({
@@ -22,6 +23,7 @@ class Project {
     this.jira,
     this.links = const [],
     this.roadmap = const [],
+    this.tasks = const [],
     this.extra = const {},
   });
 
@@ -56,6 +58,14 @@ class Project {
   /// case today. See `roadmap.dart`'s `effectiveMilestone` for what to
   /// show instead of [milestone] once this is non-empty.
   final List<Milestone> roadmap;
+
+  /// The `## Tasks` section, parsed — same flat list `tasks_reader.dart`
+  /// reads per project for the Tasks view, kept here too so a row that
+  /// only has a `Project` (the Projects view) can still derive something
+  /// from a project's own tasks, e.g. `project_row.dart`'s `countParked` —
+  /// without needing the whole grouped-by-parent read `buildTaskGroups`
+  /// does.
+  final List<Task> tasks;
 
   /// Every frontmatter key this file does not already name, in the order
   /// `parseFrontmatter` found them — Round 7's fork seam,
@@ -183,6 +193,7 @@ Project projectFromFields(
   List<ProjectLink> links = const [],
   String? description,
   List<Milestone> roadmap = const [],
+  List<Task> tasks = const [],
 }) {
   String field(String key) {
     final value = fields[key];
@@ -220,6 +231,7 @@ Project projectFromFields(
     jira: optionalField('jira'),
     links: links,
     roadmap: roadmap,
+    tasks: tasks,
     extra: extra,
   );
 }

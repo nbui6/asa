@@ -31,6 +31,12 @@
 /// a milestone. `PhaseBar` draws it, fed by `groupPhases(project.roadmap)`
 /// right here; a project with no phase groupings shows no bar at all,
 /// same absence rule as everything else on this row.
+///
+/// **2026-09-13, later still — "N parked".** `HANDOVER.md`'s "parked
+/// items, and the rule of two". A small badge next to the status/priority
+/// pills, shown only when a project has at least one parked task; more
+/// than one gets a stronger, filled treatment rather than a bigger
+/// number, so a pile-up reads as something to notice.
 library;
 
 import 'package:asa/core/markdown.dart';
@@ -130,6 +136,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     final deadline = humanizeDeadline(project.deadline);
     final emphasis = statusEmphasis(project.status);
     final phases = groupPhases(project.roadmap);
+    final parkedCount = countParked(project.tasks);
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
@@ -180,6 +187,10 @@ class _ProjectsViewState extends State<ProjectsView> {
                           const SizedBox(width: 6),
                           _pill(project.priority!, StatusEmphasis.neutral),
                         ],
+                        if (parkedCount > 0) ...[
+                          const SizedBox(width: 6),
+                          _parkedBadge(parkedCount),
+                        ],
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -224,6 +235,48 @@ class _ProjectsViewState extends State<ProjectsView> {
             fontSize: 12,
             color: Colors.blue.shade800,
           ),
+        ),
+      ),
+    );
+  }
+
+  /// "N parked" — `PLAN.md` v0.3. One parked task is a plain, quiet badge;
+  /// more than one is the "rule of two" — a stronger, filled treatment so
+  /// the pile-up reads as something to notice, not something to miss at a
+  /// glance. Deciding that two parked items are really the same subject,
+  /// and acting on it, stays Nico's own judgement — this only makes the
+  /// count impossible to overlook.
+  Widget _parkedBadge(int count) {
+    final message = count == 1 ? '1 task parked' : '$count tasks parked';
+    final ruleOfTwo = count > 1;
+
+    return Tooltip(
+      message: message,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: ruleOfTwo ? Colors.amber.shade700 : Colors.amber.shade50,
+          border: ruleOfTwo ? null : Border.all(color: Colors.amber.shade300),
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.bookmark,
+              size: 11,
+              color: ruleOfTwo ? Colors.white : Colors.amber.shade800,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: ruleOfTwo ? FontWeight.bold : FontWeight.normal,
+                color: ruleOfTwo ? Colors.white : Colors.amber.shade800,
+              ),
+            ),
+          ],
         ),
       ),
     );

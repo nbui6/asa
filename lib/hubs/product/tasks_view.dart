@@ -16,6 +16,11 @@
 /// `stripCodeSpanMarkers`/`stripEmphasisMarkers` are applied here, at
 /// display time — the parsed [Task.text] itself stays raw, same rule
 /// `decision_detail_screen.dart` already follows for a decision's body.
+///
+/// **2026-09-13, later — parked tasks.** `HANDOVER.md`'s "parked items,
+/// and the rule of two". A parked task shows a small bookmark chip, same
+/// visual language the `(Code)` icon already set — but tappable, since
+/// parking (unlike being Code's task) is something Nico toggles here.
 library;
 
 import 'package:asa/core/markdown.dart';
@@ -29,6 +34,7 @@ class TasksView extends StatefulWidget {
     required this.groups,
     required this.onToggleTask,
     required this.onMarkAllDone,
+    required this.onToggleParked,
     super.key,
   });
 
@@ -41,6 +47,11 @@ class TasksView extends StatefulWidget {
 
   /// Marks every open task in one project's own `## Tasks` section done.
   final Future<void> Function(Project project) onMarkAllDone;
+
+  /// Toggles one task's `(parked)` tag — `PLAN.md` v0.3, "the rule of
+  /// two". Orthogonal to [onToggleTask]; parking never touches the
+  /// checkbox.
+  final Future<void> Function(Project project, Task task) onToggleParked;
 
   @override
   State<TasksView> createState() => _TasksViewState();
@@ -255,6 +266,25 @@ class _TasksViewState extends State<TasksView> {
                 child: Icon(Icons.code, size: 16, color: Colors.grey.shade500),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Tooltip(
+              message: task.parked
+                  ? 'Parked — tap to unpark'
+                  : 'Tap to park this task',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () => widget.onToggleParked(project, task),
+                child: Icon(
+                  task.parked ? Icons.bookmark : Icons.bookmark_border,
+                  size: 16,
+                  color: task.parked
+                      ? Colors.amber.shade800
+                      : Colors.grey.shade400,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

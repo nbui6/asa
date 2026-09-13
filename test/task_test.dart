@@ -89,6 +89,41 @@ v1.23.
       expect(task.rawLine, '-   [ ]   Test forms  ');
     });
 
+    test('a trailing (parked) tag is stripped and marks the task as '
+        'parked, case-insensitively — PLAN.md v0.3', () {
+      const body = '## Tasks\n\n- [ ] Redesign the onboarding flow (Parked)\n';
+      final task = parseTasks(body).single;
+
+      expect(task.text, 'Redesign the onboarding flow');
+      expect(task.parked, isTrue);
+      expect(task.done, isFalse);
+    });
+
+    test('(Code) and (parked) can sit on one line without fighting each '
+        'other — parked is checked and stripped first', () {
+      const body = '## Tasks\n\n- [ ] Ship the release (Code) (parked)\n';
+      final task = parseTasks(body).single;
+
+      expect(task.text, 'Ship the release');
+      expect(task.isCode, isTrue);
+      expect(task.parked, isTrue);
+    });
+
+    test('the word "parked" elsewhere in the text is not a tag — anchored '
+        'to a trailing parenthetical, not a substring search', () {
+      const body = '## Tasks\n\n- [ ] The car is parked outside\n';
+      final task = parseTasks(body).single;
+
+      expect(task.text, 'The car is parked outside');
+      expect(task.parked, isFalse);
+    });
+
+    test('most tasks are not parked, and that reads as false, not an '
+        'error', () {
+      const body = '## Tasks\n\n- [ ] An ordinary task\n';
+      expect(parseTasks(body).single.parked, isFalse);
+    });
+
     test('a "## Tasks" example inside a fenced code block is not read as '
         'real tasks — the same fence-awareness decision.dart already '
         'needed, shared via markdown.dart', () {

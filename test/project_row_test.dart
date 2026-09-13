@@ -3,6 +3,7 @@ import 'package:asa/core/project.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
+import 'package:asa/core/task.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _emptyGit = GitState(command: '', rawOutput: '');
@@ -129,5 +130,29 @@ void main() {
         expect(split.work, hasLength(1));
       },
     );
+  });
+
+  group('countParked — PLAN.md v0.3, "the rule of two"', () {
+    const parked = Task(rawLine: '', text: 'Parked', done: false, parked: true);
+    const open = Task(rawLine: '', text: 'Open', done: false);
+    const doneAndParked = Task(
+      rawLine: '',
+      text: 'Done but still parked',
+      done: true,
+      parked: true,
+    );
+
+    test('counts only the parked ones, done or not', () {
+      expect(countParked([parked, open, doneAndParked]), 2);
+    });
+
+    test('a project with nothing parked counts zero, not absent from the '
+        'list — the caller decides what zero means on screen', () {
+      expect(countParked([open]), 0);
+    });
+
+    test('no tasks at all counts zero, not an error', () {
+      expect(countParked(const []), 0);
+    });
   });
 }

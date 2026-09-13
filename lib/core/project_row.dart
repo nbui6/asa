@@ -9,6 +9,7 @@
 library;
 
 import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/task.dart';
 
 /// The last `/`-separated segment of a Jira URL — `CRM-557` from
 /// `https://verbi.atlassian.net/browse/CRM-557`. Null when there is no
@@ -113,3 +114,9 @@ int countDescendants(ProjectNode node) {
   }
   return count;
 }
+
+/// How many of a project's own tasks are parked — `PLAN.md` v0.3, "the
+/// rule of two". Shown on the row **only when this is greater than
+/// zero** — absent, not a "0 parked" line nobody needs to see, same rule
+/// already used for priority, deadline, the Jira chip and the phase bar.
+int countParked(List<Task> tasks) => tasks.where((t) => t.parked).length;

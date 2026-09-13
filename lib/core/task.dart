@@ -16,6 +16,7 @@ class Task {
     required this.text,
     required this.done,
     this.isCode = false,
+    this.parked = false,
     this.crossProjectRef,
   });
 
@@ -36,6 +37,14 @@ class Task {
   /// merely mentions the word "code" elsewhere in its text is not this.
   final bool isCode;
 
+  /// True when the line ends in a trailing `(parked)` marker — `PLAN.md`
+  /// v0.3, "the rule of two". Anchored to the end of the line, same
+  /// reasoning as [isCode]; checked and stripped before it, so a line can
+  /// carry both tags — `(Code) (parked)` — without either fighting the
+  /// other for the "end of line" position. Orthogonal to [done]: a parked
+  /// task's checkbox is untouched by parking it.
+  final bool parked;
+
   /// The slug of another project this task names — e.g.
   /// `license-commerce-integration` from `[[license-commerce-integration]]`
   /// — shown as a small chip. Not resolved against real projects in this
@@ -44,6 +53,10 @@ class Task {
 }
 
 final RegExp _checkboxLine = RegExp(r'^\s*-\s*\[([ xX])\]\s*(.*)$');
+final RegExp _trailingParkedTag = RegExp(
+  r'\(parked\)\s*$',
+  caseSensitive: false,
+);
 final RegExp _trailingCodeTag = RegExp(r'\(code\)\s*$', caseSensitive: false);
 final RegExp _crossProjectPattern = RegExp(r'\[\[([^\]]+)\]\]');
 
@@ -77,6 +90,11 @@ Task? parseTaskLine(String line) {
   final done = match.group(1)!.toLowerCase() == 'x';
   var text = match.group(2)!.trim();
 
+  final parked = _trailingParkedTag.hasMatch(text);
+  if (parked) {
+    text = text.replaceFirst(_trailingParkedTag, '').trim();
+  }
+
   final isCode = _trailingCodeTag.hasMatch(text);
   if (isCode) {
     text = text.replaceFirst(_trailingCodeTag, '').trim();
@@ -98,6 +116,7 @@ Task? parseTaskLine(String line) {
     text: text,
     done: done,
     isCode: isCode,
+    parked: parked,
     crossProjectRef: crossProjectRef,
   );
 }

@@ -286,6 +286,24 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     await _reloadTaskGroups();
   }
 
+  /// Toggles a task's `(parked)` tag — `PLAN.md` v0.3, "the rule of two".
+  /// Reloads everything, not just the task groups: `ProjectsView`'s own
+  /// "N parked" count reads `Project.tasks`, populated at scan time, so a
+  /// parked toggle has to refresh the scan too, not only the Tasks view.
+  Future<void> _toggleParked(Project project, Task task) async {
+    try {
+      await setTaskParked(
+        project.sourceFile,
+        rawLine: task.rawLine,
+        parked: !task.parked,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
   Future<void> _markAllDone(Project project) async {
     try {
       await markAllTasksDone(project.sourceFile);
@@ -398,6 +416,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   groups: _taskGroups!,
                   onToggleTask: _toggleTask,
                   onMarkAllDone: _markAllDone,
+                  onToggleParked: _toggleParked,
                 ),
             ],
           ],
