@@ -1143,3 +1143,142 @@ immediately after.
 `asa-front2.html` and `asa-tasks-view.html` — the two screens this plan set out to close the gap
 on. Nothing on Round 9 or the four operating-layer gaps starts until Nico has said so separately,
 per the spec's own closing line.
+
+### 2026-09-13 — next round for Code: parked items, and the rule of two
+
+Nico's own words, choosing what comes next: *"Finish v1"* — Round 9's remaining v1 pieces, over
+starting areas (ADR 0019). This spec is the first of those two pieces. **Round 9's other piece,
+priority and deadlines, is deliberately not in this spec** — `PLAN.md`'s own v0.7 section flags it
+as "not designed... needs its own sketch," and Nico is being asked directly rather than having a
+design guessed for it. This round stands alone and does not wait on that answer.
+
+**What "parked" means, grounded in the real task model** — read `lib/core/task.dart`,
+`tasks_reader.dart` and `task_writer.dart` before writing this, not guessed. `PLAN.md`'s v0.3: *"A
+parked item is visible on the project and counted on the front page. Parking the same subject
+twice raises it: it gets a deadline, a place in the roadmap, or gets worked on."*
+
+**What to build:**
+
+1. **A task can be parked** — marked the same way `(Code)` already is: a trailing `(parked)` tag on
+   the checkbox line, anchored at the end of the line (same rule as `isCode` — a task that merely
+   mentions the word "parked" elsewhere in its text is not this). `Task` gains a `parked` bool,
+   parsed the same way `isCode` is — check for it before the existing `(Code)` tag and the
+   `[[project]]` reference are stripped, so all three can sit on one line without fighting each
+   other. Parking is orthogonal to done/open: a parked task's checkbox stays `[ ]`.
+2. **A writer function next to `setTaskDone` in `task_writer.dart`** — `setTaskParked(path,
+   {required rawLine, required bool parked})`. Same exact-line-match discipline, same atomic write,
+   same `StateError` when the line has moved on disk since it was read. Toggles only the trailing
+   `(parked)` tag; every other byte on the line — checkbox, `(Code)`, `[[project]]` — untouched.
+3. **Visible on the project** — wherever a project's own task list renders (`tasks_view.dart`, the
+   project screen's task list), a parked task shows a small "parked" chip, same visual language as
+   the existing `(Code)` chip. One action toggles it — no sketch exists for this, so keep it as
+   plain as the `(Code)` chip itself; your call on the exact control.
+4. **Counted on the front page** — `ProjectsView`'s row (`project_row.dart`) shows a small "N
+   parked" indicator per project, **only when N > 0 — absent, not zero**, same rule the phase bar
+   already set for "no phases."
+
+**The rule of two — my own design call, flagged plainly, veto it if it's wrong.** Software cannot
+know two parked items are "the same subject" without either a person saying so or fuzzy text
+matching — the first is a new field to maintain (against `CHARTER.md` §3.2, derived not typed), the
+second is exactly the kind of clever this project's own rules warn against ("boring beats clever,"
+`CLAUDE.md` hard rule 6). So this round does **not** try to detect a repeat. Instead: **a project
+with more than one currently-parked task gets a stronger version of the same "N parked"
+indicator** — your call on the exact treatment (colour, weight — same latitude the phase bar's
+fill-vs-outline choice had), so the pile-up is impossible to miss. Noticing that two of those are
+really the same idea, and acting on it — a deadline, a roadmap place, or working on it — stays
+Nico's own judgement call when he sees the count, not something Asa decides for him. **If this
+reading of "the rule of two" is wrong, say so before building past it.**
+
+**Not part of this round:** priority/deadlines (separate question, still open with Nico), the
+process view, project relations, tabs-that-appear-with-content — the rest of Round 9, still open,
+not yet scheduled. ADR 0019 (areas) and Round 18 — still behind this, not started.
+
+**Verify → show → commit, rule 19, same as every round in this plan.** `check.ps1` clean first.
+Then show Nico the real running app with a real parked task or two — a throwaway test project if
+there's nothing real to park yet (never a real one — Gate 2) — and get his yes before committing.
+
+**Gate 2, standing:** nothing from `projects\`'s real content goes into this file, a commit
+message, or a test fixture. Invented data only.
+
+### 2026-09-13 — parked tasks built, shown for real, confirmed, committed (`13a4a1d`)
+
+**Built exactly the four items asked, plus the rule-of-two design call as specced:**
+
+1. `task.dart`'s `Task` gains `parked`, a trailing `(parked)` tag parsed the same way `(Code)` is —
+   checked and stripped **before** `(Code)`, so `- [ ] Ship it (Code) (parked)` reads both tags
+   correctly, neither fighting the other for "end of line."
+2. `task_writer.dart`'s `setTaskParked` — same exact-line-match, atomic-write, `StateError`
+   discipline as `setTaskDone`.
+3. Visible: `tasks_view.dart`'s task row gets a tappable bookmark icon, filled when parked, outline
+   otherwise — same visual language as the `(Code)` icon, but interactive.
+4. Counted: `projects_view.dart`'s row shows an "N parked" badge, next to the status/priority pills,
+   only when `N > 0` — absent, not a "0 parked" line. **The rule of two, as designed and flagged in
+   the spec:** one parked task is a plain outlined badge; two or more switches to a stronger, filled
+   one — the pile-up is meant to be impossible to miss, not counted more precisely. Not vetoed, so
+   built as proposed.
+
+**One real plumbing decision, not asked for by name but needed to make item 4 actually work:**
+`Project` gained a `tasks` field (populated at read time, same as `roadmap` already is), since
+`ProjectsView`'s row only ever had a bare `Project`, never the grouped `TaskGroup` the Tasks view
+reads — there was no way to derive a parked count on that row otherwise. Also: toggling `parked`
+now reloads the **whole** scan, not just the task groups (`_toggleTask`'s old shortcut wasn't
+enough), since the Projects view's badge reads `Project.tasks` from the scan, not from the reloaded
+task groups.
+
+**Verified:** `check.ps1` clean, all four gates, first run, 228 tests (19 new: `parked` parsing
+including the two-tags-on-one-line case, `setTaskParked` round-tripping real files, `countParked`,
+and six widget tests covering the bookmark toggle and the badge at 0/1/2 parked).
+
+**Shown for real, per the spec's own instruction:** built a throwaway demo project (never a real
+one, Gate 2) with two parked tasks and one ordinary one, launched the app, walked through the
+bookmark toggle in the Tasks view and the badge (plain at 1, filled at 2) in the Projects view.
+Nico looked at the real window: *"yes it works."* Committed after, per rule 19. Throwaway folder
+deleted immediately after.
+
+**Not part of this round, as scoped:** priority/deadlines (the second spec below, still open),
+detecting a repeated subject automatically (deliberately not built — see the rule-of-two reasoning
+above), the rest of Round 9.
+
+### 2026-09-13 — second spec, same conversation: an overdue signal for `deadline`
+
+**Correction first, so nobody builds against the stale line:** `PLAN.md`'s v0.7 still said
+"priority and deadlines... not designed, needs its own sketch." **Checked the real code before
+writing this — that's wrong.** `project.priority` already renders as a plain pill and
+`project.deadline` (via `project_row.dart`'s `humanizeDeadline`) already renders as plain text, both
+on `ProjectsView`'s row today. Display was never the gap. Corrected in `PLAN.md`, dated the same day.
+
+**The real, narrow gap, confirmed with Nico directly rather than guessed:** nothing signals a
+passed deadline. No editing of either field from inside the app, and no sorting by either — **both
+explicitly out of scope for this round**, not forgotten.
+
+**What to build — one signal, no new field, no new pill:**
+
+1. **A pure function in `project_row.dart`**, next to `humanizeDeadline` — something like
+   `bool isPastDeadline(String? deadline, String status, DateTime now)`. Parse `deadline` with the
+   same `^(\d{4})-(\d{2})$` shape `humanizeDeadline` already parses (every real value today is a
+   bare `YYYY-MM`); compare against `now`'s year/month. `now` is a parameter, not
+   `DateTime.now()` called inside — same reason every other derivation in this file is a pure
+   function: a test passes a fixed date instead of depending on the clock. A `deadline` that is
+   null, blank, or doesn't match the shape is never overdue — same honest-absence handling
+   `humanizeDeadline` already uses.
+2. **Suppressed for `shipped` and `dropped`** — a project that finished or was dropped has no
+   deadline left to miss. Every other status (`idea`, `discovery-done`, `building`, `paused`,
+   `ongoing`) still gets the signal — a paused project sitting past its own deadline is exactly the
+   kind of thing this signal exists to surface, not hide.
+3. **Wired into `ProjectsView`'s row** — the deadline `Text` (currently always
+   `Colors.grey.shade600`) uses a warning colour instead when `isPastDeadline` is true. Nothing else
+   on the row changes — no new pill, no new icon, no new line. Pick a colour that reads as "overdue"
+   in both a light and dark Windows theme, same requirement the phase bar already met.
+
+**Not part of this round:** editing `priority` or `deadline` from inside the app (still hand-edited
+in the `.md` file, same as every other frontmatter field today); sorting the front page by either;
+parked items (separate spec, above, in this same file).
+
+**Verify → show → commit, rule 19.** `check.ps1` clean first, including a test for `isPastDeadline`
+against a few real shapes (past month, future month, current month, malformed value, `shipped`
+status). Then show Nico a real running project with a deadline in the past — a throwaway test
+project if there's nothing real to show it against yet (never a real one — Gate 2) — and get his
+yes before committing.
+
+**Gate 2, standing:** nothing from `projects\`'s real content goes into this file, a commit
+message, or a test fixture. Invented data only.
