@@ -1306,3 +1306,305 @@ Committed after, per rule 19. Throwaway folder deleted immediately after.
 and this. Round 9's remaining pieces (the process view, project relations, tabs-that-appear-with-
 content) and ADR 0019 (areas) are still open, not started, per the standing "nothing starts until
 Nico says what's next" line from the UI-plan closing entry.
+
+### 2026-09-13 — Round 19 for Code: Asa writes the fields it was allowed to write, and logs every write
+
+**Read `projects\asa\decisions\0007-asa-writes-fields.md` in full before starting, including its
+2026-09-13 addendum.** That ADR is the contract for this round; this spec only says how to execute
+it. It was **accepted 2026-09-01 and never built** — only its checkbox half exists, in
+`task_writer.dart`. Nothing below is new permission.
+
+**This round is `core/` only. No screen.** The edit UI is Round 20, the Log tab is Round 21,
+`next-step` is Round 22 and is *derived*, never written (ADR 0020, accepted today).
+
+**What to build:**
+
+1. **`lib/core/project_writer.dart`** — sibling of `task_writer.dart` and `decision_writer.dart`.
+   Read both first; this follows their discipline exactly, including the atomic temp-file-plus-
+   rename write. Pure Dart, no Flutter import, same as everything else in `core/`.
+2. **The whitelist, in code — guardrail 1.** A `const` set: `parent`, `status`, `priority`,
+   `deadline`, `jira`. **Five, and that is the whole list.** A write to any other key is refused
+   with a `StateError` naming the key — not a silent no-op, not a comment saying "don't". ADR 0007's
+   tripwire is ten fields; this staying at five is load-bearing, not incidental.
+3. **One write function, guarded by that whitelist** — something like
+   `setProjectField(path, {required String field, required String value})`. Behaviour:
+   - **Read before write, refuse on drift — guardrail 2.** Same shape as `setTaskDone`'s refusal:
+     if the frontmatter is not what this write was computed against, `StateError` and say so. His
+     editor is open at the same time; ADR 0007 predicted this exact case.
+   - **Replace one line, never rewrite the file — guardrail 4.** Every other byte, frontmatter and
+     body alike, comes back untouched.
+   - **A key that is not in the frontmatter yet gets added** to the block rather than the write
+     failing — a project with no `deadline:` line must be able to gain one. Handle all three real
+     shapes: key absent entirely, key present but empty (`deadline:` with nothing after it), key
+     present with a value.
+   - **An empty value clears rather than deletes.** `deadline: ` with nothing after it already
+     parses back as absent (`optionalField` returns null on empty) — so clearing leaves the line in
+     place. Do not remove the line; that changes more of the file than the edit asked for.
+   - **`Project.extra` keys survive byte-identically.** Round 7's fork seam means a second
+     developer has her own frontmatter keys in her own files. A write to `status` must not touch,
+     reorder or normalise them. This is a real contract, not a nicety — `FOR-YOUR-FORK.md` promises
+     it.
+4. **The write log — guardrail 3, unmet since Rounds 8 and 9 shipped.** Every write appends one
+   line: when, which file, which field, what it was, what it became. Append-only; never rewritten.
+   **It lives next to the settings store, not inside `projects\`** — `settings.dart` already knows
+   that location. It must be gitignored.
+5. **Route the existing checkbox writes through the same log.** `setTaskDone`, `setTaskParked`,
+   `captureTask` and `moveTask` all write to real files today with no log at all. Guardrail 3 says
+   *every* write, and retrofitting four call sites now is cheaper than explaining later why half the
+   writes are invisible.
+
+**Tests — guardrail 5 is explicit and this round is judged on it:** a round-trip test **per
+whitelisted field**, against a file with a real-shaped body, where **the body comes back
+byte-identical**. Plus, at minimum: the whitelist refusing a non-whitelisted key; the drift
+refusal; a custom `extra` key surviving a write; the three key-shapes in 3c; clearing a value; and
+the log recording a checkbox write as well as a field write.
+
+**Not in this round, and two of them never:** any UI at all; the Log tab; `next-step`, `milestone`,
+a note's body, or any decision file — **those four are forbidden by ADR 0007 permanently, not
+deferred.**
+
+**Gate 2, and one new wrinkle worth naming:** the write log will contain real project file paths
+and real field values at runtime on Nico's machine. That is fine — it is his own data, on his own
+disk, which is what Asa is for. **It must never reach this file, a commit message, a test fixture,
+or the repository.** Gitignore it, and use invented data in every test.
+
+**Verify → show → commit, rule 19 — with the same caveat the phase-data round had.** There is no
+screen in this round, so the "show" is the test output plus a real round-trip demonstrated on a
+throwaway file (never a real project — Gate 2). Nico may well prefer to defer the actual look until
+Round 20 puts it behind a control, the way he did on the phase-data round — *"I will check after we
+are done with round 3. commit."* **Ask him; do not assume either way.**
+
+### 2026-09-13 — small ask, not a round: refresh the Release build
+
+Nico wants to run Asa outside the IDE again to actually use it. **The `Release` folder on disk is
+stale** — `build\windows\x64\runner\Release\asa.exe` was last built 2026-09-08, before Round 8
+(quick capture), the whole UI-first plan, and today's Round 9 work (`13a4a1d`, `7d52a90`).
+
+**Ask:** `flutter build windows --release` again — the exact same step Round 11 already proved,
+nothing new to design or decide. Confirm the three pieces still travel together
+(`asa.exe`, `flutter_windows.dll`, `data\`) and that the rebuilt exe launches outside the IDE
+showing real data, same check Round 11's own "done when" already named. No spec needed beyond this;
+report back with the folder path once done so Nico can be told exactly where to run it from.
+
+### 2026-09-13 — Round 24 for Code: install the doorman for real, both scopes
+
+**Read `projects\asa\ASA-LOG.md`'s 2026-09-13 entry on this first — "the doorman never fired
+because it was never installed."** This spec only executes what that entry already found.
+
+**The bug, verified before writing this, not assumed:** `kit\skills\doorman\SKILL.md` exists and is
+correct. `.claude\skills\` does not exist anywhere in this repository. `install-skills.ps1` — the
+kit's own fix for exactly this class of bug, written 2026-08-24 for the first batch of skills and
+extended 2026-08-26 for agents — has never been run against this repo, and `doorman` was never
+added to its `$coreSkills` list because it did not exist yet when that list was written.
+
+**What to do:**
+
+1. **Add `'doorman'` to `$coreSkills` in `kit\install-skills.ps1`.** It has fired twice for real
+   today: caught ADR 0007 accepted-and-unbuilt via the new decisions-sweep, and caught its own
+   header-vs-verdict bug on that sweep's first run. One line, with a comment naming today's date
+   and the ADR 0007 catch as the evidence, same style every other entry in that list follows.
+2. **Run the installer at project scope**, targeting this repo, so `.claude\skills\doorman\` is a
+   real folder that gets committed and travels with a plain `git clone` — confirmed today that
+   `.gitignore` does not exclude `.claude\skills\`, only `.claude\hooks\.last-pass` and
+   `settings.local.json`.
+3. **Also run it at user scope** (the default), so doorman is live in Nico's own Claude Code
+   sessions immediately, not only in a future fresh clone. Both are cheap; there is no reason to
+   pick one.
+4. **Update `kit\SKILLS.md` in the same commit** — the installer's own header comment requires this:
+   *"When a dormant skill fires for the first time, add it here in the same commit that records it —
+   otherwise this list becomes a second source of truth."* Add doorman's row to "the fired" table
+   (fires when / fired on, same shape as the other 15 rows), and correct the file's own "26 skills
+   exist" header count — check the real total in `kit\skills\` rather than assume the arithmetic.
+5. **Verify honestly, per the installer's own manifest guarantee.** Confirm
+   `.claude\skills\doorman\SKILL.md` exists at both the project path and the user profile path
+   after running it, and that `.kit-manifest.json` records it. **This cannot be verified by "does it
+   fire" from inside this same build** — that only shows up in a session that starts fresh with the
+   file already in place. Say plainly in the build report that firing itself is unverified until
+   the next fresh session, rather than claiming more than the files on disk can prove.
+
+**Not part of this round:** the doorman's own SKILL.md content — already read and corrected today,
+not touched again here. Anything about packaging the app itself for another machine, or a feedback
+channel from another Claude session — that is being scoped as its own round, separately, and
+depends on one open question Nico is being asked directly rather than guessed.
+
+**Verify → show → commit, rule 19.** `check.ps1` first if the repo has anything to check beyond the
+installer itself (it shouldn't touch `lib/` or `test/`). This round has no screen — the "show" is
+the real file listing at both install paths plus the updated `kit\SKILLS.md`, not a running app.
+
+**Gate 2:** nothing about this round touches `projects\` at all.
+
+### 2026-09-13 — Nico's next instruction: build what v1 needs to actually work, on real projects, no fake ones
+
+**Nico, in his own words:** *"let build the rounds needed to make v1 works properly. Give me
+spec. dont create any fake projects, Asa should works there with whatever projects already in
+other laptop. This is the best to test."* This settles `PLAN.md`'s 2026-09-13 packaging entry —
+option 1, his real data, moved by hand, never through GitHub. **No synthetic project ships in this
+repo.**
+
+**Checked before writing anything: what happens today if a real folder wasn't made for Asa.**
+`projects_scan.dart`'s `scanProjects` already handles this honestly — a folder with no `.md` file
+carrying a frontmatter block becomes a `SkippedFolder`, shown with its reason (rule 6), never
+hidden. **That is correct and needs no fix.** What's missing is a way to turn one of those into a
+real project **from inside Asa**, instead of hand-typing YAML — which is the whole reason Round
+19/20 exist in the first place.
+
+**Asked Nico directly whether the real folders on the other laptop already carry a note shaped
+like `asa.md`'s own frontmatter.** Answer: *"it works with Claude, it has surely lots of notes"* —
+not a clean yes or no. **Building for both cases rather than guessing one:** a folder that already
+has a matching note is picked up as-is, unchanged. A folder that doesn't gets a one-click way to
+gain one. Same round either way; no wasted work if it turns out every folder already qualifies.
+
+**Build order for what's below: Round 19 (sent already, unchanged) → Round 20 (next section).**
+A third piece, Round 25, was specced here and retracted the same day — see the note between the
+two sections below. Bringing a real, unshaped folder into Asa turned out to be Claude's job on the
+notes directly, not a Code round; `AGENTS.md` says how.
+
+### 2026-09-13 — Round 25 for Code: adopt a real folder that has no project note yet
+
+**This is the missing piece for testing against real, pre-existing folders rather than ones made
+for Asa.** `project_reader.dart`'s `findHomeNote` already looks for a file named after the folder,
+then falls back to the first `.md` file carrying a frontmatter block — if neither exists,
+`projects_scan.dart` reports the folder as skipped, with the real reason, already rule-6-honest.
+**Nothing about that scan logic changes.** This round only adds a way to fix a skipped folder from
+inside the app.
+
+**What to build:**
+
+1. **One more function in `lib/core/project_writer.dart`** (from Round 19 — read that file, it
+   does not exist until Round 19 lands): `createProjectNote(String folderPath, {required String
+   name})`. Writes a **new** file at `<folderPath>\<folder-name>.md` — the exact filename
+   `findHomeNote` already looks for first. Minimal frontmatter, three fields only:
+   `project: <name>`, `status: idea`, `updated: <today's date, ISO>`. Nothing else — no invented
+   `milestone` or `next-step` text; those stay `(not set)`, honestly, until Nico writes them
+   himself or Round 22 derives one.
+2. **Refuse if the file already exists.** `StateError`, not a silent overwrite and not a fallback
+   name — the whole point is this only ever runs against a genuine `SkippedFolder`. If a project's
+   file with that name somehow exists but has no frontmatter (the "found it but no frontmatter
+   block" case from `project_reader.dart`), refuse the same way and say so — don't silently
+   prepend a frontmatter block to a file that already has content of its own; that is exactly the
+   kind of surprise rewrite ADR 0007 and rule 13 (Asa never becomes a text editor) both forbid. A
+   human decides what happens to that file, not this function.
+3. **Same atomic write discipline as every other writer in `core/`** — temp file, then rename.
+   **Same write log as Round 19** — this is a write, it gets logged like any other.
+4. **Wired into the Projects view**: a skipped folder (already shown, per rule 6, with its reason)
+   gets one action — something like "Track this as a project" — that calls `createProjectNote`
+   with the folder's own name, then re-scans so it now appears as a real row. **Editing its fields
+   afterward is Round 20**, not this round; this round only creates the seed.
+5. **The folder itself is never created by Asa** — only the one file inside a folder that already
+   exists. If `folderPath` itself doesn't exist, that's a bug in the caller, not a case this
+   function needs to handle gracefully.
+
+**Tests:** a real-shaped round trip (folder with no `.md` file at all → note created, re-read,
+comes back as a normal `Project`); refusing when `<folder-name>.md` already exists; refusing when
+a same-named file exists but has other content and no frontmatter; the write appearing in the
+write log. Invented folder/project names only — Gate 2, standing.
+
+**Verify → show → commit, rule 19.** Show a real throwaway folder (never a real one) going from
+"skipped, no frontmatter found" to a real project row, live in the running app.
+
+> ### 2026-09-13 — Round 25 retracted the same day. Do not build the above.
+>
+> Nico rejected this design: *"I dont like the solution, how about let claude works on the notes
+> and make it into Asa properly there?"* He's right — a UI button stamping `status: idea` on a
+> real project with no actual judgment behind it is exactly the thing `CLAUDE.md`'s rule 4 and
+> `ARCHITECTURE.md`'s "in one sentence" forbid: **Asa does not think.** Deciding a real project's
+> honest status is Claude's job, done by reading what's actually there, not Asa's job, done by a
+> default string.
+>
+> **Nothing in `project_writer.dart`, `projects_screen.dart`, or anywhere else needs to change for
+> this.** The fix is process, not code: `AGENTS.md` now has a section, "Bringing a real, existing
+> project into Asa," telling any Claude session to read a real project's existing material and
+> hand-write a proper `<folder-name>.md` next to it, with a real judgment call on status/priority,
+> never a mechanical stub. That is ordinary file editing, the same way every project note in
+> `projects\asa\` itself was written — no new Asa feature, no new round to build.
+>
+> **`createProjectNote` is not needed.** If Code has already started on it, stop — nothing above
+> this note should be built. Round 20 (next section) is unaffected: it still needs Round 19, and
+> nothing about it depended on Round 25 existing.
+
+### 2026-09-13 — Round 20 for Code: the five fields, editable on the project screen
+
+**The round Nico actually looks at** — this is what turns "Asa can write" (Round 19) into
+"Nico works from Asa." Needs Round 19's `setProjectField` to exist first.
+
+**What to build:**
+
+1. On `lib/hubs/product/project_screen.dart`, each of the five whitelisted fields already shown
+   (`parent`, `status`, `priority`, `deadline`, `jira`) gets a small inline edit control next to its
+   current value — a text field for `parent`/`priority`/`deadline`/`jira`; for `status`, prefer a
+   picker over free text if ADR 0015's single status enum is already available to read from, so a
+   typo can't create a new, invisible status. Whichever it is, the choice and why goes in the build
+   report — don't decide silently.
+2. **Save calls `setProjectField`.** On success: re-read the project from disk and refresh the
+   screen with what's actually on disk now, not just the typed value — the file is the source of
+   truth, never the in-memory guess.
+3. **On refusal (drift, or a value that fails whatever validation the field has), show the real
+   reason on screen, per rule 6.** Never a silent no-op, never a generic "something went wrong."
+   The drift case matters here specifically — his editor being open on the same file at the same
+   time is the exact scenario ADR 0007 named, not a hypothetical.
+4. **Nothing new is displayed that isn't already on screen today.** This round makes existing
+   values editable; it does not add a field, a pill, or a badge.
+5. **A real project brought in by hand** (per `AGENTS.md`'s "Bringing a real, existing project
+   into Asa," now that Round 25 is retracted) lands here the same way once its note exists and is
+   re-scanned — whatever fields Claude actually wrote are editable the same way any other
+   project's are. No special-casing needed.
+
+**Tests:** a widget test per field proving edit → save → the new value shows, reading through
+`setProjectField` for real rather than mocking it; the drift-refusal message actually reaching the
+screen; nothing else on the row changes shape. Throwaway demo project for the real-app "show" —
+never a real one.
+
+**Verify → show → commit, rule 19.** This is the round where Nico should try actually sorting a
+few of his own real projects on the other laptop, since it's the first one that lets him do that
+without hand-editing a `.md` file — worth naming to him explicitly when this is shown, not
+assumed.
+
+**Gate 2, standing across Round 19 and Round 20 — and across the manual note-writing `AGENTS.md`
+now describes too:** real project names, real field values, and real write-log lines only ever
+exist on Nico's own machine. Never in this file, a commit message, a test fixture, or the
+repository.
+
+### 2026-09-13 — Round 19+20, Round 24, and the Release rebuild: all built, shown, confirmed, committed
+
+**Round 19 (`53e8a44`, combined with Round 20 below — see that commit for the full report):**
+`project_writer.dart`'s `setProjectField` and `write_log.dart`'s append-only log, exactly as
+specced. Retrofitted the four existing checkbox writers, **plus `markAllTasksDone`** — not one of
+the four the spec named, but the same guardrail ("every write is logged") plainly covers it too;
+built and flagged rather than left out on a technicality.
+
+**Round 20 (`53e8a44`) — the premise was wrong, checked before building, asked rather than
+guessed:** the spec said all five fields were already shown on `project_screen.dart`. Only `status`
+was. Asked Nico directly; his answer — add the missing four (`parent`, `priority`, `deadline`,
+`jira`) as plain rows there too, then make all five editable in one place — is what got built.
+`status` is a picker over ADR 0017's six values (hardcoded — no code defined that list either);
+the rest are plain text. Save re-reads the whole project from disk.
+
+**Round 24 (`eba90b2`):** the doorman installed at both project and user scope, verified by real
+file listing and the manifest at both paths — firing itself stays unverified until a fresh session
+proves it, same honest limit the spec itself named. Two things found and fixed beyond the literal
+ask: `kit/skills/doorman/` itself had never been committed — only committing the *installed* copy
+would have left a fresh clone with nothing to install from, so the source is committed too. And
+`ship-it` had the exact same "fired but never added to `$coreSkills`" drift as doorman — fixed
+alongside it rather than leaving a second, near-identical gap for someone to find later.
+`kit/SKILLS.md`'s stale "26 skills exist. 15 have ever fired" header corrected to the real count,
+27/16, checked against the folder.
+
+**Small ask, done alongside these:** the Release build refreshed (`flutter build windows
+--release`) — confirmed the exe/dll/data folder travel together and the rebuilt exe opens a real,
+visible window outside the IDE. Not a git change; `build\` is gitignored, nothing to commit.
+
+**Verified:** `check.ps1` clean, all four gates, 268 tests (52 new across Rounds 19/20). Round 24
+and the Release rebuild have no test surface of their own — verified by real file listing and a
+real launch instead.
+
+**Shown and confirmed:** all four pieces shown together in one look, per the "one look, three
+rounds" instruction the phase-data round set. Round 20 was the one with an actual screen — a
+throwaway demo project (never a real one, Gate 2), all five fields edited live in the real running
+app. Nico: *"yes looks good."* Rounds 19/24/the rebuild have no screen of their own; asked
+explicitly whether he wanted to check those differently and took the lack of objection, alongside
+his yes on 20, as clearance to commit all four together — named here as exactly that, not
+disguised as a normal per-round yes.
+
+**Not part of this round:** Round 21 (the Log tab), Round 22 (`next-step` derived from tasks, ADR
+0020), Round 23 (a decision showing whether it became work), ADR 0019 (areas) — all roadmapped,
+none specced yet.
