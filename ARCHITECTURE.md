@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-13.
+Last checked against the folder tree: 2026-09-13 (phases round).
 
 ---
 
@@ -57,6 +57,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how a project's `## Tasks` section is checked off, marked all done, captured into, or moved between files | `lib/core/task_writer.dart` |
 | change how the inbox — `HOME.md`'s own unfiled `## Tasks` — is read | `lib/core/inbox.dart` |
 | change the quick-capture box or the unfiled list on the front page | `lib/hubs/product/inbox_panel.dart` |
+| change how a project's `## Roadmap` is parsed into milestones (Rounds), the derived "current milestone", or how `###` headings group milestones into phases | `lib/core/roadmap.dart` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
@@ -91,3 +92,15 @@ file, shown on a Log tab," has no implementation anywhere in `lib/` — not for 
 this page now documents, not for the inbox writes added alongside them. Pre-existing, not
 introduced by this round; flagged rather than quietly built, since a logging surface is its own
 round, not a one-line addition to this one.
+
+**Corrected 2026-09-13, second time this round: `roadmap.dart` had no row on this page at all**,
+since whichever commit added it (2026-09-07/08) never updated this file either — the same class of
+drift as the ADR 0007 row above, just a different file. Added its row now.
+
+**Found and fixed 2026-09-13 while building phases:** `markdown.dart`'s shared section reader
+stopped a `##` section at the next heading of **any** level, `#` through `######`. Harmless while
+nothing nested a `###` inside a `##` section — no real decision file did — but it silently broke
+the moment `roadmap.dart` needed `### Foundation`-style phase headings living inside `## Roadmap`:
+the `###` was read as ending the roadmap section, not as part of it. Fixed to stop only at a
+heading of the same level or shallower; checked every existing test fixture across the repo first
+and confirmed none relied on the old, incorrect boundary.

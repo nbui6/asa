@@ -2,6 +2,32 @@ import 'package:asa/core/markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('sectionText — a sub-heading does not end its own parent section', () {
+    test('a ### inside a ## section stays part of it; the next ## ends it — '
+        "real shape once roadmap.dart's phases exist inside ## Roadmap", () {
+      const body = '''
+## Roadmap
+
+### Foundation
+
+- [ ] Round 0
+
+## Tasks
+
+- [ ] Something else
+''';
+      final section = sectionText(body, 'Roadmap');
+      expect(section, contains('### Foundation'));
+      expect(section, contains('Round 0'));
+      expect(section, isNot(contains('Something else')));
+    });
+
+    test('a heading of the same level still ends the section, unchanged', () {
+      const body = '## One\n\nBody.\n\n## Two\n\nOther.\n';
+      expect(sectionText(body, 'One'), 'Body.');
+    });
+  });
+
   group('sectionTextByPrefix', () {
     test('a heading with a trailing qualifier still matches — real shape, '
         'ADR 0012: "## Decision — proposed, three parts, in this order"', () {

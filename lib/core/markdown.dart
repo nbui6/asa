@@ -64,8 +64,16 @@ String? sectionTextByPrefix(String text, String heading) {
   final rest = text.substring(match.end);
   var end = rest.length;
 
+  // Only a heading at the same level or shallower ends the section — a
+  // deeper one (more `#`s) is a sub-heading and stays part of its
+  // content. Found 2026-09-13: `roadmap.dart`'s phases are `###` headings
+  // inside `## Roadmap`, and the old fixed `#{1,6}` bound treated that
+  // `###` as ending the `##` section it was actually nested in — no real
+  // decision file had a `###` inside a `##` section for this to surface
+  // on before now.
+  final level = RegExp('^#+').firstMatch(match[0]!)!.group(0)!.length;
   final nextHeading = firstUnfencedMatch(
-    RegExp(r'^#{1,6}\s', multiLine: true),
+    RegExp('^#{1,$level}\\s', multiLine: true),
     rest,
   );
   if (nextHeading != null && nextHeading.start < end) end = nextHeading.start;

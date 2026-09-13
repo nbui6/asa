@@ -234,4 +234,71 @@ void main() {
       );
     });
   });
+
+  group('groupPhases — 2026-09-13, PLAN.md\'s "Open A" closed', () {
+    test('a flat roadmap with no ### heading at all yields zero phases — '
+        "asa.md's own real shape today, and every other real project's. "
+        'This is the case that must not regress.', () {
+      expect(groupPhases(parseRoadmap(_asaRoadmap)), isEmpty);
+    });
+
+    test('partner-trial-process.md, also flat, also yields zero phases', () {
+      expect(groupPhases(parseRoadmap(_partnerTrialRoadmap)), isEmpty);
+    });
+
+    test('an empty roadmap yields zero phases, not an error', () {
+      expect(groupPhases(const []), isEmpty);
+    });
+
+    test("an invented roadmap with two ### phases groups each one's Rounds, "
+        'in file order — Gate 2: no real project has this shape yet', () {
+      const invented = '''
+## Roadmap
+
+### Foundation
+
+- [x] Round 0 — the shell
+- [x] Round 1 — one project's state
+- [ ] Round 2 — every project on one screen
+
+### Everyday features
+
+- [ ] Round 3 — parked items
+- [ ] Round 4 — priority and deadlines
+''';
+      final phases = groupPhases(parseRoadmap(invented));
+
+      expect(phases, hasLength(2));
+      expect(phases[0].name, 'Foundation');
+      expect(phases[0].milestones, hasLength(3));
+      expect(phases[0].doneCount, 2);
+      expect(phases[0].totalCount, 3);
+
+      expect(phases[1].name, 'Everyday features');
+      expect(phases[1].milestones, hasLength(2));
+      expect(phases[1].doneCount, 0);
+      expect(phases[1].totalCount, 2);
+    });
+
+    test('a Round before the first ### heading is not attributed to any '
+        'phase, and is not counted in one', () {
+      const invented = '''
+## Roadmap
+
+- [x] Round 0 — before any heading
+
+### Foundation
+
+- [ ] Round 1 — inside the heading
+''';
+      final milestones = parseRoadmap(invented);
+      expect(milestones[0].phase, isNull);
+      expect(milestones[1].phase, 'Foundation');
+
+      final phases = groupPhases(milestones);
+      expect(phases, hasLength(1));
+      expect(phases.single.milestones, hasLength(1));
+      expect(phases.single.milestones.single.title, contains('Round 1'));
+    });
+  });
 }
