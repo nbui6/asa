@@ -11,7 +11,7 @@ void main() {
   testWidgets('the app builds and shows the Product Hub', (tester) async {
     await tester.pumpWidget(const AsaApp());
 
-    expect(find.text('Asa — Product Hub'), findsOneWidget);
+    expect(find.text('Asa'), findsOneWidget);
     expect(find.text('Projects folder'), findsOneWidget);
   });
 }

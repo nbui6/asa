@@ -9,8 +9,16 @@
 /// a real subtask yet, so there is nothing to drag. An inert grip icon
 /// would promise a capability that is not there; this version omits it
 /// rather than build a decoration that misleads.
+///
+/// **Fixed 2026-09-13:** a task's text was shown raw, backticks and all —
+/// visible on real content, `asa.md`'s own `## Tasks` section ("Fix
+/// `decision_detail_screen_test.dart`'s flakiness"). `markdown.dart`'s
+/// `stripCodeSpanMarkers`/`stripEmphasisMarkers` are applied here, at
+/// display time — the parsed [Task.text] itself stays raw, same rule
+/// `decision_detail_screen.dart` already follows for a decision's body.
 library;
 
+import 'package:asa/core/markdown.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/tasks_reader.dart';
@@ -222,7 +230,7 @@ class _TasksViewState extends State<TasksView> {
           ),
           Expanded(
             child: Text(
-              task.text,
+              stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
               style: task.done ? TextStyle(color: Colors.grey.shade500) : null,
             ),
           ),

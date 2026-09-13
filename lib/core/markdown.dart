@@ -90,6 +90,19 @@ String stripEmphasisMarkers(String text) {
       .replaceAllMapped(RegExp('__(.+?)__'), (m) => m.group(1)!);
 }
 
+/// Removes single-backtick code-span markers (`` `like this` ``) for
+/// display, keeping the enclosed text — same reasoning as
+/// [stripEmphasisMarkers]: a literal backtick on screen is a rendering
+/// defect, not raw data worth preserving. Found 2026-09-13 on real `##
+/// Tasks` lines in `asa.md` itself: `"Fix \`decision_detail_screen_test
+/// .dart\`'s flakiness"` rendered with the backticks still in it, in the
+/// Tasks view. Line-scoped, not fence-aware — a task line is one line by
+/// definition, so [firstUnfencedMatch]'s multi-line fence handling does
+/// not apply here.
+String stripCodeSpanMarkers(String text) {
+  return text.replaceAllMapped(RegExp('`(.+?)`'), (m) => m.group(1)!);
+}
+
 /// The first match of [pattern] in [text] that does not sit inside a
 /// fenced code block. A `## Your call` (or any other heading) written as
 /// an *example*, inside triple backticks, is not a real section — see the

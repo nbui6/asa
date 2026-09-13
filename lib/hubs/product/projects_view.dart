@@ -20,17 +20,27 @@
 /// every pill here is a plain outlined pill. The solid/dashed contrast is
 /// meaningful once the milestone-history round gives this screen its
 /// first genuinely *measured* value — build that distinction then.
+///
+/// **2026-09-13 — each row is now a drop target.** Round 8's inbox
+/// (`HANDOVER.md`, "quick capture") drags an unfiled task from
+/// `InboxPanel` onto whichever row it belongs to; the row highlights while
+/// something is hovering over it. The write itself (`moveTask`) lives in
+/// `ProjectsScreen` — this view only reports which task landed on which
+/// node.
 library;
 
+import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/task.dart';
 import 'package:flutter/material.dart';
 
 class ProjectsView extends StatefulWidget {
   const ProjectsView({
     required this.forest,
     required this.onOpenProject,
+    required this.onAssignTask,
     super.key,
   });
 
@@ -39,6 +49,11 @@ class ProjectsView extends StatefulWidget {
   /// Opens the project's own detail screen — same destination the old
   /// flat list's row tap already used.
   final void Function(String folder) onOpenProject;
+
+  /// A row accepted an inbox task dropped on it — the write half of "drag
+  /// it onto a project" lives one level up, in `ProjectsScreen`. This view
+  /// only reports which task landed on which node.
+  final Future<void> Function(Task task, ProjectNode node) onAssignTask;
 
   @override
   State<ProjectsView> createState() => _ProjectsViewState();
@@ -111,56 +126,72 @@ class _ProjectsViewState extends State<ProjectsView> {
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: InkWell(
-          onTap: () => widget.onOpenProject(node.folder),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      child: DragTarget<Task>(
+        onAcceptWithDetails: (details) =>
+            widget.onAssignTask(details.data, node),
+        builder: (context, candidateData, rejectedData) {
+          final hovering = candidateData.isNotEmpty;
+          return Card(
+            margin: EdgeInsets.zero,
+            color: hovering ? Colors.indigo.shade50 : null,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+              side: hovering
+                  ? BorderSide(color: Colors.indigo.shade300, width: 2)
+                  : BorderSide.none,
+            ),
+            child: InkWell(
+              onTap: () => widget.onOpenProject(node.folder),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      project.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          project.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (jira != null) ...[
+                          const SizedBox(width: 8),
+                          _jiraChip(jira, project.jira!),
+                        ],
+                        const Spacer(),
+                        Text(
+                          deadline ?? '—',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
                     ),
-                    if (jira != null) ...[
-                      const SizedBox(width: 8),
-                      _jiraChip(jira, project.jira!),
-                    ],
-                    const Spacer(),
-                    Text(
-                      deadline ?? '—',
-                      style: TextStyle(color: Colors.grey.shade600),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _pill(project.status, emphasis),
+                        if (project.priority != null) ...[
+                          const SizedBox(width: 6),
+                          _pill(project.priority!, StatusEmphasis.neutral),
+                        ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            stripCodeSpanMarkers(
+                              stripEmphasisMarkers(project.nextStep),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    _pill(project.status, emphasis),
-                    if (project.priority != null) ...[
-                      const SizedBox(width: 6),
-                      _pill(project.priority!, StatusEmphasis.neutral),
-                    ],
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        project.nextStep,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.grey.shade700),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

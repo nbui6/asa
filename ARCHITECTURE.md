@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-07.
+Last checked against the folder tree: 2026-09-13.
 
 ---
 
@@ -35,6 +35,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | **`lib/local/` is empty in this repository.** It exists so a fork has somewhere to put its own screens that our releases never touch. | `check-shareable.ps1` — a non-empty `local/` here means someone else's work has arrived in our repo, which is a leak. *Planned for v0.1.1; not built yet.* |
 | **`core/`'s public surface is a contract with a second developer.** Renaming a public field breaks someone else's build. | The release note names what moved in `core/`. See `projects\asa\decisions\0010-second-developer-and-forks.md`. |
 | **A decision file's existing bytes are never modified, deleted or reordered — only appended to.** | `decision_writer.dart`'s `appendVerdict`: read, concatenate, write to a temp file, rename over the original. A feature test asserts the file's content before the new section is byte-identical to what it was. See `projects\asa\decisions\0011-append-only-verdicts.md`. |
+| **A project note's `## Tasks` section may be written to — checkbox lines and their order, nothing else in the file.** ADR 0007 (accepted 2026-09-01) whitelists exactly this. | `task_writer.dart`: `setTaskDone`, `markAllTasksDone` (2026-09-07), `captureTask`, `moveTask` (2026-09-13). Every one matches or replaces a specific line and rewrites nothing else; a feature test per function round-trips a real file whose other bytes must come back untouched. |
 | Every other write stays structured fields only, never prose | Review. `settings.dart` writes Asa's own settings file — never a project note. |
 
 ## Where things live
@@ -53,6 +54,9 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how decisions are found on disk, their merge and sort order, or the "Needs a look" / "Settled" trial grouping | `lib/core/decisions_reader.dart` |
 | change where or how Asa's own settings are read or written | `lib/core/settings.dart` |
 | change how a verdict is appended to a decision file, or re-read afterward | `lib/core/decision_writer.dart` |
+| change how a project's `## Tasks` section is checked off, marked all done, captured into, or moved between files | `lib/core/task_writer.dart` |
+| change how the inbox — `HOME.md`'s own unfiled `## Tasks` — is read | `lib/core/inbox.dart` |
+| change the quick-capture box or the unfiled list on the front page | `lib/hubs/product/inbox_panel.dart` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
@@ -72,9 +76,18 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | A YAML package | The frontmatter is a flat list of strings, plus one small hand-rolled reader for `links`' nested list (`project.dart`'s `parseLinks`). Ten lines of code beats a specification to learn. | Frontmatter nesting beyond one list |
 | A folder-picker package | `projects_screen.dart`'s "Choose folder…" reuses the existing path `TextField` rather than a native OS dialog — the acceptance criterion is "choose a folder without editing source," not "browse for one." | If pasting a path proves too rough for the teamlead's first run |
 | Editing, correcting or reformatting anything already in a decision file | ADR 0011 allows *appending* one verdict section — never touching a byte that was already there. The stale `**Status:** proposed` header is deliberately never corrected; `Decision.displayStatus` overrides it for display instead. | Reported as a real, recurring point of confusion, per ADR 0011's own "what would change this" — its own separate ADR, not a quiet widening of this one |
-| Writing anything at all to a project's own notes (not its decisions) | ADR 0007, which would allow writing structured fields into a project note, is proposed and not accepted. | ADR 0007 being accepted |
 | A database | The markdown files are the database | Nothing foreseeable |
 
 ## Known differences between this map and reality
 
-*(none — this map was updated in the same commit as v0.1)*
+**Corrected 2026-09-13.** The row above used to read "Writing anything at all to a project's own
+notes (not its decisions) — ADR 0007 is proposed and not accepted." ADR 0007 was accepted
+2026-09-01, and `task_writer.dart` has written checkbox lines to project notes since 2026-09-07 —
+this page simply was not updated in that commit. Found while adding `captureTask`/`moveTask` for
+the inbox; fixed here rather than left for whoever notices next.
+
+**Not re-verified this pass:** ADR 0007's guardrail 3, "every write is logged — what, when, which
+file, shown on a Log tab," has no implementation anywhere in `lib/` — not for the checkbox writes
+this page now documents, not for the inbox writes added alongside them. Pre-existing, not
+introduced by this round; flagged rather than quietly built, since a logging surface is its own
+round, not a one-line addition to this one.

@@ -62,4 +62,26 @@ Something else.
       expect(stripEmphasisMarkers('plain text'), 'plain text');
     });
   });
+
+  group('stripCodeSpanMarkers', () {
+    test('removes single backtick markers, keeping the text — real shape, '
+        "asa.md's own ## Tasks section", () {
+      expect(
+        stripCodeSpanMarkers(
+          "Fix `decision_detail_screen_test.dart`'s flakiness -- done "
+          '`2026-09-09` (`b1394a2`)',
+        ),
+        "Fix decision_detail_screen_test.dart's flakiness -- done "
+        '2026-09-09 (b1394a2)',
+      );
+    });
+
+    test('handles more than one code span in the same text', () {
+      expect(stripCodeSpanMarkers('`one` and `two`'), 'one and two');
+    });
+
+    test('text with no backticks at all is returned unchanged', () {
+      expect(stripCodeSpanMarkers('plain text'), 'plain text');
+    });
+  });
 }

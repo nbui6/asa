@@ -88,6 +88,88 @@ Future<List<Task>> rereadTasks(String path) async {
   return parseTasks(contents);
 }
 
+/// Appends one new, open task — quick capture, ADR 0014's "one input, type
+/// anything, it lands in `## Tasks`, always". Creates the `## Tasks`
+/// section, at the end of the file, if the file has none yet — `HOME.md`'s
+/// inbox starts out exactly that way. The file itself is created if it
+/// does not exist at all. Every other byte already in the file, including
+/// every other task line, is untouched.
+Future<void> captureTask(String path, String text) =>
+    _appendTaskLine(path, '- [ ] $text');
+
+/// Moves one task line from one file's `## Tasks` section to another's —
+/// the write half of "drag it onto a project" (ADR 0014's addendum, "one
+/// inbox, assignment is a drag too"). The line's exact text — done state,
+/// a trailing `(Code)` tag, a `[[project]]` reference — travels unchanged;
+/// only which file's `## Tasks` section holds it changes.
+///
+/// Writes the destination **before** touching the source: if anything
+/// fails partway (a bad path, a full disk), the task ends up duplicated in
+/// both files rather than deleted from the one it started in — the same
+/// "fail by keeping too much, never by losing" choice every other write in
+/// this app makes.
+///
+/// Throws a [StateError] if [rawLine] can no longer be found in
+/// [fromPath]'s `## Tasks` section — same discipline as [setTaskDone]: the
+/// file changed on disk since it was read, and guessing which line was
+/// meant would be worse than refusing.
+Future<void> moveTask({
+  required String fromPath,
+  required String toPath,
+  required String rawLine,
+}) async {
+  final fromContent = await File(fromPath).readAsString();
+  final range = sectionRange(fromContent, 'Tasks');
+  if (range == null) {
+    throw StateError('No ## Tasks section in $fromPath — nothing to move.');
+  }
+  final (start, end) = range;
+  final section = fromContent.substring(start, end);
+
+  final index = section.indexOf(rawLine);
+  if (index == -1) {
+    throw StateError(
+      'That task line was not found in $fromPath — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  await _appendTaskLine(toPath, rawLine.trim());
+
+  // Remove the line and the one newline that follows it, if any — leaves
+  // no blank line behind, same as if it had never been there.
+  var lineEnd = index + rawLine.length;
+  if (lineEnd < section.length && section[lineEnd] == '\n') lineEnd += 1;
+  final newSection = section.substring(0, index) + section.substring(lineEnd);
+
+  await _writeAtomically(
+    fromPath,
+    fromContent.substring(0, start) + newSection + fromContent.substring(end),
+  );
+}
+
+Future<void> _appendTaskLine(String path, String line) async {
+  final file = File(path);
+  final content = file.existsSync() ? await file.readAsString() : '';
+  final range = sectionRange(content, 'Tasks');
+
+  final String newContent;
+  if (range == null) {
+    final prefix = content.trimRight();
+    newContent = prefix.isEmpty
+        ? '## Tasks\n\n$line\n'
+        : '$prefix\n\n## Tasks\n\n$line\n';
+  } else {
+    final (start, end) = range;
+    final section = content.substring(start, end).trimRight();
+    final newSection = section.isEmpty ? '\n$line\n' : '$section\n$line\n';
+    newContent =
+        content.substring(0, start) + newSection + content.substring(end);
+  }
+
+  await _writeAtomically(path, newContent);
+}
+
 Future<void> _writeAtomically(String path, String contents) async {
   final tempFile = File('$path.tmp');
   await tempFile.writeAsString(contents);

@@ -1,9 +1,18 @@
 /// Product Hub — every project on one screen, most stale first.
 ///
 /// Round 2. This is the home screen.
+///
+/// **2026-09-13 — the inbox, Round 8.** `HOME.md` — the vault door,
+/// `%USERPROFILE%\workspace\HOME.md`, one level above whatever folder is
+/// chosen below — gets its own `## Tasks` section for quick capture with
+/// no project open. Assigning an unfiled item to a project is a drag onto
+/// one of `ProjectsView`'s rows; see `InboxPanel` and `core/inbox.dart`.
 library;
 
+import 'dart:io';
+
 import 'package:asa/core/decisions_reader.dart' show DiskFileAccess;
+import 'package:asa/core/inbox.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
@@ -11,6 +20,7 @@ import 'package:asa/core/settings.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
 import 'package:asa/core/tasks_reader.dart';
+import 'package:asa/hubs/product/inbox_panel.dart';
 import 'package:asa/hubs/product/project_screen.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
@@ -62,8 +72,19 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   ScanResult? _scan;
   List<TaskGroup>? _taskGroups;
+  List<Task>? _inboxTasks;
   bool _loading = false;
   _ViewMode _viewMode = _ViewMode.projects;
+
+  /// `HOME.md`, one level above the chosen projects folder — rule 17's
+  /// fixed layout (`asa\`, `projects\`, `workshop\`, `HOME.md`, all
+  /// siblings under one workspace root). Null before a folder is chosen —
+  /// there is nothing to derive it from yet.
+  String? get _homePath {
+    final root = _rootField.text.trim();
+    if (root.isEmpty) return null;
+    return '${Directory(root).parent.path}${Platform.pathSeparator}HOME.md';
+  }
 
   // First run: nobody has chosen a folder yet, so there is nothing to load
   // and no hardcoded path to fall back on — a default that does not exist
@@ -169,19 +190,71 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       _loading = true;
       _scan = null;
       _taskGroups = null;
+      _inboxTasks = null;
     });
 
     final scan = await scanProjects(_rootField.text.trim());
     final taskGroups = scan.error == null
         ? await buildTaskGroups(scan.projects, const DiskFileAccess())
         : const <TaskGroup>[];
+    final home = _homePath;
+    final inboxTasks = home == null
+        ? const <Task>[]
+        : await readInbox(home, const DiskFileAccess());
 
     if (!mounted) return;
     setState(() {
       _scan = scan;
       _taskGroups = taskGroups;
+      _inboxTasks = inboxTasks;
       _loading = false;
     });
+  }
+
+  /// Re-reads the inbox from disk after a capture or an assignment — never
+  /// trusts that the write happened as assumed, same discipline as
+  /// [_reloadTaskGroups].
+  Future<void> _reloadInbox() async {
+    final home = _homePath;
+    if (home == null) return;
+    final inboxTasks = await readInbox(home, const DiskFileAccess());
+    if (!mounted) return;
+    setState(() => _inboxTasks = inboxTasks);
+  }
+
+  /// One line typed into [InboxPanel], with no project chosen. ADR 0014:
+  /// never classified, always lands in `## Tasks` — here, `HOME.md`'s own.
+  Future<void> _captureInboxTask(String text) async {
+    final home = _homePath;
+    if (home == null) return;
+    try {
+      await captureTask(home, text);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _reloadInbox();
+  }
+
+  /// An inbox task dropped on one of [ProjectsView]'s rows — the drag that
+  /// assigns it, per ADR 0014's addendum. Moves the line out of `HOME.md`
+  /// and into that project's own `## Tasks` section; reloads both, since a
+  /// project gaining a task changes what the Tasks view shows too.
+  Future<void> _assignInboxTask(Task task, ProjectNode node) async {
+    final home = _homePath;
+    if (home == null) return;
+    try {
+      await moveTask(
+        fromPath: home,
+        toPath: node.project.sourceFile,
+        rawLine: task.rawLine,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _reloadInbox();
+    await _reloadTaskGroups();
   }
 
   /// Rebuilds the Tasks groups from disk after a write — never trusts that
@@ -229,7 +302,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Asa — Product Hub'),
+        title: const Text('Asa'),
         actions: [
           if (scan != null && scan.error == null) ...[
             _viewToggle(),
@@ -248,11 +321,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Projects folder'),
+            Text(
+              'Where Asa reads project state from. Change it here any time '
+              "— it's remembered for next launch.",
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: TextField(
+                    key: const Key('projectsFolderField'),
                     controller: _rootField,
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
@@ -273,6 +352,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ],
             ),
             const SizedBox(height: 32),
+            if (_folderChosen && _inboxTasks != null) ...[
+              InboxPanel(tasks: _inboxTasks!, onCapture: _captureInboxTask),
+              const SizedBox(height: 32),
+            ],
             if (!_folderChosen)
               _Panel(
                 title: 'No folder chosen yet',
@@ -302,6 +385,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       builder: (_) => ProjectScreen(folder: folder),
                     ),
                   ),
+                  onAssignTask: _assignInboxTask,
                 ),
                 if (scan.skipped.isNotEmpty) ...[
                   const SizedBox(height: 32),
