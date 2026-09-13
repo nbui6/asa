@@ -1608,3 +1608,27 @@ disguised as a normal per-round yes.
 **Not part of this round:** Round 21 (the Log tab), Round 22 (`next-step` derived from tasks, ADR
 0020), Round 23 (a decision showing whether it became work), ADR 0019 (areas) — all roadmapped,
 none specced yet.
+
+### 2026-09-13 — small ask, not a round: get this onto GitHub for the other-laptop test
+
+**Not a build task — this is committing and pushing what already exists.** Nico wants to test on
+his other laptop with another Claude session. Two things need to happen here first:
+
+1. **Check `git status` before anything else.** The deciding session wrote `AGENTS.md` and edited
+   `CLAUDE.md` directly through the device bridge this session (never through `git` — it doesn't
+   run git). Those changes are real, on disk, but may still show as modified/untracked. If so,
+   `git add` and commit them — same machine check as any other commit, `check.ps1` first.
+2. **Run `check-shareable.ps1` before pushing anything**, per rule 16 — read its real output.
+   `AGENTS.md` is a new file that has never been through this gate. Confirm the two named waivers
+   (the `ios/`/`.idea/` findings, the three Windows-username lines) are still the only findings, or
+   flag anything new rather than pushing past it.
+3. **Push to the existing remote** — `origin` already points at `github.com/nbui6/asa`; Round 5 and
+   Round 7 were already pushed there. This is `git push origin main` (or whatever the current
+   branch actually is — check first), not adding a new remote. **Only Nico runs this step**, per
+   the standing role split; show him what's about to go up first.
+
+**Nothing else to build.** The repo already carries what the other laptop's session needs:
+`.claude\skills\doorman\` at project scope travels with a plain clone (Round 24), `AGENTS.md`
+tells a fresh session how to find the workspace and bring in real projects, and `projects\` never
+travels through git by design (ADR 0006/0013) — that's the other laptop's own job, covered in the
+reply to Nico directly, not a build spec.
