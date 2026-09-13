@@ -981,3 +981,91 @@ this up next to show it and get an actual yes.
 
 **Not part of this round, as scoped:** the two rounds after this one (milestone/phase data, the
 segmented bar) and everything in Round 9 — unchanged from the plan above.
+
+
+## ⬇ Downstream — 2026-09-13, next round for Code: phases in the roadmap, the data the bar needs
+
+**The blocking question is answered.** The entry above said not to build this until Nico confirmed
+what one bar segment means. He confirmed it directly today: **a phase, grouping several Rounds** —
+not one segment per Round, not per milestone. Full reasoning and the source-of-truth decision are
+in `PLAN.md`'s 2026-09-13 section, which closes v0.2's "Open A" after twelve days open. Read that
+section before starting; it decides more than the answer to the question.
+
+**Also confirmed, so it doesn't get reverted by accident:** the window title stays plain **"Asa"**.
+Your rename during the fix round was right, and Nico said so when asked.
+
+**What to build — the data only, not the bar:**
+
+1. **Parse `###` groupings inside a project's `## Roadmap` as phases.** A phase has a name (the
+   heading text) and the ordered Rounds beneath it, which the roadmap parser already understands.
+   The shape mirrors what `roadmap.dart` does today; this is an extra level above it, not a
+   replacement.
+2. **A phase's completion is counted, never typed** — from the checked/unchecked state of the
+   Rounds under it. Decide and say plainly what a partially-done phase reports (how many of how
+   many); don't invent a percentage that implies more precision than checkbox counting gives.
+3. **No groupings means no phases, and later no bar — absent, not empty.** Same rule the plan
+   already sets for a project with no code showing no build step. A roadmap that is a flat list of
+   Rounds, which is every project's roadmap today including `asa.md`'s own, must keep working
+   exactly as it does now and simply report zero phases. **This is the case that must not
+   regress** — everything currently on screen is driven by that flat list.
+4. **`lib/core/` only, plus its tests.** No screen work in this round: the bar itself is the round
+   after this one, and splitting them is deliberate — the parse is testable without a window, and
+   a data model shown to be right before anything draws it is the cheaper order.
+
+**Not part of this round:** the segmented bar, any front-page change, anything in Round 9, and
+`ADR 0019` (a layer above the project — proposed today, not accepted, nothing to build from yet).
+
+**Verify → show → commit, rule 19:** `check.ps1` clean. "Show" for a data-only round means the real
+parse output against real roadmaps — at minimum `asa.md`'s own flat one (expect zero phases, no
+change in behaviour) and one with `###` groupings added to prove the positive case. Nico looks at
+that output, says yes, then it commits.
+
+**Still open from the previous two rounds, and it blocks their commit, not this round's build:**
+Round 8 and the fix pass are both built, `check.ps1` green, and **neither has Nico's actual yes
+yet**. They sit in the working tree. Whoever shows him the phase output should show him those at
+the same time — one look, three rounds, rather than asking him three separate times.
+
+**Gate 2, standing:** nothing from `projects\`'s content goes into this file, a commit message, a
+test fixture, or any report back. Test roadmaps are invented ones.
+
+### 2026-09-13 — phases built, verified, committed (`d07a56a`)
+
+**Built exactly the data-only scope asked:** `roadmap.dart`'s `Milestone` gains an optional
+`phase` field, set as `parseRoadmap` walks the section — no change to its existing shape or
+behaviour otherwise, checked against both real fixtures already in the test suite. New `Phase`
+class (`name`, its own `milestones`, `doneCount`/`totalCount` counted from checkbox state, never
+typed) and a pure `groupPhases(List<Milestone>)`. No screen reads any of it yet, per the spec.
+
+**A real bug, found and fixed, not part of the ask:** `markdown.dart`'s shared section reader
+stopped a `##` section at a heading of **any** level — harmless until a `###` phase heading needed
+to live inside `## Roadmap`, at which point it would have been read as ending the roadmap section
+instead of belonging to it. No real decision file had ever nested a `###` inside a `##` section for
+this to surface on before. Fixed to stop only at a heading of the same level or shallower; checked
+every existing test fixture in the repo first — none depended on the old, incorrect boundary, so
+this is a pure fix, not a behaviour change anywhere else.
+
+**Also corrected, found in passing:** `ARCHITECTURE.md` never had a row for `roadmap.dart` at all,
+since whichever round first added it (2026-09-07/08) didn't update this page either — same class of
+drift as the ADR 0007 row corrected in the last round, different file. Added now.
+
+**Verified:** `check.ps1` clean, all four gates, first run this time (no flake), 203 tests (7 new).
+Per the spec's own "show" for a data-only round — real parse output, not a screenshot — ran
+`groupPhases`/`parseRoadmap` against the real `asa.md` on disk: **18 Rounds parsed, zero phases**,
+confirming no behaviour change for the one real project that would be affected first. A second run
+against an invented roadmap (Gate 2 — no real project has `###` phases yet) showed two phases
+counted correctly: `"Foundation": 2 of 3 done`, `"Everyday features": 0 of 2 done`.
+
+**Shown and committed:** pasted that real output to Nico directly. His words: *"I will check after
+we are done with round 3. commit. handover to cowork."* Read as: defer the actual look until the
+segmented-bar round lands too, but commit now — not a skip of rule 19, an explicit instruction from
+the one person who can give it. Committed (`d07a56a`).
+
+**Also worth flagging, not fixed here:** the previous round's own report said Round 8 and the fix
+pass were "still open from the previous two rounds" and would need showing together with this
+one's output — they were, in fact, already committed (`38c6677`, `f878bc1`) before that entry was
+written, on Nico's own direct instruction in the building session. Naming the gap so this file's
+picture of what's committed stays trustworthy, same reasoning as every doorman catch this project
+has already had.
+
+**Not part of this round, as scoped:** the segmented progress bar itself (next), any front-page
+change, Round 9, ADR 0019.
