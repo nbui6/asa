@@ -2,12 +2,18 @@
 /// section — nothing else in the file is touched, byte for byte. Same
 /// atomic-write discipline as `decision_writer.dart`: a crash mid-write
 /// must never leave a half-written file.
+///
+/// **2026-09-13 — every function here also logs**, via
+/// `write_log.dart`'s `appendWriteLogEntry` — ADR 0007 guardrail 3, unmet
+/// for these four since Rounds 8 and 9 shipped them. `writeLogPath`
+/// overrides where, for tests; production code never passes it.
 library;
 
 import 'dart:io';
 
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/task.dart';
+import 'package:asa/core/write_log.dart';
 
 /// Sets one task's checkbox to done or open, matched by its exact original
 /// [Task.rawLine]. Rewrites only that line; every other byte in the file,
@@ -22,6 +28,7 @@ Future<void> setTaskDone(
   String path, {
   required String rawLine,
   required bool done,
+  String? writeLogPath,
 }) async {
   final content = await File(path).readAsString();
 
@@ -40,6 +47,7 @@ Future<void> setTaskDone(
     );
   }
 
+  final wasDone = RegExp(r'\[[xX]\]').hasMatch(rawLine);
   final newLine = rawLine.replaceFirst(
     RegExp(r'\[[ xX]\]'),
     done ? '[x]' : '[ ]',
@@ -53,6 +61,14 @@ Future<void> setTaskDone(
   await _writeAtomically(
     path,
     content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-done',
+    from: wasDone.toString(),
+    to: done.toString(),
+    logPath: writeLogPath,
   );
 }
 
@@ -68,6 +84,7 @@ Future<void> setTaskParked(
   String path, {
   required String rawLine,
   required bool parked,
+  String? writeLogPath,
 }) async {
   final content = await File(path).readAsString();
 
@@ -106,13 +123,27 @@ Future<void> setTaskParked(
     path,
     content.substring(0, start) + newSection + content.substring(end),
   );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-parked',
+    from: alreadyParked.toString(),
+    to: parked.toString(),
+    logPath: writeLogPath,
+  );
 }
 
 /// Marks every open task in this project's own `## Tasks` section done.
 /// Already-done tasks, and every other line in the file, are untouched.
 /// Writes nothing at all when there is no `## Tasks` section, or every
 /// task in it is already done.
-Future<void> markAllTasksDone(String path) async {
+///
+/// **2026-09-13:** not one of the four functions the write-log round
+/// named, but the same guardrail — "every write is logged" — applies
+/// just as much to marking several tasks done at once. Logs one entry
+/// for the whole call, not one per line: `from` is how many were open,
+/// `to` is how many just got marked.
+Future<void> markAllTasksDone(String path, {String? writeLogPath}) async {
   final content = await File(path).readAsString();
 
   final range = sectionRange(content, 'Tasks');
@@ -120,15 +151,26 @@ Future<void> markAllTasksDone(String path) async {
   final (start, end) = range;
   final section = content.substring(start, end);
 
+  final openPattern = RegExp(r'^(\s*-\s*)\[ \]', multiLine: true);
+  final openCount = openPattern.allMatches(section).length;
+  if (openCount == 0) return;
+
   final newSection = section.replaceAllMapped(
-    RegExp(r'^(\s*-\s*)\[ \]', multiLine: true),
+    openPattern,
     (match) => '${match.group(1)}[x]',
   );
-  if (newSection == section) return;
 
   await _writeAtomically(
     path,
     content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'tasks-marked-done',
+    from: '$openCount open',
+    to: '$openCount done',
+    logPath: writeLogPath,
   );
 }
 
@@ -146,8 +188,21 @@ Future<List<Task>> rereadTasks(String path) async {
 /// inbox starts out exactly that way. The file itself is created if it
 /// does not exist at all. Every other byte already in the file, including
 /// every other task line, is untouched.
-Future<void> captureTask(String path, String text) =>
-    _appendTaskLine(path, '- [ ] $text');
+Future<void> captureTask(
+  String path,
+  String text, {
+  String? writeLogPath,
+}) async {
+  final line = '- [ ] $text';
+  await _appendTaskLine(path, line);
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-captured',
+    from: '',
+    to: line,
+    logPath: writeLogPath,
+  );
+}
 
 /// Moves one task line from one file's `## Tasks` section to another's —
 /// the write half of "drag it onto a project" (ADR 0014's addendum, "one
@@ -169,6 +224,7 @@ Future<void> moveTask({
   required String fromPath,
   required String toPath,
   required String rawLine,
+  String? writeLogPath,
 }) async {
   final fromContent = await File(fromPath).readAsString();
   final range = sectionRange(fromContent, 'Tasks');
@@ -186,7 +242,15 @@ Future<void> moveTask({
     );
   }
 
-  await _appendTaskLine(toPath, rawLine.trim());
+  final trimmedLine = rawLine.trim();
+  await _appendTaskLine(toPath, trimmedLine);
+  await appendWriteLogEntry(
+    path: toPath,
+    field: 'task-added',
+    from: '',
+    to: trimmedLine,
+    logPath: writeLogPath,
+  );
 
   // Remove the line and the one newline that follows it, if any — leaves
   // no blank line behind, same as if it had never been there.
@@ -197,6 +261,14 @@ Future<void> moveTask({
   await _writeAtomically(
     fromPath,
     fromContent.substring(0, start) + newSection + fromContent.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: fromPath,
+    field: 'task-removed',
+    from: rawLine,
+    to: '',
+    logPath: writeLogPath,
   );
 }
 

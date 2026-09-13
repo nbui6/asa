@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-13 (segmented-bar round).
+Last checked against the folder tree: 2026-09-13 (Round 20 — the five fields, editable).
 
 ---
 
@@ -36,6 +36,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | **`core/`'s public surface is a contract with a second developer.** Renaming a public field breaks someone else's build. | The release note names what moved in `core/`. See `projects\asa\decisions\0010-second-developer-and-forks.md`. |
 | **A decision file's existing bytes are never modified, deleted or reordered — only appended to.** | `decision_writer.dart`'s `appendVerdict`: read, concatenate, write to a temp file, rename over the original. A feature test asserts the file's content before the new section is byte-identical to what it was. See `projects\asa\decisions\0011-append-only-verdicts.md`. |
 | **A project note's `## Tasks` section may be written to — checkbox lines and their order, nothing else in the file.** ADR 0007 (accepted 2026-09-01) whitelists exactly this. | `task_writer.dart`: `setTaskDone`, `markAllTasksDone` (2026-09-07), `captureTask`, `moveTask` (2026-09-13). Every one matches or replaces a specific line and rewrites nothing else; a feature test per function round-trips a real file whose other bytes must come back untouched. |
+| **A project note's frontmatter may be written to — five named fields, nothing else.** ADR 0007's own whitelist, in code: `parent`, `status`, `priority`, `deadline`, `jira`. Ten fields re-decides the ADR rather than extending it. | `project_writer.dart`'s `setProjectField` — refuses any other field with a `StateError`; refuses on drift (the frontmatter changed on disk since it was read); a round-trip test per field. |
+| **Every write in `core/` is logged — what, when, which file, what it was, what it became.** ADR 0007 guardrail 3, unmet for twelve days after the ADR was accepted. | `write_log.dart`'s `appendWriteLogEntry`, append-only, in `%APPDATA%\Asa\write-log.jsonl` next to `settings.json` — never inside `projects\`. Every function in `task_writer.dart` and `project_writer.dart` calls it after a successful write. |
 | Every other write stays structured fields only, never prose | Review. `settings.dart` writes Asa's own settings file — never a project note. |
 
 ## Where things live
@@ -55,6 +57,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change where or how Asa's own settings are read or written | `lib/core/settings.dart` |
 | change how a verdict is appended to a decision file, or re-read afterward | `lib/core/decision_writer.dart` |
 | change how a project's `## Tasks` section is checked off, marked all done, captured into, or moved between files | `lib/core/task_writer.dart` |
+| change how a project's five whitelisted frontmatter fields are written | `lib/core/project_writer.dart` |
+| change what gets logged for a write, or where the write log lives | `lib/core/write_log.dart` |
 | change how the inbox — `HOME.md`'s own unfiled `## Tasks` — is read | `lib/core/inbox.dart` |
 | change the quick-capture box or the unfiled list on the front page | `lib/hubs/product/inbox_panel.dart` |
 | change how a project's `## Roadmap` is parsed into milestones (Rounds), the derived "current milestone", or how `###` headings group milestones into phases | `lib/core/roadmap.dart` |
@@ -88,11 +92,11 @@ notes (not its decisions) — ADR 0007 is proposed and not accepted." ADR 0007 w
 this page simply was not updated in that commit. Found while adding `captureTask`/`moveTask` for
 the inbox; fixed here rather than left for whoever notices next.
 
-**Not re-verified this pass:** ADR 0007's guardrail 3, "every write is logged — what, when, which
-file, shown on a Log tab," has no implementation anywhere in `lib/` — not for the checkbox writes
-this page now documents, not for the inbox writes added alongside them. Pre-existing, not
-introduced by this round; flagged rather than quietly built, since a logging surface is its own
-round, not a one-line addition to this one.
+**Resolved 2026-09-13 (Round 19):** the line above flagged that ADR 0007's guardrail 3 — "every
+write is logged" — had no implementation. `write_log.dart` now exists and every writer in
+`task_writer.dart` and `project_writer.dart` calls it. The Log tab itself (the guardrail's other
+half, "shown on a Log tab") is still unbuilt — that is Round 21, deliberately sequenced after this
+one, not part of it.
 
 **Corrected 2026-09-13, second time this round: `roadmap.dart` had no row on this page at all**,
 since whichever commit added it (2026-09-07/08) never updated this file either — the same class of
@@ -105,3 +109,12 @@ the moment `roadmap.dart` needed `### Foundation`-style phase headings living in
 the `###` was read as ending the roadmap section, not as part of it. Fixed to stop only at a
 heading of the same level or shallower; checked every existing test fixture across the repo first
 and confirmed none relied on the old, incorrect boundary.
+
+**Found 2026-09-13, Round 20:** the spec for making the five ADR-0007 fields editable said all
+five were "already shown" on `project_screen.dart`. Checked the actual file first: only `status`
+was — `parent`, `priority`, `deadline` and `jira` render on `ProjectsView`'s row instead, and
+`parent` was not displayed anywhere at all. Asked Nico directly rather than guess past it; his
+answer was to add the missing four to `project_screen.dart`'s Details tab as plain rows, then make
+all five editable there. That is what got built — this page's own "where things live" row for
+`project_screen.dart` did not need a change, since "what one project's detail screen shows" already
+covered the addition.

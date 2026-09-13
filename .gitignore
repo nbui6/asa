@@ -58,4 +58,8 @@ app.*.map.json
 asa_settings.json
 *.local.json
 
+# Asa's write log (ADR 0007 guardrail 3) lives in %APPDATA%\Asa\ too, next to
+# settings.json — same reasoning, same belt-and-braces entry.
+write-log.jsonl
+
 # check-shareable.ps1 derives its private terms and keeps no list. Nothing to ignore.

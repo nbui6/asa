@@ -6,6 +6,20 @@
 /// thing in this codebase, not deleted, not moved. The one-line
 /// description under the project name landed the same day, once
 /// `project_reader.dart` could expose it.
+///
+/// **2026-09-13 — Round 20, the five whitelisted fields become editable.**
+/// Found while building this: the spec said all five (`parent`, `status`,
+/// `priority`, `deadline`, `jira`) were "already shown" here — only
+/// `status` was; the other four render on `ProjectsView`'s row instead,
+/// and `parent` was not displayed anywhere at all. Asked Nico directly
+/// rather than guess; his answer: add the missing four as plain rows
+/// here too, then make all five editable in this one place. `status`
+/// gets a picker over ADR 0017's own six-value enum (hardcoded here —
+/// nothing in code defined it yet either) rather than free text, so a
+/// typo can't create a new, invisible status; the other four are a plain
+/// text field. Saving goes through `project_writer.dart`'s
+/// `setProjectField`, then re-reads the whole project from disk — the
+/// file is the source of truth, never the in-memory typed value.
 library;
 
 import 'package:asa/core/decision.dart';
@@ -13,14 +27,33 @@ import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
+import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:flutter/material.dart';
 
+/// ADR 0017's own six values, in the order the ADR states them. No code
+/// defined this list before this round — the picker needs it to exist
+/// somewhere, and this screen is the only place that reads it today.
+const _statusValues = [
+  'idea',
+  'discovery-done',
+  'building',
+  'shipped',
+  'ongoing',
+  'paused',
+  'dropped',
+];
+
 class ProjectScreen extends StatefulWidget {
-  const ProjectScreen({required this.folder, super.key});
+  const ProjectScreen({required this.folder, this.writeLogPath, super.key});
 
   final String folder;
+
+  /// Overrides where a field edit's write is logged. Production never
+  /// sets this — it exists so a test can save through the real
+  /// `setProjectField` without touching `%APPDATA%\Asa\write-log.jsonl`.
+  final String? writeLogPath;
 
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
@@ -34,10 +67,74 @@ class _ProjectScreenState extends State<ProjectScreen> {
   int _tabIndex = 0;
   bool _provenanceExpanded = false;
 
+  // Editing one of the five whitelisted fields — Round 20. Only one field
+  // is ever mid-edit at a time; starting a new one silently drops any
+  // other in-progress edit, since nothing unsaved is lost by that (the
+  // file itself is untouched until Save).
+  String? _editingField;
+  final _editController = TextEditingController();
+  String? _editError;
+  bool _saving = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _editController.dispose();
+    super.dispose();
+  }
+
+  void _startEdit(String field, String currentValue) {
+    setState(() {
+      _editingField = field;
+      _editController.text = currentValue;
+      _editError = null;
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _editingField = null;
+      _editError = null;
+    });
+  }
+
+  Future<void> _saveEdit(String field) async {
+    final read = _read;
+    if (read == null || !read.isSuccess) return;
+
+    setState(() {
+      _saving = true;
+      _editError = null;
+    });
+
+    try {
+      await setProjectField(
+        read.project!.sourceFile,
+        field: field,
+        value: _editController.text.trim(),
+        expectedFrontmatter: read.rawFrontmatter,
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _editError = 'Could not save: $e';
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _editingField = null;
+      _saving = false;
+    });
+    await _load();
   }
 
   Future<void> _load() async {
@@ -404,7 +501,16 @@ class _ProjectScreenState extends State<ProjectScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Field('Status', project.status),
+        _editableField(
+          'Status',
+          'status',
+          project.status,
+          picker: _statusValues,
+        ),
+        _editableField('Parent', 'parent', project.parent),
+        _editableField('Priority', 'priority', project.priority),
+        _editableField('Deadline', 'deadline', project.deadline),
+        _editableField('Jira', 'jira', project.jira),
         _Field(
           'Milestone',
           effectiveMilestone(project.roadmap, project.milestone),
@@ -417,6 +523,34 @@ class _ProjectScreenState extends State<ProjectScreen> {
           project.repoPath.isEmpty ? '(no code yet)' : project.repoPath,
         ),
       ],
+    );
+  }
+
+  /// One of the five ADR 0007-whitelisted fields — `field` is the exact
+  /// frontmatter key, matching `project_writer.dart`'s own whitelist.
+  /// `rawValue` is the real, possibly-null value (never the "(not set)"
+  /// placeholder) — the editor starts from an empty box for an unset
+  /// field, not from placeholder text someone would have to clear first.
+  Widget _editableField(
+    String label,
+    String field,
+    String? rawValue, {
+    List<String>? picker,
+  }) {
+    return _EditableField(
+      label: label,
+      displayValue: (rawValue == null || rawValue.isEmpty)
+          ? '(not set)'
+          : rawValue,
+      editing: _editingField == field,
+      controller: _editController,
+      error: _editingField == field ? _editError : null,
+      saving: _saving,
+      picker: picker,
+      onStartEdit: () => _startEdit(field, rawValue ?? ''),
+      onPickerChanged: (value) => setState(() => _editController.text = value),
+      onSave: () => _saveEdit(field),
+      onCancel: _cancelEdit,
     );
   }
 
@@ -500,6 +634,144 @@ class _Field extends StatelessWidget {
           Expanded(child: SelectableText(value)),
         ],
       ),
+    );
+  }
+}
+
+/// One of the five ADR 0007-whitelisted fields, editable in place —
+/// Round 20. Stateless: every bit of state (which field is mid-edit, the
+/// typed value, an error, whether a save is in flight) lives in
+/// `_ProjectScreenState`, same reason `_ProjectsScreenState` owns
+/// `InboxPanel`'s capture logic rather than the panel itself.
+class _EditableField extends StatelessWidget {
+  const _EditableField({
+    required this.label,
+    required this.displayValue,
+    required this.editing,
+    required this.controller,
+    required this.error,
+    required this.saving,
+    required this.onStartEdit,
+    required this.onPickerChanged,
+    required this.onSave,
+    required this.onCancel,
+    this.picker,
+  });
+
+  final String label;
+  final String displayValue;
+  final bool editing;
+  final TextEditingController controller;
+  final String? error;
+  final bool saving;
+  final VoidCallback onStartEdit;
+  final ValueChanged<String> onPickerChanged;
+  final VoidCallback onSave;
+  final VoidCallback onCancel;
+
+  /// Non-null only for `status` — ADR 0017's six values. A picker rather
+  /// than free text, so a typo can't create a new, invisible status.
+  final List<String>? picker;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 200,
+                child: Text(label, style: const TextStyle(color: Colors.grey)),
+              ),
+              Expanded(
+                child: editing ? _editor() : SelectableText(displayValue),
+              ),
+              const SizedBox(width: 8),
+              _controls(),
+            ],
+          ),
+          if (editing && error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 200),
+              child: Text(
+                error!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editor() {
+    if (picker != null) {
+      final current = controller.text;
+      return DropdownButton<String>(
+        value: picker!.contains(current) ? current : null,
+        hint: Text(current.isEmpty ? '(not set)' : current),
+        isExpanded: true,
+        isDense: true,
+        items: [
+          for (final option in picker!)
+            DropdownMenuItem(value: option, child: Text(option)),
+        ],
+        onChanged: saving
+            ? null
+            : (value) {
+                if (value != null) onPickerChanged(value);
+              },
+      );
+    }
+
+    return TextField(
+      controller: controller,
+      enabled: !saving,
+      autofocus: true,
+      decoration: const InputDecoration(isDense: true, isCollapsed: true),
+    );
+  }
+
+  Widget _controls() {
+    if (!editing) {
+      return IconButton(
+        icon: const Icon(Icons.edit, size: 16),
+        onPressed: onStartEdit,
+        tooltip: 'Edit',
+        visualDensity: VisualDensity.compact,
+      );
+    }
+
+    if (saving) {
+      return const Padding(
+        padding: EdgeInsets.all(8),
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.check, size: 18),
+          onPressed: onSave,
+          tooltip: 'Save',
+          visualDensity: VisualDensity.compact,
+        ),
+        IconButton(
+          icon: const Icon(Icons.close, size: 18),
+          onPressed: onCancel,
+          tooltip: 'Cancel',
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
     );
   }
 }

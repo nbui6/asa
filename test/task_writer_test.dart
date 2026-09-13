@@ -6,15 +6,18 @@
 import 'dart:io';
 
 import 'package:asa/core/task_writer.dart';
+import 'package:asa/core/write_log.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late Directory tempDir;
   late String path;
+  late String logPath;
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('asa-task-test-');
     path = '${tempDir.path}${Platform.pathSeparator}example.md';
+    logPath = '${tempDir.path}${Platform.pathSeparator}write-log.jsonl';
   });
 
   tearDown(() => tempDir.deleteSync(recursive: true));
@@ -32,7 +35,12 @@ void main() {
             '- [ ] Talk to M about design\n';
         File(path).writeAsStringSync(original);
 
-        await setTaskDone(path, rawLine: '- [ ] Test forms', done: true);
+        await setTaskDone(
+          path,
+          rawLine: '- [ ] Test forms',
+          done: true,
+          writeLogPath: logPath,
+        );
 
         final updated = File(path).readAsStringSync();
         expect(updated, contains('A paragraph that must survive untouched.'));
@@ -44,7 +52,12 @@ void main() {
     test('can also reopen a done task', () async {
       File(path).writeAsStringSync('## Tasks\n\n- [x] Done already\n');
 
-      await setTaskDone(path, rawLine: '- [x] Done already', done: false);
+      await setTaskDone(
+        path,
+        rawLine: '- [x] Done already',
+        done: false,
+        writeLogPath: logPath,
+      );
 
       expect(File(path).readAsStringSync(), contains('- [ ] Done already'));
     });
@@ -73,7 +86,12 @@ void main() {
       File(path)
           .writeAsStringSync('## Tasks\n\n- [ ] Untouched\n- [ ] Park me\n');
 
-      await setTaskParked(path, rawLine: '- [ ] Park me', parked: true);
+      await setTaskParked(
+        path,
+        rawLine: '- [ ] Park me',
+        parked: true,
+        writeLogPath: logPath,
+      );
 
       final updated = File(path).readAsStringSync();
       expect(updated, contains('- [ ] Untouched\n'));
@@ -89,6 +107,7 @@ void main() {
         path,
         rawLine: '- [x] Done and parked (parked)',
         parked: false,
+        writeLogPath: logPath,
       );
 
       final updated = File(path).readAsStringSync();
@@ -101,7 +120,12 @@ void main() {
       const original = '## Tasks\n\n- [ ] Already open\n';
       File(path).writeAsStringSync(original);
 
-      await setTaskParked(path, rawLine: '- [ ] Already open', parked: false);
+      await setTaskParked(
+        path,
+        rawLine: '- [ ] Already open',
+        parked: false,
+        writeLogPath: logPath,
+      );
 
       expect(File(path).readAsStringSync(), original);
     });
@@ -109,7 +133,12 @@ void main() {
     test('a (Code) tag on the same line survives parking untouched', () async {
       File(path).writeAsStringSync('## Tasks\n\n- [ ] Ship it (Code)\n');
 
-      await setTaskParked(path, rawLine: '- [ ] Ship it (Code)', parked: true);
+      await setTaskParked(
+        path,
+        rawLine: '- [ ] Ship it (Code)',
+        parked: true,
+        writeLogPath: logPath,
+      );
 
       expect(
         File(path).readAsStringSync(),
@@ -149,7 +178,7 @@ void main() {
         '- [ ] Three\n',
       );
 
-      await markAllTasksDone(path);
+      await markAllTasksDone(path, writeLogPath: logPath);
 
       final updated = File(path).readAsStringSync();
       expect(updated, contains('- [x] One'));
@@ -164,7 +193,7 @@ void main() {
       File(otherPath).writeAsStringSync(otherContent);
       File(path).writeAsStringSync('## Tasks\n\n- [ ] Mine\n');
 
-      await markAllTasksDone(path);
+      await markAllTasksDone(path, writeLogPath: logPath);
 
       expect(File(otherPath).readAsStringSync(), otherContent);
     });
@@ -195,7 +224,12 @@ void main() {
     test('reads back what was just written, not what was assumed', () async {
       File(path).writeAsStringSync('## Tasks\n\n- [ ] Test forms\n');
 
-      await setTaskDone(path, rawLine: '- [ ] Test forms', done: true);
+      await setTaskDone(
+        path,
+        rawLine: '- [ ] Test forms',
+        done: true,
+        writeLogPath: logPath,
+      );
       final tasks = await rereadTasks(path);
 
       expect(tasks.single.done, isTrue);
@@ -207,7 +241,7 @@ void main() {
         'there', () async {
       File(path).writeAsStringSync('## Tasks\n\n- [ ] Already here\n');
 
-      await captureTask(path, 'Something new');
+      await captureTask(path, 'Something new', writeLogPath: logPath);
 
       final updated = File(path).readAsStringSync();
       expect(updated, contains('- [ ] Already here'));
@@ -223,7 +257,7 @@ void main() {
       const original = '# Home\n\nA paragraph that must survive untouched.\n';
       File(path).writeAsStringSync(original);
 
-      await captureTask(path, 'First capture');
+      await captureTask(path, 'First capture', writeLogPath: logPath);
 
       final updated = File(path).readAsStringSync();
       expect(updated, contains('A paragraph that must survive untouched.'));
@@ -234,7 +268,7 @@ void main() {
     test('creates the file itself when it does not exist at all', () async {
       expect(File(path).existsSync(), isFalse);
 
-      await captureTask(path, 'First ever capture');
+      await captureTask(path, 'First ever capture', writeLogPath: logPath);
 
       expect(
         File(path).readAsStringSync(),
@@ -264,6 +298,7 @@ void main() {
         fromPath: path,
         toPath: otherPath,
         rawLine: '- [x] Move me (Code)',
+        writeLogPath: logPath,
       );
 
       final source = File(path).readAsStringSync();
@@ -284,6 +319,7 @@ void main() {
         fromPath: path,
         toPath: otherPath,
         rawLine: '- [ ] Unfiled thing',
+        writeLogPath: logPath,
       );
 
       expect(
@@ -322,6 +358,99 @@ void main() {
       );
 
       expect(File(otherPath).readAsStringSync(), destinationBefore);
+    });
+  });
+
+  group('the write log — ADR 0007 guardrail 3, 2026-09-13', () {
+    test('setTaskDone logs the checkbox flip', () async {
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Test forms\n');
+
+      await setTaskDone(
+        path,
+        rawLine: '- [ ] Test forms',
+        done: true,
+        writeLogPath: logPath,
+      );
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.path, path);
+      expect(entry.field, 'task-done');
+      expect(entry.from, 'false');
+      expect(entry.to, 'true');
+    });
+
+    test('setTaskParked logs the parked flip', () async {
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Park me\n');
+
+      await setTaskParked(
+        path,
+        rawLine: '- [ ] Park me',
+        parked: true,
+        writeLogPath: logPath,
+      );
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'task-parked');
+      expect(entry.from, 'false');
+      expect(entry.to, 'true');
+    });
+
+    test('captureTask logs the new line', () async {
+      await captureTask(path, 'Newly captured', writeLogPath: logPath);
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'task-captured');
+      expect(entry.from, '');
+      expect(entry.to, '- [ ] Newly captured');
+    });
+
+    test('moveTask logs both sides — added to the destination, removed '
+        'from the source', () async {
+      final otherPath = '${tempDir.path}${Platform.pathSeparator}other.md';
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Move me\n');
+      File(otherPath).writeAsStringSync('## Tasks\n\n');
+
+      await moveTask(
+        fromPath: path,
+        toPath: otherPath,
+        rawLine: '- [ ] Move me',
+        writeLogPath: logPath,
+      );
+
+      final entries = await readWriteLog(logPath: logPath);
+      expect(entries, hasLength(2));
+      expect(entries[0].path, otherPath);
+      expect(entries[0].field, 'task-added');
+      expect(entries[1].path, path);
+      expect(entries[1].field, 'task-removed');
+    });
+
+    test('markAllTasksDone logs one entry for the whole call, not one '
+        'per line', () async {
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] One\n- [ ] Two\n');
+
+      await markAllTasksDone(path, writeLogPath: logPath);
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'tasks-marked-done');
+      expect(entry.from, '2 open');
+      expect(entry.to, '2 done');
+    });
+
+    test('a call that throws before writing logs nothing', () async {
+      File(path).writeAsStringSync('# No tasks section\n');
+
+      await expectLater(
+        setTaskDone(
+          path,
+          rawLine: '- [ ] Anything',
+          done: true,
+          writeLogPath: logPath,
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(await readWriteLog(logPath: logPath), isEmpty);
     });
   });
 }

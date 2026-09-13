@@ -1,9 +1,15 @@
 /// Asa's own settings — never a project note.
 ///
 /// The chosen projects folder is written to `%APPDATA%\Asa\settings.json`.
-/// This is the only thing this version writes anywhere. ADR 0007, which
-/// would let Asa write into a project's own notes, is proposed and not
-/// accepted — nothing here touches `projects\`.
+///
+/// **Corrected 2026-09-13:** this used to say settings were the only
+/// thing Asa writes, and that ADR 0007 (writing into a project's own
+/// notes) was proposed and not accepted. Both were stale — ADR 0007 was
+/// accepted 2026-09-01, and `task_writer.dart`/`project_writer.dart` now
+/// write checkbox lines and the five whitelisted frontmatter fields.
+/// `write_log.dart`'s write log lives in this same `%APPDATA%\Asa\`
+/// folder, next to this file, for the same reason: Asa's own operating
+/// state, never `projects\`.
 ///
 /// No new package: `dart:convert`, part of the Dart SDK, is enough for one
 /// flat JSON object.
