@@ -768,6 +768,20 @@ exactly that, and it must be empty before the plan can be signed again.
 > Ask at the end of any design conversation, not only after an analysis: **what did we just agree,
 > and which file does it live in now?**
 
+### The mirror of the rule above: a file that reaches nobody is the same failure, later
+
+**Reaching a file is necessary and not sufficient.** The rule above exists because an agreement
+that stays in conversation evaporates. But a decision that *does* reach a file still evaporates if
+nobody reopens it before building something that touches it — proven twice in one evening,
+2026-09-08 (`KIT-LOG.md`): a roadmap rebuilt from a remembered summary of an ADR instead of the
+ADR itself, wrong on the first pass; a build spec written against a paused ADR without re-checking
+whether the pause still applied.
+
+**Before authoring or restructuring anything that touches an existing decision, read that
+decision's current text.** Not a summary carried from earlier in the same conversation. The file.
+This is ADR 0004's own diagnosis (*not a knowledge failure — a retrieval failure*) applied to the
+session's own authoring, not only to briefing at the start of work.
+
 ### Where a demand goes when the kit cannot meet it
 
 Every "it should also do X" is one of three things, and they have three different destinations.

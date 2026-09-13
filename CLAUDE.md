@@ -1,9 +1,11 @@
 # CLAUDE.md - Asa
 
-**Asa is the desk for my vibe-coding projects.** It shows where every project stands, catches
-ideas fast, and hands off to Claude and VS Code with the context already in place.
-
-**Asa does not think.** Claude reasons; Asa shows, routes and queues.
+**`AGENTS.md`, in this same folder, is the canonical onboarding file — read it first, before
+this one.** It holds everything that is true regardless of tool: what Asa is, how to find the
+workspace, the three roles, Gate 1 and Gate 2, the doorman, the feedback channel. This file adds
+only what is specific to running inside Claude Code: the machine check and its hook, and the
+numbered Hard Rules contract (their numbers are cited throughout `HANDOVER.md`, `ASA-LOG.md` and
+the `decisions\` files, so they stay put here rather than move to AGENTS.md).
 
 One product, several hubs. Only the Product Hub exists. The others are named so the shell is
 built to accept them, and naming them is the entire investment.
@@ -11,43 +13,80 @@ built to accept them, and naming them is the entire investment.
 `ARCHITECTURE.md` is the map of the code. Read it before adding a file, and update it in the
 same commit as the part it describes.
 
-**The `## Where we are
+## Where we are
 
-**v0.1 is built, the machine check is green, and nothing is committed.** 2026-09-03.
+**v1's feature list is complete; the goal it was redefined around is not yet proven.** Full
+reasoning in `projects\asa\PLAN.md`. The short version: Asa shows what it was built to show, but
+"does Nico open it without being reminded" is still unanswered.
 
-`check.ps1` passed all four - format, `flutter analyze --fatal-infos`, 70 unit tests,
-`flutter test integration_test` - after `flutter clean` cleared a build cache left behind by the
-move from `dev\asa` on 2026-09-01. The app runs and lists all nine projects.
+**Round 9 finished and confirmed — both pieces, same day (2026-09-13).** Parked items
+(`13a4a1d`, 228 tests) and the overdue-deadline signal (`7d52a90`, 237 tests). Both shown as
+real running throwaway demos, both got Nico's "yes," both committed after. Round 9's two other
+original pieces (process view, project relations) were not part of either build and remain open.
 
-**Rejected by the Boss, and being rebuilt now:** the Decisions tab does not match `asa-v01b`, the
-sketch he approved. Eight differences, listed in `HANDOVER.md`, downstream half. The building
-session has the spec; the approved sketch is the spec, and no new sketch is being drawn.
+**ADR 0007 — "Asa writes structured fields, never prose" — found accepted 2026-09-01 and
+unbuilt for 12 days.** Caught by the doorman's own decisions-sweep, added the same day it caught
+this. Addressed by sequencing four rounds, not by rewriting the ADR:
 
-**Fixed before the commit, by the deciding session:**
+| Round | What | Status |
+|---|---|---|
+| 19 | The write path itself (`project_writer.dart`) + the write log, `core/` only, no screen | **Specced, sent to Code. Not yet built or confirmed.** |
+| 20 | The five whitelisted fields become editable on the project screen | Roadmapped, not yet specced in detail. |
+| 21 | The Log tab, closing guardrail 3 | Pulled forward ahead of schedule, at Nico's choice. Roadmapped, not yet specced. |
+| 22 | `next-step` derives from the first open task (ADR 0020, accepted 2026-09-13) instead of being a maintained field | Roadmapped, not yet specced. |
+| 23 | A decision shows whether it ever became work — Nico's own idea | Roadmapped, not yet specced. |
 
-- The folder picker. The button said "Choose folder..." and opened nothing; with an empty box it
-  did nothing at all. Now "Use this folder", and every path says why. `file_selector` was tried
-  and reverted - no Flutter plugin builds here without Developer Mode. A `pickFolder` seam is left
-  in so a machine that has it can supply the real dialog in three lines.
-- Test fixtures carried real internal decision content. Structure kept verbatim, prose replaced.
-  **Rule 8 refined: test against the real shape, never the real content.**
+**Rounds 19, 20 and 24 all built, verified against real files, shown, confirmed, committed —
+2026-09-13.** `53e8a44` (19+20), `eba90b2` (24). 268 tests, `check.ps1` clean. Verified honestly
+before trusting the claim: real file listing (`device_bash` still blocked by the September 8
+issue), not just Code's word — `project_writer.dart`, `write_log.dart`, a grown `task_writer.dart`,
+`project_screen_edit_test.dart`, `.claude\skills\doorman\` at project scope, `kit\SKILLS.md` freshly
+touched, all present and roughly the size the build report implied. The write log lives in
+`%APPDATA%\Asa\`, gitignored — Gate 2 held, checked, not assumed.
 
-**Open, and none of it is hidden:**
+- **Round 19** — `project_writer.dart`'s `setProjectField`, the whitelist, drift refusal,
+  single-line replacement; `write_log.dart`, append-only, closing ADR 0007's guardrail 3, unmet
+  since Rounds 8/9. Existing checkbox writers retrofitted to log too.
+- **Round 20** — the five whitelisted fields editable on the project screen. **Its own spec's
+  premise was wrong** — only `status` was actually shown before this round, not all five; Code
+  caught it, asked Nico rather than guessing, built the missing four rows as well as the editing.
+  This is the round that makes "work directly from the Asa UI" literally true.
+- **Round 24** — the doorman installed at both project and user scope, verified by real file
+  listing and the manifest. **Firing itself still only provable by a future fresh session** — the
+  build report says so honestly rather than overclaiming. Caught two things beyond the ask:
+  `kit\skills\doorman\`'s own source had never been committed (only the installed copy would have
+  been, leaving a fresh clone nothing to install from); `ship-it` had the identical
+  never-added-to-`$coreSkills` gap as doorman, fixed alongside it.
+- **The Release build was refreshed too**, confirmed opening outside the IDE.
 
-1. **Nothing is committed.** Rule 19 - the Boss sees the rebuilt tab, says yes, then commit.
-2. **`check-shareable.ps1 -SelfTest` has never been run** and must pass, with nothing waived,
-   before any push. That closes rule 16's three-line exception.
-3. **7 of 10 real ADR files have no heading literally named `## Why`**, so most decisions show an
-   empty why. Flagged, not papered over. His call whether that is a defect.
-4. **Does `projects\` get its own local-only git repository, never pushed?** Open since a helper
-   file destroyed a project note on 2026-09-01.
+**Round 25 — retracted the same day it was specced, never built.** The plan had been an in-app
+button that stamps a bare `status: idea` onto a folder with no Asa-shaped note yet. Nico said no:
+*"how about let claude works on the notes and make it into Asa properly there?"* Right call —
+Asa does not think, so Asa should not guess a real project's status. Replaced with a section in
+`AGENTS.md` telling any Claude session to read a real project's own material and hand-write its
+note with a real judgment call — no code needed.
 
-**Next after v0.1:** v0.1.1 - the seam for a second developer. `Project.extra`, `lib/local/`, and
-`FOR-YOUR-FORK.md` marked as shipped. See `projects\asa\decisions\0010`.
+**`AGENTS.md` written 2026-09-13**, pulling Round 18's portability item forward: one canonical,
+tool-agnostic onboarding file, so a fresh Claude session on another machine can bootstrap itself
+without this file. This file (`CLAUDE.md`) was reduced to point at it the same day.
 
-**Last moved:** 2026-09-03
+**Not done, still open, not hidden:**
 
----
+- **The actual test hasn't happened yet.** Everything above is proven on throwaway demo data and a
+  real file listing — not on Nico's own real projects on the other laptop. That's the next real
+  milestone: bring real projects in per `AGENTS.md`, then edit them through Round 20, for real.
+- Round 21 (Log tab), Round 22 (`next-step` from tasks), Round 23 (a decision shows whether it
+  became work) — roadmapped, not yet specced.
+- The front page still does not match `asa-front2`, the sketch Nico signed off on.
+- Tasks are denser than he wants; no way yet to type a new task, or drag one to reorder or
+  re-parent it; no way to drag-reorder or drag-to-re-parent a project on the front page itself.
+- ADR 0019 (a layer above the project — "areas") remains proposed, not accepted, deliberately
+  behind everything above.
+- Carried forward, **not reverified this pass**: whether `projects\` gets its own local-only git
+  repository.
+
+**Last updated:** 2026-09-13, by the deciding session, after verifying Rounds 19/20/24 against
+real files and confirming Round 25's retraction was respected.
 
 ## The machine check
 
@@ -233,3 +272,8 @@ notes). `asa.md` there is the project's own note, and Asa reads it like any othe
 
 *Corrected 2026-09-02. This section still pointed at the Obsidian vault, which rule 17 and ADR
 0006 replaced on 2026-09-01.*
+
+**For the reasoning behind rule 17's workspace shape, Gate 2, the second-developer fork
+boundary (rule 20), and the feedback channel — read `AGENTS.md`, not this file.** It says the
+same thing once, in a way that does not assume Claude Code, so a session on another machine or
+in another tool has the same rules without needing this file translated for it.

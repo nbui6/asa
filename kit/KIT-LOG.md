@@ -2253,3 +2253,41 @@ exercised.**
 *Also: the handover claimed "eight PASS lines". There were seven. A count stated from memory rather
 than from the script - the same class as the concept counts in the learning ledger, which are now
 produced by `grep -c` for exactly this reason.*
+
+## 2026-09-08 — a decision was rebuilt from a paraphrase of itself, not read fresh
+
+**A session drafted a project's roadmap from a summary of ADR 0014/0015 held in memory from earlier
+in the same conversation, rather than the ADRs' actual text.** Wrong on the first pass — flat items
+where the ADRs specify a milestone/task hierarchy — corrected only once the real files were opened.
+Same shape one level in from the kit's own retrieval-failure diagnosis (ADR 0004, product-side):
+that one was about a stale *fact*; this one is about a stale *belief about a decision that was
+never stale at all* — the decision was current and correct on disk the whole time, and the failure
+was not re-opening it.
+
+**Confirmed a second time, same session:** a build spec was written against a paused ADR (new
+app surface, paused pending a different unproven condition) without re-checking that ADR's text
+either — caught only because the building session asked rather than building.
+
+**The rule:** before authoring or restructuring anything that touches a decision that already
+exists as a file, **read that decision's current text.** Not a summary held from earlier in the
+conversation, not what it "basically says." A decision reaching a file (the write-side rule, above
+in this log's history) is necessary but not sufficient — it also has to be *reopened*, every time,
+by whoever is about to build something that touches it. Retrieval is not solved by writing; it
+still has to happen on the read side, per session, every time, or the write was for nothing.
+
+## 2026-09-08 — a skill built to fire automatically had no session type that could fire it
+
+`doorman` (`kit\skills\doorman\`) was accepted (ADR 0012) and written to fire unprompted at the start of project work. It never fired, all day, on a real project. Cause: this kit's one deterministic trigger mechanism, Claude Code hooks (`.claude/settings.json`), only reaches a local Claude Code session running with the repo as its own project root. The session doing almost all of today's `projects\` work is a Cowork session reaching the machine through a device bridge -- structurally outside that hook's reach, and outside normal skill-discovery too (a skill file on disk isn't automatically registered as callable by a session that didn't load it as a plugin). **The lesson, generalised:** a skill's own "done when it fires unprompted" bar has to name which session type it's promising that for -- "fires unprompted" for a local Claude Code session and for a cloud/bridge session are two different engineering problems, and this kit has only ever solved the first one. No fix yet; recorded so the next skill written with this exact promise doesn't repeat it.
+
+
+## 2026-09-08 — the read-fresh rule covers handing a file over, not only editing one
+
+Third time this exact failure shape showed up in one day (see the two entries above): a sketch
+file sent to Nico for approval was a copy staged into the assisting session earlier in the
+conversation, before the on-disk file had already been corrected. The on-disk file was right; what
+got sent was not, and it was approved anyway because there was no way to tell from the outside.
+**Generalised rule:** "read a decision's current text before touching it" now reads "read
+anything's current text before touching it OR handing it to someone" — a file read once earlier in
+a session is not proof of its current content the moment it becomes deliverable, because something
+else (a person, a build, an earlier step of the same session) may have changed it since. Re-read
+immediately before the handoff, every time, whatever kind of file it is.

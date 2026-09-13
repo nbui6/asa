@@ -97,8 +97,24 @@ would contain it, it does not belong in a project note.
 
 ## Sending feedback
 
-**GitHub issues on this repository.** You have read access, which is enough to open one. Dated,
-searchable, and it cannot get lost in a chat the way the last round of feedback did.
+**Corrected 2026-09-08, twice in one day: nobody types this into Asa.** The model is the kit's own
+`kit\skills\kit-feedback\` -- read it if you want the original. **Your Claude session writes
+`TESTER-FEEDBACK.md` itself**, as part of helping you, the moment something is learned -- the same
+way this session writes `KIT-LOG.md` and `ASA-LOG.md` entries directly, never through a form. Ask
+your session to note something the moment it happens rather than trying to remember it later; it's
+a plain file next to your build, local, offline, same as everything else Asa does. If your build
+has the "About This App" screen, it shows you the file's entry count and most recent date so you
+can tell at a glance whether anything has piled up -- read-only, nothing to type there.
+
+**Getting the file to us isn't Asa's job, it's yours (or your assistant session's), same as this
+whole fork model:** gather what's accumulated and ship it in one batch when you're ready -- push
+`TESTER-FEEDBACK.md` to `github.com/nbui6/asa`, either as a commit under a `feedback\` folder
+named for you, or opened as one GitHub issue per entry, whichever is less friction for you. Dated,
+searchable either way, and it cannot get lost in a chat the way the last round of feedback did.
+
+**No "About This App" screen yet, or your session hasn't started a `TESTER-FEEDBACK.md` yet:**
+GitHub issues on this repository directly work too. You have read access, which is enough to open
+one.
 
 What is useful, roughly in order:
 
