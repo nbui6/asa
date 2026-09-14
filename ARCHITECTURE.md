@@ -63,6 +63,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the quick-capture box or the unfiled list on the front page | `lib/hubs/product/inbox_panel.dart` |
 | change how a project's `## Roadmap` is parsed into milestones (Rounds), the derived "current milestone", or how `###` headings group milestones into phases | `lib/core/roadmap.dart` |
 | change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/phase_bar.dart` |
+| change how a project's plan (`PLAN.md` plus `plan\*.md`, ADR 0021) is read, its headings split into sections, or its derived `[[wikilink]]`/ADR/Round links found | `lib/core/plan.dart` |
+| change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes

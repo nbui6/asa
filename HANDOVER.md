@@ -1683,3 +1683,229 @@ state that no longer exists. Flagging rather than editing her file myself.
 `origin/main`. Told him plainly that `check-shareable.ps1` exits 1, why, and that every finding
 behind that exit code has been individually read and is not a leak, so he can decide with the real
 picture rather than a bare pass/fail.
+
+### 2026-09-14 — v2 starts: read ADR 0021 and ADR 0022 first, both accepted today
+
+**Two decisions were accepted today and they are the contract for everything below.** Read them in
+full before starting, plus `RESEARCH-PLANNING-LAYER-2026-09-14.md` if any choice below looks
+arbitrary — most of them came from that research and the reasoning is there rather than here.
+
+- **ADR 0021** — a plan is a folder of pages; a page is keyed to a **named aspect** (`budget.md`,
+  `marketing.md`); `PLAN.md` is its front page; **Asa shows and links plan pages and never writes a
+  word of them.**
+- **ADR 0022** — `PLAN.md` and `CHARTER.md` hold **the present only**; a *correction* updates the
+  plan ungated, a *decision* gets an ADR carrying Nico's approval; superseded plan text goes to
+  `PLAN-ARCHIVE.md`, **never into a decision**.
+
+**Two rounds are specced below. Build 26 first** — 29 is independent and can be done either side of
+it, but 26 is the foundation the rest of v2 sits on.
+
+**One standing warning, because this is where v2 could quietly go wrong:** nothing in either round
+writes to `PLAN.md`, `CHARTER.md`, or any `plan\*.md`. **Asa reads them. That is the whole line**
+(ADR 0021, hard rule 13, ADR 0007). A round that adds a "new plan page" button has misread the
+decision.
+
+### 2026-09-14 — Round 26 for Code: read the plan, and the links inside it
+
+**`core/` only. No screen. No writes.** Same shape as Round 19, which worked.
+
+**What to build**
+
+1. **`lib/core/plan.dart`** — new. Reads a project's plan and returns it as data:
+   - `PLAN.md` in the project folder, if present — the front page.
+   - Every `plan\*.md` beside it, if that folder exists — one `PlanPage` each, **keyed by its
+     filename stem** (`budget.md` → aspect `budget`). No frontmatter required; a plan page that has
+     none is normal, not an error.
+   - A project with neither has **no plan at all** — an empty result, not an error and not an empty
+     page. Same absent-not-empty rule as everywhere else.
+2. **Sections, parsed the way `markdown.dart` already parses them** — reuse it, do not write a
+   second section reader. Round 9's phase work already fixed its heading-level bug; that fix is
+   load-bearing here because plan pages will nest `###` under `##`.
+3. **Derived links — the core of this round.** For each page, find every reference it makes and
+   return it **with the sentence it sits in**:
+   - A `[[wikilink]]` to another project or plan page.
+   - An ADR reference — `ADR 0007`, `0007-asa-writes-fields.md`, or `decisions\0007-…`. Match the
+     **number**; the filename and prose forms both have to resolve to the same link.
+   - A Round reference — `Round 19` — so a plan page can point at work.
+   - **Each link carries the surrounding sentence, not just the target.** This is not decoration:
+     ADR 0021's revision makes it the difference between a useful link and the noise pattern the
+     research found. A `PlanLink` with no context sentence has not met this spec.
+4. **Both ends available.** Given a project, Asa can ask *what does this page link to* and *what
+   links to this page*. Derive the reverse by scanning the project's own pages — **cross-project
+   backlinks are not in this round**, and `Project.extra`-style flexibility is not needed here.
+5. **Nothing typed.** No new frontmatter field, on any file, anywhere. If this round makes anyone
+   want to add one, that is the signal to stop and ask.
+
+**Tests — this round is judged on the link derivation, not the file reading**
+
+- A plan page referencing an ADR three different ways (`ADR 0007`, the filename, the path) produces
+  **one link to 0007**, three times, each with its own sentence.
+- A page with no references produces an empty link list, not a null and not an error.
+- A project with `PLAN.md` and no `plan\` folder reads as a one-page plan.
+- A project with **neither** reads as no plan — and the test asserts that is distinguishable from
+  an empty plan.
+- A `##` section containing `###` subsections comes back whole. **Regression test against the
+  2026-09-13 heading-level bug**, which will bite again here if it ever comes back.
+- A sentence is captured for every link, and a fixture asserts the exact sentence text.
+
+**Not in this round, and two of them never:** any UI (Round 27) · typed frontmatter links (Round 28)
+· cross-project backlinks · **creating, editing or splitting a plan page — never, per ADR 0021.**
+
+**Verify → show → commit, rule 19.** No screen, so the "show" is test output plus the real parse of
+**Asa's own `PLAN.md`** printed out — that file is 52 KB with many ADR references in prose and is
+the best fixture in the system. Nico may defer the look to Round 27, as he did on the phase-data
+round; **ask, do not assume.**
+
+**Gate 2:** parse Asa's own plan for the demo. Never another project's. Invented fixtures in tests.
+
+### 2026-09-14 — Round 29 for Code: sketch approvals become the third decision source
+
+**Small, independent, and it closes a gap Nico named directly:** *"we approve a lot of plan on html
+and also a lot of sketches and the decision part of Asa doesn't capture them yet."*
+
+**Read `sketches\APPROVED.md` before writing anything.** It is already a decision log: one row per
+yes, dated, who approved it, what it covers, and **Nico's own words as the verdict**. It has three
+tables — approved · **trial, authorised to build but not yet approved** · **rejected, kept on
+purpose** — and its own rule 3 says superseded rows stay, for the same reason ADR 0011 makes
+verdicts append-only.
+
+**What to build**
+
+1. **A third `DecisionSource` in `lib/core/decisions_reader.dart`.** `ARCHITECTURE.md` already
+   specifies this exact extension: *"a new decision format → a new `DecisionSource` implementation
+   … neither `AdrFolderSource` nor `DecisionLogSource` needs to change."* **Hold it to that** — if
+   either existing source needs changing, stop and say so rather than working around it.
+2. **Map the three tables onto the status Asa already has**, and pick the mapping deliberately
+   rather than by feel — **name your choice and why in the build report**. `accepted` for an
+   approved sketch is obvious; **trial and rejected are not**, and ADR 0016's third outcome
+   ("I don't understand") is unbuilt, so do not reach for it.
+3. **The verdict is Nico's own quoted words**, already in the last column of each row. Do not
+   summarise it, do not rewrite it. **That column is the approval record** — it is the reason this
+   round exists at all.
+4. **Both paths in each row must resolve** (`kit\check-refs.ps1` already checks this). A row whose
+   image or source is missing shows **with its reason**, rule 6 — never silently dropped.
+5. **Read-only.** Asa never writes a row into `APPROVED.md`. A yes is recorded by whoever was in
+   the conversation, same as today.
+
+**Tests:** each of the three tables parses to the right status; a row with a missing file surfaces
+with its reason; the quoted verdict survives byte-identical; and **`AdrFolderSource`'s existing
+tests still pass untouched** — that last one is the real check on point 1.
+
+**Verify → show → commit, rule 19.** The "show" is the real Decisions tab on the real `asa` project
+with sketch approvals appearing beside the ADRs. **This one has a screen and Nico should look.**
+
+**Gate 2:** `APPROVED.md` is Asa's own; nothing here touches another project.
+
+### 2026-09-14 — Round 26 built, verified, Nico deferred the look — committed
+
+**`core/` only, no screen, no writes — as specced.** `lib/core/plan.dart`: `readPlan`, `Plan`,
+`PlanPage`, `PlanLink`/`PlanLinkKind`, `deriveLinks`, `pagesLinkingTo`. `lib/core/markdown.dart`
+grew `parseSections`/`Section` (every heading in a document, not just one named one — reuses the
+same fence-aware, same-level-or-shallower boundary rule Round 9's phase fix established rather
+than a second implementation of it) and `withoutFencedBlocks`. 14 new tests
+(`test/plan_test.dart`); `check.ps1` clean end to end, 282 tests total.
+
+**Shown, not with a screen — test output plus a real parse of Asa's own `PLAN.md`, per the
+round's own instruction.** 33 sections, 54 links (22 ADR, 32 Round), every one carrying the
+sentence it came from. Asked Nico directly whether this was right; his answer —
+*"I am unsure, I will test it when I see the app. Continue"* — **is the deferral the round's own
+spec anticipated** ("Nico may defer the look to Round 27, as he did on the phase-data round; ask,
+do not assume"), not a yes on the data shape itself. Recorded as exactly that, not disguised as
+ordinary confirmation. The real verification is Round 27, when a screen exists to look at.
+
+**A real bug the fixture itself caught, fixed before anything was shown:** the sentence splitter
+read the period inside a backtick-wrapped filename (`` `0007-asa-writes-fields.md` ``) as a
+sentence end, silently losing 2 of the 3 required forms in the "one ADR, three ways" test. Fixed
+by masking inline code spans before splitting and restoring them after — `plan.dart`'s
+`_sentences`, own comment explains why.
+
+**A second, adjacent false-positive found and fixed the same way:** the ADR-filename pattern
+originally matched any `NNNN-slug.md` shape, which also matches the date buried inside
+`RESEARCH-PLANNING-LAYER-2026-09-14.md` — a real file in this project. Fixed by requiring the
+digits sit at the very start of the basename (not preceded by a letter, digit or hyphen) —
+`_adrFile`'s own comment names the exact file that caught it.
+
+**Two judgment calls, since ADR 0021 does not specify either yet — flagging rather than
+guessing silently:**
+- `pagesLinkingTo` (the reverse-lookup half of point 4) matches a `[[wikilink]]`'s target against
+  a page's aspect string, case-insensitive. Untested against any real project — no real `PLAN.md`
+  has a `[[wikilink]]` in it yet.
+- A markdown *table* row with no periods between cells comes back as one long run-on "sentence"
+  rather than a tidy one — visible in the real `PLAN.md` parse on a couple of Round links. The
+  spec's sentence-capture rule reads as written for prose; nothing in its own test list exercises
+  a table, so no special case was invented for one. Worth a look before Round 27 renders it.
+
+**Not part of this round, and not touched:** Round 27 (the Plan tab), Round 28 (typed links),
+cross-project backlinks, creating/editing/splitting a plan page (never, per ADR 0021). Round 29
+(sketch approvals) is specced and independent — next.
+
+### 2026-09-14 — small ask, not a round: `projects\` has no backup. Give it one.
+
+**Not app work — a script, and it does not touch `lib/` or `test/`.** Read **ADR 0023** first (it
+rejects giving `projects\` a git repo, and says why) and **ADR 0013's 2026-09-14 amendment** (which
+reopened that ADR in writing before anything moves, as that ADR requires).
+
+**The finding behind this:** `projects\` — nine projects, the material this whole system exists to
+protect — **has no backup of any kind.** `workshop\MACHINE.md` documents this machine in real detail
+and says nothing about backup anywhere. It has already lost a file permanently once (`ASA.md`
+overwriting `asa.md`, Windows being case-insensitive, nothing to restore from).
+
+**Build one script. The company-network copy is Nico's own manual step and is not yours.**
+
+#### `kit\backup-projects.ps1` — automatic, local, everything
+
+1. **Finds the workspace by shape, never by a hard-coded path** — the three-sibling rule (`asa`,
+   `projects`, `workshop`), ADR 0006, same as the doorman. It must work on the other laptop with a
+   different username and nothing edited.
+2. **Copies the whole of `projects\`.** No allowlist, no config, nothing to maintain — the safe
+   destination gets everything, deliberately.
+3. **Destination is OUTSIDE `workspace\`** — `%USERPROFILE%\workspace-backup\` or similar. **A
+   backup inside the folder it is backing up is not a backup**; one bad command on `workspace\`
+   takes both.
+4. **Dated snapshots. NOT `robocopy /MIR`.** The single most important line in this spec: **a
+   mirroring backup propagates the destruction it exists to protect against.** The failure that
+   actually happened here was a file being overwritten — a mirror run afterwards would faithfully
+   copy the damage over the good copy. So: one `backup-<yyyy-MM-dd-HHmm>\` folder per run, and
+   **nothing ever deletes or rewrites a file inside an existing snapshot.**
+5. **Keep a bounded number of snapshots** — the folder is markdown plus some sketch PNGs, a few MB,
+   so this is cheap. Pick the count, **say what you picked and why in the build report**, prune
+   oldest beyond it. Pruning removes whole old snapshots, never files inside a kept one.
+6. **Say when it last worked, where a human will see it.** One line per run — timestamp, snapshot
+   path, file count, OK or the real error — to a log beside the backups. **Silent failure is how
+   backups die**; rule 6 applies here harder than anywhere in the app.
+7. **Schedule it in the user's own context, no admin.** `workshop\MACHINE.md`: *"Nico often lacks
+   admin rights here. Prefer user-space installs."* **Verify that registering the task actually
+   works without elevation rather than assuming it does** — if it needs admin, say so plainly and
+   fall back to run-on-logon.
+8. **UTF-8 BOM**, hard rule 10.
+
+#### What must NOT be in this script
+
+- **No company network path, no UNC path, no drive letter belonging to anything but this machine.**
+  The network copy is **manual, work projects only, Nico's own step** (ADR 0013's amendment). **Do
+  not automate it, and do not put its path anywhere in this repository** — `check-shareable.ps1`
+  would flag it, correctly.
+- **No allowlist logic, and no network script is coming later either.** An earlier draft of ADR
+  0013's amendment designed one; **it was corrected the same day and the allowlist was dropped
+  entirely.** The network copy is Nico dragging folders by hand — *"I should just simply copy and
+  paste projects needed backup in the network?"* — so there is no automated selection to get wrong
+  and nothing to configure. **If a future session proposes a network-copy script, read that
+  correction before building it.**
+
+#### Verify — and this one is verified by breaking it
+
+`-SelfTest`, same as `check-shareable.ps1` and `collect-feedback.ps1` already have. At minimum:
+
+- A snapshot is created and contains a known file.
+- **A second run, after a file has been modified, leaves the first snapshot's copy untouched.**
+  This is the test that proves point 4, and point 4 is the whole reason the script exists.
+- A missing destination is created; an unreachable one **fails loudly with its real reason**.
+- The workspace-by-shape search finds the root from a different working directory.
+
+**Show → ask → commit, rule 19.** The "show" is a real run: the snapshot folder on disk, the log
+line, and the second-run test demonstrated rather than described. No screen, so **ask Nico whether
+he wants to look before committing.**
+
+**Gate 2:** the backup holds real project content by design — that is the point — and it stays on
+this machine. **Nothing about its contents ever reaches this file, a commit message, or a test
+fixture.** Tests use invented folders.

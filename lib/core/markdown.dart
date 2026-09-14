@@ -111,6 +111,80 @@ String stripCodeSpanMarkers(String text) {
   return text.replaceAllMapped(RegExp('`(.+?)`'), (m) => m.group(1)!);
 }
 
+/// One heading anywhere in a document, and everything between it and the
+/// next heading at the same level or shallower — Round 26 (`plan.dart`):
+/// a plan page's structure is arbitrary prose with headings nobody names
+/// in advance, unlike `## Roadmap`/`## Tasks`, which look for one known
+/// heading string. [parseSections] reads every heading in one pass, reusing
+/// the same same-level-or-shallower, fence-aware boundary rule
+/// [_sectionRangeForPattern] already established (the 2026-09-13 phase
+/// bugfix) rather than a second implementation of that rule.
+class Section {
+  const Section({
+    required this.level,
+    required this.heading,
+    required this.body,
+  });
+
+  /// The number of leading `#` characters.
+  final int level;
+
+  final String heading;
+
+  /// Trimmed; empty when the heading is immediately followed by another
+  /// heading of the same level or shallower.
+  final String body;
+}
+
+/// Every heading in [text], outermost or nested, each with its own body —
+/// never just the ones a caller already knows the name of. Order is file
+/// order. An empty list when [text] has no heading at all, not an error.
+List<Section> parseSections(String text) {
+  final headingLine = RegExp(r'^(#{1,6})\s*(.+?)\s*$', multiLine: true);
+  final fences = _fencedRanges(text);
+  final matches = [
+    for (final match in headingLine.allMatches(text))
+      if (!_isFenced(match.start, fences)) match,
+  ];
+
+  final sections = <Section>[];
+  for (var i = 0; i < matches.length; i++) {
+    final match = matches[i];
+    final level = match.group(1)!.length;
+
+    var end = text.length;
+    for (var j = i + 1; j < matches.length; j++) {
+      if (matches[j].group(1)!.length <= level) {
+        end = matches[j].start;
+        break;
+      }
+    }
+
+    final rule = firstUnfencedMatch(
+      RegExp(r'^---\s*$', multiLine: true),
+      text.substring(match.end, end),
+    );
+    if (rule != null) end = match.end + rule.start;
+
+    sections.add(
+      Section(
+        level: level,
+        heading: match.group(2)!.trim(),
+        body: text.substring(match.end, end).trim(),
+      ),
+    );
+  }
+  return sections;
+}
+
+/// [text] with every fenced ```` ``` ````-delimited block removed —
+/// same fence rule as [firstUnfencedMatch], for a caller (Round 26's link
+/// derivation) that needs to scan plain prose rather than test each match
+/// individually.
+String withoutFencedBlocks(String text) {
+  return text.replaceAll(RegExp(r'```[\s\S]*?```'), '');
+}
+
 /// The first match of [pattern] in [text] that does not sit inside a
 /// fenced code block. A `## Your call` (or any other heading) written as
 /// an *example*, inside triple backticks, is not a real section — see the
