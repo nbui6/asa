@@ -1839,6 +1839,54 @@ guessing silently:**
 cross-project backlinks, creating/editing/splitting a plan page (never, per ADR 0021). Round 29
 (sketch approvals) is specced and independent — next.
 
+### 2026-09-14 — Round 29 built, verified against the real file, ready to show
+
+**One new `DecisionSource`, exactly as specced — neither `AdrFolderSource` nor `DecisionLogSource`
+touched.** `lib/core/decisions_reader.dart` grows `SketchApprovalsSource`, reading
+`sketches\APPROVED.md`'s three tables (approved · trial, authorised but not yet approved ·
+rejected) into the same `Decision`/`DecisionReadResult` shape everything else already uses. Wired
+into `readAllDecisions`'s existing merge — **no change to `project_screen.dart` or any other
+screen file.** The real Decisions tab picks this up automatically, because it already renders
+whatever `readAllDecisions` returns.
+
+**Status mapping, named as the round asked:** a row in the *approved* table is `accepted` — the
+file's own rule 1 says a row only exists there once a yes has arrived. A row in the *trial* table
+is `proposed`, verdict left unset — the same thing `Decision.isProposed` already means everywhere
+else in this app ("still wants something from you"), so a trial sketch shows up in "Needs a look"
+for free. A row in the *rejected* table is `rejected`, verdict carrying that row's own reason.
+
+**The verdict is the row's own words, carried verbatim — never summarised.** Checked against a
+real oddity in the file, not invented: the `asa-proc2` row sits physically in the *approved*
+table, yet its own cell says *"Not a clean approval... do not build against this row."* Read
+structurally (table membership decides status) rather than re-parsing that sentence to
+reclassify it — the same "Asa does not think" line Round 25 drew. A human reading the Decisions
+tab sees that exact warning, verbatim, rather than a status this parser tried to infer from it.
+
+**Rule 2 ("both paths must resolve") is enforced, not just claimed** — added `FileAccessExistence`,
+an *extension* on `FileAccess` rather than a third abstract method, so `DiskFileAccess` and every
+existing test fake keep working with zero changes (every implementation in this codebase uses
+`implements`, which does not inherit a default method body — a plain interface addition would have
+forced every one of them to add a method only this round needs). A row whose image or source does
+not resolve surfaces as an *unreadable* result, the exact same convention `AdrFolderSource` and
+`DecisionLogSource` already use for a row that cannot be trusted — never silently dropped, rule 6.
+
+**7 new tests** (`test/sketch_approvals_source_test.dart`): each table maps to the right status,
+a verdict survives byte-identical, a missing-file row surfaces with its reason,
+`readAllDecisions` merges both sources from one project, and a real parse of Asa's own
+`sketches\APPROVED.md` — 9 real rows, every real path on disk resolves. `check.ps1` clean, 289
+tests total.
+
+**Shown as real data from the real file — the exact list the Decisions tab renders from, not
+invented output.** All 9 real sketch-approval rows print correctly alongside the 23 real ADR
+rows already in the merged list, including the `asa-proc2` warning row rendering exactly as
+described above. **The live window itself has not been opened for this** — per this session's own
+standing rule, a running screen is confirmed by Nico looking at it himself, not by a screenshot.
+Asking here rather than assuming: the data is proven; the actual Decisions tab is one `flutter
+run` away whenever you want to look.
+
+**Not part of this round:** ADR 0016's third outcome ("I don't understand") — not reached for,
+per the round's own instruction. Cross-project anything — out of scope, same as Round 26.
+
 ### 2026-09-14 — small ask, not a round: `projects\` has no backup. Give it one.
 
 **Not app work — a script, and it does not touch `lib/` or `test/`.** Read **ADR 0023** first (it

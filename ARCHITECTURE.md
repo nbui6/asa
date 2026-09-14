@@ -54,6 +54,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change what git is asked, or how failures read | `lib/core/git_state.dart` |
 | change how one decision (an ADR file, or one log section) is parsed | `lib/core/decision.dart` |
 | change how decisions are found on disk, their merge and sort order, or the "Needs a look" / "Settled" trial grouping | `lib/core/decisions_reader.dart` |
+| change how `sketches\APPROVED.md`'s three tables (approved, trial, rejected) become decisions beside the ADRs | `lib/core/decisions_reader.dart`'s `SketchApprovalsSource` |
 | change where or how Asa's own settings are read or written | `lib/core/settings.dart` |
 | change how a verdict is appended to a decision file, or re-read afterward | `lib/core/decision_writer.dart` |
 | change how a project's `## Tasks` section is checked off, marked all done, captured into, or moved between files | `lib/core/task_writer.dart` |
