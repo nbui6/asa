@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-13 (Round 20 — the five fields, editable).
+Last checked against the folder tree: 2026-09-14 (Round 27 — the Plan tab).
 
 ---
 
@@ -66,6 +66,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/phase_bar.dart` |
 | change how a project's plan (`PLAN.md` plus `plan\*.md`, ADR 0021) is read, its headings split into sections, or its derived `[[wikilink]]`/ADR/Round links found | `lib/core/plan.dart` |
 | change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
+| change what the Plan tab shows — "what changed," the collapsible outline, the Strategy pointer | `lib/hubs/product/plan_view.dart` |
+| change how a project's Tasks group sorts first when reached from its own project screen | `lib/hubs/product/tasks_view.dart`'s `pinnedProjectName` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes

@@ -15,6 +15,15 @@ same commit as the part it describes.
 
 ## Where we are
 
+**Current as of 2026-09-14 — points at `projects\asa\PLAN.md`'s own dated entries rather than
+restating them, since this section had drifted a full session behind by the time this line was
+added.** Rounds 26, 27 and 29 are built and committed, not pushed; Round 27's real state is
+**waiting for your approval** (built, not yet seen — its Roadmap checkbox had gone stale saying
+"specced," corrected the same day it was found). ADR 0024/0025/0026 are all accepted. Round 16
+(the Strategy tab) is specced next, `HANDOVER.md`'s 2026-09-14 entry, against
+`sketches\asa-strategy-v3.html`. Everything below this line is the Round 9/19-24 narrative from
+2026-09-13 and earlier — still accurate for what it covers, just not the whole picture anymore.
+
 **v1's feature list is complete; the goal it was redefined around is not yet proven.** Full
 reasoning in `projects\asa\PLAN.md`. The short version: Asa shows what it was built to show, but
 "does Nico open it without being reminded" is still unanswered.
@@ -99,11 +108,55 @@ full `git log origin/main` read).
   re-parent it; no way to drag-reorder or drag-to-re-parent a project on the front page itself.
 - ADR 0019 (a layer above the project — "areas") remains proposed, not accepted, deliberately
   behind everything above.
-- Carried forward, **not reverified this pass**: whether `projects\` gets its own local-only git
-  repository.
+- **`projects\` getting its own local-only git repo — settled, 2026-09-14: no.** ADR 0023, run
+  through the kit's `counter-proposal` skill, rejects it (five questions, all against; the real
+  gap was a backup gap, not a version-control gap). See below.
 
-**Last updated:** 2026-09-13, by the deciding session, after verifying Rounds 19/20/24 against
-real files and confirming Round 25's retraction was respected.
+**2026-09-14 — v2 opened, and it moved fast: ADR 0008, 0021, 0022 accepted; Round 26 and Round 29
+built, verified, committed; not yet pushed.**
+
+Nico: *"Each projects need a plan layer that links to everything else... a plan could be many
+pages, but everything has to be interconnected."* Full reasoning in `projects\asa\PLAN.md` and
+`projects\asa\RESEARCH-PLANNING-LAYER-2026-09-14.md` (real external research, not designed from
+intuition alone). What got decided, in order:
+
+- **ADR 0008** (typed vs. derived links) — accepted, Nico's amendment: derived by default, typed
+  only where direction matters.
+- **ADR 0021** ("the plan is many pages") — accepted after a research-driven revision: a plan is
+  a folder of pages keyed to a named aspect, `PLAN.md` is the front page, Asa shows and links
+  pages but **never writes one** — keeps ADR 0007 and hard rule 13 intact.
+- **ADR 0022** ("the plan holds now, decisions hold why, the archive holds before") — accepted.
+  Corrections go straight into the plan, ungated; decisions still need Nico's yes; superseded plan
+  text moves to `PLAN-ARCHIVE.md`, never into a decision. **Done the same day:** `PLAN.md` split
+  from ~52 KB to ~40 KB, `PLAN-ARCHIVE.md` created, verified programmatically that no heading was
+  lost.
+- **ADR 0023** ("no git repo for `projects\`, it gets a backup instead") — the counter-proposal
+  above. Reframed the real gap as *no backup at all*. Two backups specced: automatic local
+  snapshots (`kit\backup-projects.ps1` — **specced in `HANDOVER.md`, not yet built**) and a
+  manual, occasional, work-projects-only copy to the company network (Nico's own hands, nothing
+  automated — see ADR 0013's amendment, corrected same day to drop an over-engineered allowlist).
+
+**Round 26 (read the plan) and Round 29 (sketch approvals as a third `DecisionSource`) — both
+built, verified against real files, committed 2026-09-14 (`22a1c26`, `80fa9e8`).** `check.ps1`
+clean, **289 tests total.** Verified honestly before trusting the claim, the same way as always:
+real file listing over the device bridge (`device_bash` still blocked by the same September 8
+issue) — `lib/core/plan.dart`, `lib/core/decisions_reader.dart`'s grown `SketchApprovalsSource`,
+`markdown.dart`'s grown `parseSections`, `test/plan_test.dart`, `test/sketch_approvals_source_test.dart`
+all present, sized and timestamped consistently with the commit log, not just Code's word. **Local
+`main` is ahead of `origin/main` by these two commits — not pushed yet**, which is fine; that step
+is Nico's alone.
+
+**Real judgment calls flagged in the build, not silently guessed:** Round 26's `pagesLinkingTo`
+wikilink match is untested against any real project; a markdown table row with no periods parses
+as one run-on sentence. Nico deferred judging the actual data shape until Round 27 gives him a
+screen (*"I am unsure, I will test it when I see the app. Continue"*) — recorded as a deferral,
+not a yes on the shape itself.
+
+**What's actually next: Round 27, the Plan tab** — the visible half of Round 26, and the round
+Round 15 was always trying to be. **Nothing specced for Code yet.**
+
+**Last updated:** 2026-09-14, by the deciding session, after verifying Round 26 and Round 29
+against real files and updating `asa.md`'s Roadmap and `next-step` to match.
 
 ## The machine check
 

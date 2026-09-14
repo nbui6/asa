@@ -25,11 +25,13 @@ library;
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
+import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
 import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
+import 'package:asa/hubs/product/plan_view.dart';
 import 'package:flutter/material.dart';
 
 /// ADR 0017's own six values, in the order the ADR states them. No code
@@ -46,7 +48,12 @@ const _statusValues = [
 ];
 
 class ProjectScreen extends StatefulWidget {
-  const ProjectScreen({required this.folder, this.writeLogPath, super.key});
+  const ProjectScreen({
+    required this.folder,
+    this.writeLogPath,
+    this.onOpenTasks,
+    super.key,
+  });
 
   final String folder;
 
@@ -54,6 +61,14 @@ class ProjectScreen extends StatefulWidget {
   /// sets this — it exists so a test can save through the real
   /// `setProjectField` without touching `%APPDATA%\Asa\write-log.jsonl`.
   final String? writeLogPath;
+
+  /// Round 27's navigation fix — Nico: *"we should still be able to
+  /// navigate there, with the tasks of this project on top for easy
+  /// work."* Null in a test that does not need it. In the real app this
+  /// pops back to `ProjectsScreen` and switches it to the Tasks view with
+  /// this project's name — the only host `TasksView` has, traced rather
+  /// than assumed.
+  final void Function(String projectName)? onOpenTasks;
 
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
@@ -63,6 +78,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   ProjectReadResult? _read;
   GitState? _git;
   List<DecisionReadResult>? _decisions;
+  Plan? _plan;
   bool _loading = true;
   int _tabIndex = 0;
   bool _provenanceExpanded = false;
@@ -148,13 +164,19 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final decisions = sortDecisionsNewestFirst(
       await readAllDecisions(widget.folder, const DiskFileAccess()),
     );
+    final plan = await readPlan(widget.folder);
 
     if (!mounted) return;
     setState(() {
       _read = read;
       _git = git;
       _decisions = decisions;
+      _plan = plan;
       _loading = false;
+      // A tab that just disappeared (a reload after Plan.isEmpty turned
+      // true) should not leave the screen on a body that no longer has a
+      // label above it.
+      if (_tabIndex == 2 && plan.isEmpty) _tabIndex = 0;
     });
   }
 
@@ -191,7 +213,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
               const SizedBox(height: 4),
               const Divider(height: 1),
               const SizedBox(height: 4),
-              if (_tabIndex == 0) _decisionsTab(read) else _detailsTab(read),
+              _tabBody(read),
               const SizedBox(height: 24),
               _provenanceSection(read),
             ],
@@ -202,6 +224,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   Widget _headerRow() {
+    final read = _read;
+    final canOpenTasks =
+        widget.onOpenTasks != null && read != null && read.isSuccess;
+
     return Row(
       children: [
         IconButton(
@@ -212,6 +238,19 @@ class _ProjectScreenState extends State<ProjectScreen> {
           tooltip: 'Back',
         ),
         const Spacer(),
+        // Round 27: "one button, not a fourth real tab" — styled
+        // distinctly (the sketch's small ↗ glyph) so it reads as leaving
+        // this screen, which it does: it pops back to the front page.
+        if (canOpenTasks)
+          TextButton.icon(
+            onPressed: () => widget.onOpenTasks!(read.project!.name),
+            icon: const Icon(Icons.north_east, size: 14),
+            label: const Text('Tasks'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade700,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         IconButton(
           onPressed: _loading ? null : _load,
           icon: const Icon(Icons.refresh, size: 20),
@@ -225,14 +264,42 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   /// Plain text, a 2px underline on the active one — row 3 of the drift
   /// table. Not a Material `TabBar`: no uppercase, no full-width band.
+  ///
+  /// Round 27 — the first round to grow this past two. `Plan` shows only
+  /// once there is one: `Plan.isEmpty` is the same absent-not-empty rule
+  /// every other conditional tab here already follows.
   Widget _tabRow() {
+    final plan = _plan;
     return Row(
       children: [
         _tabLabel('Decisions', 0),
         const SizedBox(width: 24),
         _tabLabel('Details', 1),
+        if (plan != null && !plan.isEmpty) ...[
+          const SizedBox(width: 24),
+          _tabLabel('Plan', 2),
+        ],
       ],
     );
+  }
+
+  Widget _tabBody(ProjectReadResult read) {
+    switch (_tabIndex) {
+      case 0:
+        return _decisionsTab(read);
+      case 2:
+        final plan = _plan;
+        if (plan == null || plan.isEmpty) return _decisionsTab(read);
+        return PlanView(
+          plan: plan,
+          decisions: _decisions ?? const [],
+          projectSourceFile: read.isSuccess
+              ? read.project!.sourceFile
+              : widget.folder,
+        );
+      default:
+        return _detailsTab(read);
+    }
   }
 
   Widget _tabLabel(String label, int index) {

@@ -35,10 +35,18 @@ class TasksView extends StatefulWidget {
     required this.onToggleTask,
     required this.onMarkAllDone,
     required this.onToggleParked,
+    this.pinnedProjectName,
     super.key,
   });
 
   final List<TaskGroup> groups;
+
+  /// Round 27's navigation fix — when set, the top-level group whose
+  /// `project.name` matches sorts first. Nothing else about the grouping
+  /// changes: not the nested `children`, not which tasks are visible.
+  /// Null (the ordinary front-page-toggle path) leaves [groups] exactly
+  /// as given.
+  final String? pinnedProjectName;
 
   /// Flips one task's checkbox. The screen re-reads the file afterwards
   /// rather than trusting the flip happened — same discipline as the
@@ -81,9 +89,24 @@ class _TasksViewState extends State<TasksView> {
       children: [
         _controlsRow(),
         const SizedBox(height: 16),
-        for (final group in widget.groups) _groupTile(group, depth: 0),
+        for (final group in _orderedGroups()) _groupTile(group, depth: 0),
       ],
     );
+  }
+
+  /// `widget.groups`, with the pinned project's group moved first — the
+  /// rest keep their existing relative order. No-op when nothing is
+  /// pinned or nothing matches, rather than silently reordering by guess.
+  List<TaskGroup> _orderedGroups() {
+    final pinned = widget.pinnedProjectName;
+    if (pinned == null) return widget.groups;
+
+    final match = <TaskGroup>[];
+    final rest = <TaskGroup>[];
+    for (final group in widget.groups) {
+      (group.project.name == pinned ? match : rest).add(group);
+    }
+    return [...match, ...rest];
   }
 
   Widget _controlsRow() {

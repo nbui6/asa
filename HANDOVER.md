@@ -1887,6 +1887,53 @@ run` away whenever you want to look.
 **Not part of this round:** ADR 0016's third outcome ("I don't understand") — not reached for,
 per the round's own instruction. Cross-project anything — out of scope, same as Round 26.
 
+### 2026-09-14 — Round 27 built: the Plan tab, real screen, real data, not yet shown live
+
+**As specced, against `asa-plan-v3.html`.** `project_screen.dart` grows a third tab, `Plan`,
+shown only when `Plan.isEmpty` is false — the first time this row has ever grown past two.
+New file, `lib/hubs/product/plan_view.dart`: "what changed" (dated `##` sections, newest first,
+same-day ties broken by file order, 3 shown then an "older (N)" reveal) and the outline (every
+`PlanPage` as a top-level group, a page's own `##`/`###` sections nested inside, everything
+collapsed on first render, no persisted state). The navigation fix landed too: `ProjectScreen`
+takes an `onOpenTasks` callback, wired at its one real call site in `projects_screen.dart`, which
+pops back to the front page and switches it to the Tasks view with this project's group pinned
+first (`TasksView`'s new `pinnedProjectName`). Read-only throughout — tapping anything opens the
+real file with `open_url.dart`; nothing here writes a byte to `PLAN.md` or anything else.
+
+**`persona-check` re-run against the real built screen, not just the spec — found two real
+things, both fixed before this reached you, not shipped past a second time:**
+
+1. **A derived link's chip carried no sentence.** ADR 0021's revision is explicit that a
+   derived link must render as the sentence it came from, never a bare tag — the very defect
+   that made v2 overwhelming was inventing text, and a bare "Round 26" chip with nothing behind
+   it drifts toward the opposite failure, a tag that says nothing. Fixed with a `Tooltip`
+   carrying the real sentence, verbatim — compact until asked for, present when it is.
+2. **Row count, not just row density, can overwhelm.** The sketch draws 4 outline groups before
+   its own "+29 more, collapsed" line; the first build showed all of a real project's — Asa's
+   own PLAN.md has 23 top-level `##` headings. Every row was one line, collapsed, but 23 of them
+   stacked is close to the same failure v2 was blocked for, just spread across rows instead of
+   packed into one. Capped at 6, named and reasoned in the code, with the same "+N more,
+   collapsed" reveal the sketch already draws.
+
+**Honest limit, stated plainly rather than assumed away:** this check read the real code and a
+real data dump (a throwaway widget-test pump against Asa's own `PLAN.md` — 23 headings, 13 dated
+entries, correctly capped to 6/3 with "+17 more"/"older (10)" reveals, nothing crashed once fully
+expanded), **not a screenshot of the running window.** That is the honest limit `persona-check`
+itself names for this checkpoint. The structure is proven; whether it *reads* right at real
+width, scrolled, is the thing only opening the actual app answers — which is exactly why rule 19
+still asks for that before this counts as done.
+
+**18 new tests** (`test/plan_view_test.dart`): collapse/expand default state (including the new
+row-count cap, added because this round's own persona-check found it, not because the original
+spec asked for it), the what-changed date sort and its 3-then-older reveal, chip kind filtering
+(adr/round only, never wikilink). `check.ps1` clean, 297 tests total. Local `main` now 3 commits
+ahead of `origin/main` (Rounds 26, 29, 27) — still not pushed; that stays Nico's own step.
+
+**Not part of this round:** Round 31 (promoting a section into its own `plan\<aspect>.md` page,
+or reordering — both would be Asa writing to the plan, ADR 0021 says never). Typed links, both
+ends (Round 28). Strategy and Roadmap tabs do not exist yet — the "Strategy →" line is text only,
+same as the spec asked, not a working link to nowhere.
+
 ### 2026-09-14 — small ask, not a round: `projects\` has no backup. Give it one.
 
 **Not app work — a script, and it does not touch `lib/` or `test/`.** Read **ADR 0023** first (it
@@ -1899,6 +1946,11 @@ and says nothing about backup anywhere. It has already lost a file permanently o
 overwriting `asa.md`, Windows being case-insensitive, nothing to restore from).
 
 **Build one script. The company-network copy is Nico's own manual step and is not yours.**
+
+**Skipped — Nico's own call, 2026-09-14: "we talked about it, skip the backup project."** Do not
+build `kit\backup-projects.ps1`. The spec below stays in the record for what it decided (no
+allowlist, dated snapshots not `robocopy /MIR`), not as a live ask — if this ever gets picked back
+up, read the "corrected" note under it first.
 
 #### `kit\backup-projects.ps1` — automatic, local, everything
 
@@ -1957,3 +2009,192 @@ he wants to look before committing.**
 **Gate 2:** the backup holds real project content by design — that is the point — and it stays on
 this machine. **Nothing about its contents ever reaches this file, a commit message, or a test
 fixture.** Tests use invented folders.
+
+### 2026-09-14 — Round 27 for Code: the Plan tab, after a real sketch loop
+
+**Not the first draft. Read that history before building, because it decided the shape:**
+`sketches\asa-plan-v2.html` was drawn first, straight from Round 26's data. Nico: *"the sections in
+Plan + derived links parts are just very overwhelmed for me."* `persona-check` run against
+`PERSONA.md` afterward — verdict **BLOCK**, and not a new finding: `PERSONA.md` already has this
+persona abandoning Obsidian for the same reason, and already has him calling an earlier mockup
+*"overwhelming"* once before. `sketches\asa-plan-v3.html` is the redraw, and **is the sketch to
+build against.** v2 is logged rejected in `sketches\APPROVED.md`, same convention as `asa-v01`.
+
+**This round also folds in a small navigation fix, deliberately, rather than spawning a separate
+round for one button:** a way back to Tasks from the project screen. Nico: *"we should still be
+able to navigate there, with the tasks of this project on top for easy work."* Real gap — the
+project screen currently has no route to `TasksView` at all.
+
+**What this round does not do, on purpose:** picking a section and promoting it into its own
+`plan\<aspect>.md` page, or reordering sections. Both are Asa writing to the plan — ADR 0021 says
+that never happens. Logged as **Round 31**, and as a "Noted 2026-09-14" entry inside ADR 0021
+itself, not silently designed around here.
+
+#### Where this actually lands in the real code
+
+**`project_screen.dart` has exactly two tabs today** (`_tabIndex == 0 ? _decisionsTab : _detailsTab`,
+a plain text row with an underline, "not a Material `TabBar`" per its own comment). **This is the
+first round to grow that row past two.** Add `Plan` as a third entry, shown only when
+`Plan.isEmpty` is false (same conditional-tab reasoning Round 15 always specced, now real). Extend
+`_tabIndex`'s branch, not a new mechanism — the row itself already reads plainly, keep it that way.
+
+**New file: `lib/hubs/product/plan_view.dart`.** Renders one `Plan` (from `lib/core/plan.dart`'s
+`readPlan`, already built, Round 26) as:
+
+1. **What changed** — a `PlanPage`'s `Section`s whose `heading` starts with an ISO date
+   (`^\d{4}-\d{2}-\d{2}\b`), newest first. **Newest means the latest date, and among equal dates
+   the one that appears later in the file** — `PLAN.md`'s own convention is append-at-the-end, so
+   file order among same-day entries already is chronological order. Show the 3 most recent; the
+   rest sit behind one "older" line, collapsed. **Each entry's chips come from `deriveLinks(section.body)`
+   called directly on that section's own text — no change to `plan.dart` needed**, `deriveLinks`
+   already takes any string. A chip renders only for `PlanLinkKind.adr` and `.round` today; the
+   sketch's "not yet" note (sketch- and task-kind links) is real and stays true until something
+   adds those kinds.
+2. **The outline** — every `PlanPage` (the front page, then any `plan\*.md`, in `Plan.pages` order)
+   as a top-level collapsible group; a `##` `Section` inside it as a child group, collapsible
+   again if it has `###` children. **Collapsed by default, every level, on first render.** No
+   persisted expand state — this is Round 27's own scope line, not an oversight; if it turns out
+   to matter, that is a real finding for whoever tests it, not a guess to pre-empt.
+3. **One line pointing at Strategy** — text only, `CHARTER.md`'s two gates live there, not restated.
+
+**Read-only, all of it.** Tapping a change entry, a page, or a section opens that page's
+`sourceFile` with `open_url.dart` (already built) — the whole file, not a jump to the heading;
+nothing here should imply otherwise. No new write path anywhere in this round.
+
+**`tasks_view.dart` grows one optional constructor field**, something like `pinnedProjectName` —
+when set, that project's `TaskGroup` sorts first, nothing else about the grouping changes. Wherever
+`TasksView` is actually hosted today (trace it — this round doesn't yet know, `project_screen.dart`
+doesn't reference it), the project screen needs one way to reach that same host with this project's
+name passed through. **One button, not a fourth real tab** — styled distinctly (the sketch uses a
+small &#8599; glyph) so it reads as "this leaves the screen," which it does.
+
+#### Acceptance criteria
+
+| # | Human | Result |
+|---|---|---|
+| 1 | Open `asa` (has a `PLAN.md`) → Plan tab appears, matches `asa-plan-v3.html`'s structure | |
+| 2 | Everything starts collapsed; tapping a group expands only that group | |
+| 3 | Tap a "what changed" entry with a real ADR/Round chip → opens that decision or that Round's
+    record, not just `PLAN.md` | |
+| 4 | Tap the Tasks button → lands on the real Tasks view, this project's group visibly first | |
+| 5 | Open a project with no `PLAN.md` and no `plan\` folder → no Plan tab, no crash | |
+| 6 | Nothing on this screen is editable — no button, no field, anywhere | |
+
+| Machine | Result |
+|---|---|
+| `flutter test` green, a `plan_view_test.dart` (widget test) covering collapse/expand default state
+  and the what-changed date sort | |
+
+#### Before it reaches Nico
+
+**Re-run `persona-check` against the real running screen**, not just this spec — its own second
+checkpoint, "before a human tests it." A mockup passing does not prove the built screen reads the
+same at real width with real scroll. If it still reads busy once real, say so in the build report
+rather than shipping past it a second time.
+
+**Show → ask → commit, rule 19, as always.**
+
+### 2026-09-14 — Round 16 for Code: the Strategy tab, respecced after ADR 0024/0025/0026
+
+> **Build against `sketches\asa-strategy-v3.html` — that file, nothing else.** Not v1 (bare
+> numbers, rejected), not v2 (superseded), not `asa-strategy-model.html` (an explanatory diagram
+> for Nico, not a UI sketch — never build against it). v3 is the one row in
+> `sketches\APPROVED.md` with a real yes on it, dated 2026-09-14.
+
+**Not the round's first spec.** `rounds\round-16.md` (2026-09-08) predates the whole strategy-layer
+research pass and is marked superseded there — its shape (dump `CHARTER.md`'s §1–§4 plus the two
+gates) is not what gets built. **This entry replaces it, same convention as Round 15 → 27.**
+
+**The real history, because it decided the shape:** Nico rejected two Plan-tab designs in a row for
+being a document viewer with no structure (*"still doesnt have a structure to help me understand
+this project… any products or systems we build in the project is to serve a bigger strategy or
+objectives"*), which led to ADR 0024 (an area is the unit of the plan — does not apply to Asa
+itself, zero areas exist) and ADR 0025 (the strategy layer: origin, who it's for, objectives with
+evidence). The Strategy tab sketch went through its own loop — v1's bare numeric triples
+(*"I dont understand the numbers standing next to each objectives"*) → v2, worded states and a
+segmented bar → v3, pain points renamed and moved, the waiting-banner dropped. **`asa-strategy-v3.html`
+is the sketch to build against** — Nico: *"otherwise this page is good, can be sent to code."*
+ADR 0026 (a round has a state, not a checkbox) followed from a real bug found in this file's own
+Round 26 entry, and its one open point — how an approval gets recorded — is closed as of today:
+`rounds\APPROVED.md`, a ledger the same shape as `sketches\APPROVED.md`. All three ADRs carry a
+dated `## Your call` now.
+
+**What this round does not need, and it is worth saying plainly why:** ADR 0024's areas. Asa has no
+`kind: area` files anywhere in `projects\` — an objective claims a Round directly, the same
+"named by whoever points at it" rule ADR 0019 already uses one level up. If Asa ever grows areas,
+this screen reads them the same way it reads a Round today; nothing here forecloses that.
+
+#### Where this actually lands in the real code
+
+**Three new small core files, one small extension to an existing one, one new screen, one tab.**
+
+| File | Change |
+|---|---|
+| `lib/core/roadmap.dart` | `Milestone` grows a `body` field — every line indented under the milestone's checkbox that is **not** a nested task line, joined. Today those lines are silently dropped (`parseRoadmap`'s loop calls `parseTaskLine` on them and does nothing when it returns null) — this round is the first to need that text, not a bug in Round 14/15's original scope. Nothing about `done`, `tasks`, `phase`, or `groupPhases`/`effectiveMilestone` changes; every existing test keeps passing unmodified. |
+| `lib/core/round_state.dart` | **new.** `RoundState` enum — `planned`, `inProgress`, `waitingForApproval`, `completed`, `noApprovalNeeded` — Nico's own five words, ADR 0026. `roundStateOf(Milestone milestone, RoundApprovals approvals)` derives it: `done == false` and `body` contains no commit-hash pattern (`` `[0-9a-f]{7}` ``, the exact shape every real commit reference in this project already uses) → **planned**; `done == false` and `body` contains that pattern, or the literal word "specced" (case-insensitive — already the real word this file uses every time a round is handed to Code), → **inProgress**; `done == true` and no matching row in `approvals` → **waitingForApproval**; `done == true` and a matching row exists → **completed**; `body` contains the literal tag `(no approval needed)` → **noApprovalNeeded`, overriding every rule above — ADR 0026 rule 3, claimed deliberately, never inferred. The Round number itself comes from the same regex `plan.dart` already has for `Round\s*(\d+)` — reused, not reinvented, against `milestone.title`. |
+| `lib/core/round_approvals.dart` | **new.** `RoundApprovals`, `readRoundApprovals(projectFolder)` — reads `rounds\APPROVED.md`'s one table into `{roundNumber: (date, words, result)}`. Same shape as Round 29's `SketchApprovalsSource`, structurally simpler (one table, not three) — an empty table (today's real state) returns an empty map, not an error. |
+| `lib/core/charter.dart` | **new.** `Strategy{origin, whoItsFor, painPoints, objectives}`, `Objective{title, evidence, sentence}` — reads `CHARTER.md`'s `## Origin`, `## Who it's for`, `## Pain points`, `## Objectives` sections via `sectionText()` (`markdown.dart`, already built). Each objective's Rounds are **not** stored on `Objective` — a caller derives them by running `deriveLinks` (`plan.dart`, already takes any string) on that objective's own paragraph and filtering to `PlanLinkKind.round`, the identical "no new mechanism" move Round 27's `plan_view.dart` already makes for its chips. A project with no `CHARTER.md`, or one missing any of the four sections, returns `Strategy.isEmpty` true for the whole thing — no partial screen, same all-or-nothing rule Round 26 uses for `Plan`. |
+| `lib/hubs/product/strategy_view.dart` | **new.** Renders `Strategy` plus, per objective, its derived Rounds and each Round's `RoundState`. Who-it's-for and pain points always visible; each objective collapsed to its title, progress sentence ("N of M completed", never a bare count), and a state chip when any Round is `waitingForApproval` — exactly `asa-strategy-v3.html`'s shape. Expanding an objective shows its Rounds, each with its state pill, and its own ADR chips (via `deriveLinks` again, filtered to `.adr`) — same tooltip-carries-the-sentence rule Round 27's persona-check fix already established, not a bare tag. Segmented bar: green completed, amber waiting, blue in progress, grey planned — the exact four words, in the legend, every time. **Mission is absent unless a parent project's `CHARTER.md` names one** — ADR 0025's own rule; Asa's own case (`parent: other`, a group) shows nothing, correctly. |
+| `lib/hubs/product/project_screen.dart` | grows a fourth tab, `Strategy`, shown only when `Strategy.isEmpty` is false, **and reorders the row — see the note right below this table, it isn't a footnote.** |
+
+**A real consequence of build order, not a footnote:** the sketch's own tab row is
+`Strategy · Plan · Roadmap · Tasks↗ · Decisions · Details`. Round 27 built and landed **before**
+this spec was written, at position 2 of a row that only had two slots (`_tabIndex == 0` Decisions,
+`1` Details, `2` Plan) — correct at the time, since Strategy didn't exist yet. Adding Strategy at
+the front and leaving Plan where it is would read `Strategy · Decisions · Details · Plan`, putting
+Plan last and next to nothing it belongs beside — not what was agreed, just what build order left
+behind. **This round also reorders the row to `Strategy · Plan · Decisions · Details`** — matching
+the sketch's own order for every tab that actually exists (Roadmap is Round 14, still unbuilt;
+Tasks stays the external button it already is, not a tab). Concretely: `_tabIndex` becomes
+0 = Strategy, 1 = Plan, 2 = Decisions, 3 = Details, with the two conditional tabs (Strategy, Plan)
+each still absent-not-empty per their own `isEmpty` check, and the two that never move sliding down
+when one or both conditionals are missing — same logic `_tabRow`/`_tabBody` already use, extended
+by one branch, not restructured.
+
+**Read-only, all of it — same rule as Plan.** Tapping a Round opens `asa.md` with `open_url.dart`
+(already built); tapping an ADR chip opens that decision. Nothing here writes a byte anywhere.
+
+#### The one honest gap, named rather than hidden
+
+**`rounds\APPROVED.md` is empty today.** Every real Round currently shows `waitingForApproval` at
+best (Rounds 26/27/29 are built, none has a ledger row yet) or `planned`/`inProgress` — **nothing
+will show `completed` the first time this screen runs, and that is correct, not a bug.** The three
+already-built rounds are real candidates for the ledger's first rows, but writing them in is Nico's
+own act (the ledger's own rule 1), not something Code or this session does on his behalf.
+
+#### Acceptance criteria
+
+| # | Human | Result |
+|---|---|---|
+| 1 | Open `asa` → Strategy tab appears first, matches `asa-strategy-v3.html`'s structure: who it's for, pain points, 3–5 objectives | |
+| 1b | Tab row reads **Strategy · Plan · Decisions · Details**, in that order — Plan has moved next to Strategy, not left after Details where Round 27 happened to land it | |
+| 2 | Every objective shows one plain sentence ("N of M completed"), never a bare count triple | |
+| 3 | Expand an objective → its real Rounds appear, each with a state pill in the four ADR-0026 words, plus its real ADR chips | |
+| 4 | A Round whose entry contains a commit-hash pattern but no `rounds\APPROVED.md` row shows **waiting for your approval**, not completed | |
+| 5 | Add a real row to `rounds\APPROVED.md` for Round 26, reload → that Round now shows **completed** wherever it appears | |
+| 6 | Open a project with no `CHARTER.md`, or one missing any of the four fixed sections → no Strategy tab, no crash | |
+| 7 | Nothing on this screen is editable — no button, no field, anywhere | |
+
+| Machine | Result |
+|---|---|
+| `flutter test` green, `round_state_test.dart` (all five states, including the explicit `(no approval needed)` tag), `charter_test.dart` (against Asa's own real `CHARTER.md`), `strategy_view_test.dart` (widget test, objective expand/collapse, the empty-ledger case) | |
+
+#### Not part of this round
+
+- ADR 0024's areas — Asa has none; see above.
+- The Roadmap tab (Round 14) and the six-tab row the sketch draws in full — Strategy is the one new
+  tab this round adds.
+- Editing an objective, a pain point, or anything else from this screen.
+- Correcting the five candidate objectives' wording — that is Nico's, and this screen showing them
+  for real is very likely where it happens, not a thing to pre-empt.
+
+#### Before it reaches Nico
+
+**Re-run `persona-check` against the real running screen**, Plan's own second checkpoint. A
+five-objective strategy tab is exactly the shape `PERSONA.md` already flagged twice this week —
+check it reads as a filter, not a display, at real width, before this counts as shown.
+
+**Show → ask → commit, rule 19.** And separately, not part of this round but worth saying in the
+same breath: **Round 26, 27 and 29 are already built and waiting for exactly this** — the first
+real look, and the first real rows in `rounds\APPROVED.md`, are Nico's own next step whenever he
+opens the app next.

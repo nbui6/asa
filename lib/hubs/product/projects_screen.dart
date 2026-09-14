@@ -76,6 +76,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   bool _loading = false;
   _ViewMode _viewMode = _ViewMode.projects;
 
+  /// Round 27's navigation fix — set when `ProjectScreen`'s Tasks button
+  /// pops back here, so [TasksView] sorts that project's group first.
+  /// Sticky on purpose: nothing in the spec asks for it to clear itself,
+  /// and a project staying pinned until another one takes its place is
+  /// the least surprising default.
+  String? _pinnedProjectName;
+
   /// `HOME.md`, one level above the chosen projects folder — rule 17's
   /// fixed layout (`asa\`, `projects\`, `workshop\`, `HOME.md`, all
   /// siblings under one workspace root). Null before a folder is chosen —
@@ -400,7 +407,16 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   forest: buildProjectForest(scan.projects),
                   onOpenProject: (folder) => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => ProjectScreen(folder: folder),
+                      builder: (_) => ProjectScreen(
+                        folder: folder,
+                        onOpenTasks: (projectName) {
+                          Navigator.of(context).pop();
+                          setState(() {
+                            _viewMode = _ViewMode.tasks;
+                            _pinnedProjectName = projectName;
+                          });
+                        },
+                      ),
                     ),
                   ),
                   onAssignTask: _assignInboxTask,
@@ -417,6 +433,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   onToggleTask: _toggleTask,
                   onMarkAllDone: _markAllDone,
                   onToggleParked: _toggleParked,
+                  pinnedProjectName: _pinnedProjectName,
                 ),
             ],
           ],
