@@ -22,6 +22,9 @@
 /// file is the source of truth, never the in-memory typed value.
 library;
 
+import 'dart:io';
+
+import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
@@ -30,9 +33,18 @@ import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
 import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
+import 'package:asa/core/round_approvals.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
+import 'package:asa/hubs/product/strategy_view.dart';
 import 'package:flutter/material.dart';
+
+/// Round 16's tab reorder: `Strategy · Plan · Decisions · Details`,
+/// matching `asa-strategy-v3.html`'s own row for every tab that actually
+/// exists (Roadmap and the six-tab row's other gaps are not built).
+/// `strategy` and `plan` are each absent-not-empty; `decisions` and
+/// `details` never move and never disappear.
+enum _Tab { strategy, plan, decisions, details }
 
 /// ADR 0017's own six values, in the order the ADR states them. No code
 /// defined this list before this round — the picker needs it to exist
@@ -79,8 +91,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
   GitState? _git;
   List<DecisionReadResult>? _decisions;
   Plan? _plan;
+  Strategy? _strategy;
+  RoundApprovals _approvals = const RoundApprovals({});
   bool _loading = true;
-  int _tabIndex = 0;
+  _Tab _activeTab = _Tab.strategy;
   bool _provenanceExpanded = false;
 
   // Editing one of the five whitelisted fields — Round 20. Only one field
@@ -165,6 +179,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
       await readAllDecisions(widget.folder, const DiskFileAccess()),
     );
     final plan = await readPlan(widget.folder);
+    final strategy = await readCharter(widget.folder);
+    final approvals = await readRoundApprovals(
+      widget.folder,
+      const DiskFileAccess(),
+    );
 
     if (!mounted) return;
     setState(() {
@@ -172,12 +191,28 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _git = git;
       _decisions = decisions;
       _plan = plan;
+      _strategy = strategy;
+      _approvals = approvals;
       _loading = false;
-      // A tab that just disappeared (a reload after Plan.isEmpty turned
-      // true) should not leave the screen on a body that no longer has a
-      // label above it.
-      if (_tabIndex == 2 && plan.isEmpty) _tabIndex = 0;
+      // A tab that just disappeared (a reload after its section turned
+      // empty) should not leave the screen on a body with no label above
+      // it — fall back to the first tab that is still actually there.
+      final visible = _visibleTabs();
+      if (!visible.contains(_activeTab)) _activeTab = visible.first;
     });
+  }
+
+  /// `Strategy` first, per the sketch's own row order — `Decisions` and
+  /// `Details` never move and never disappear.
+  List<_Tab> _visibleTabs() {
+    final strategy = _strategy;
+    final plan = _plan;
+    return [
+      if (strategy != null && !strategy.isEmpty) _Tab.strategy,
+      if (plan != null && !plan.isEmpty) _Tab.plan,
+      _Tab.decisions,
+      _Tab.details,
+    ];
   }
 
   @override
@@ -265,29 +300,47 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// Plain text, a 2px underline on the active one — row 3 of the drift
   /// table. Not a Material `TabBar`: no uppercase, no full-width band.
   ///
-  /// Round 27 — the first round to grow this past two. `Plan` shows only
-  /// once there is one: `Plan.isEmpty` is the same absent-not-empty rule
-  /// every other conditional tab here already follows.
+  /// Round 16 reorders this to `Strategy · Plan · Decisions · Details`,
+  /// matching the sketch's own row for every tab that actually exists.
+  /// `Strategy` and `Plan` show only once there is one — the same
+  /// absent-not-empty rule every conditional tab here already follows.
   Widget _tabRow() {
-    final plan = _plan;
+    final labels = {
+      _Tab.strategy: 'Strategy',
+      _Tab.plan: 'Plan',
+      _Tab.decisions: 'Decisions',
+      _Tab.details: 'Details',
+    };
+    final visible = _visibleTabs();
     return Row(
       children: [
-        _tabLabel('Decisions', 0),
-        const SizedBox(width: 24),
-        _tabLabel('Details', 1),
-        if (plan != null && !plan.isEmpty) ...[
-          const SizedBox(width: 24),
-          _tabLabel('Plan', 2),
+        for (final tab in visible) ...[
+          if (tab != visible.first) const SizedBox(width: 24),
+          _tabLabel(labels[tab]!, tab),
         ],
       ],
     );
   }
 
   Widget _tabBody(ProjectReadResult read) {
-    switch (_tabIndex) {
-      case 0:
-        return _decisionsTab(read);
-      case 2:
+    switch (_activeTab) {
+      case _Tab.strategy:
+        final strategy = _strategy;
+        if (strategy == null || strategy.isEmpty) return _decisionsTab(read);
+        return StrategyView(
+          strategy: strategy,
+          roadmap: read.isSuccess ? read.project!.roadmap : const [],
+          approvals: _approvals,
+          decisions: _decisions ?? const [],
+          charterSourceFile:
+              '${widget.folder}${Platform.pathSeparator}CHARTER.md',
+          personaSourceFile:
+              '${widget.folder}${Platform.pathSeparator}PERSONA.md',
+          projectSourceFile: read.isSuccess
+              ? read.project!.sourceFile
+              : widget.folder,
+        );
+      case _Tab.plan:
         final plan = _plan;
         if (plan == null || plan.isEmpty) return _decisionsTab(read);
         return PlanView(
@@ -297,15 +350,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ? read.project!.sourceFile
               : widget.folder,
         );
-      default:
+      case _Tab.decisions:
+        return _decisionsTab(read);
+      case _Tab.details:
         return _detailsTab(read);
     }
   }
 
-  Widget _tabLabel(String label, int index) {
-    final active = _tabIndex == index;
+  Widget _tabLabel(String label, _Tab tab) {
+    final active = _activeTab == tab;
     return GestureDetector(
-      onTap: () => setState(() => _tabIndex = index),
+      onTap: () => setState(() => _activeTab = tab),
       child: Container(
         padding: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(

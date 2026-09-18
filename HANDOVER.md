@@ -2198,3 +2198,72 @@ check it reads as a filter, not a display, at real width, before this counts as 
 same breath: **Round 26, 27 and 29 are already built and waiting for exactly this** — the first
 real look, and the first real rows in `rounds\APPROVED.md`, are Nico's own next step whenever he
 opens the app next.
+
+### 2026-09-14 — Round 16 built: the Strategy tab, three real bugs found and fixed by real data
+
+**As specced, against `asa-strategy-v3.html`.** Four new/grown core files: `lib/core/charter.dart`
+(`Strategy`/`Objective`, reading `CHARTER.md`'s four fixed sections — all-or-nothing, same rule as
+`Plan`), `lib/core/round_state.dart` (ADR 0026's five states, derived from `Milestone.body`),
+`lib/core/round_approvals.dart` (`rounds\APPROVED.md`'s ledger, same shape as Round 29's
+`SketchApprovalsSource`), and `lib/core/roadmap.dart` grows `Milestone.body`/`bodyLines` — every
+indented non-task line under a Round's checkbox, silently dropped until now. New screen,
+`lib/hubs/product/strategy_view.dart`, wired as `project_screen.dart`'s new first tab — the row
+reorders to **Strategy · Plan · Decisions · Details**, matching the sketch, with `_Tab`/
+`_visibleTabs` replacing the old fixed-index scheme so each conditional tab can move independently.
+
+**A real, contradicted claim caught before building on top of it — hard rule 14.** `asa.md`'s own
+`next-step` and its Round 16 roadmap entry, and `CLAUDE.md`, all say **ADR 0024, 0025 and 0026 are
+all accepted.** Read the actual files rather than trusting the claim: **ADR 0024 has no `## Your
+call` section at all and its own header still says "proposed — needs Nico's decision."** 0025 and
+0026 are genuinely accepted (dated verdicts, checked). Round 16 does not need 0024 — its own spec
+says so explicitly, areas do not apply to Asa — so this did not block the build, but three
+independent places now assert something the primary source does not support. Flagging rather than
+editing `asa.md`/`CLAUDE.md` myself, per the standing role split.
+
+**`persona-check` re-run against the real built screen — a five-objective strategy tab is exactly
+the shape that got two Plan-tab drafts blocked this same week — found two real things, both fixed
+before this was shown:**
+
+1. **The evidence line is a full sentence of real prose, shown for up to 5 objectives at once —
+   the same row-count-times-density overwhelm Round 27 just fixed on the Plan tab, one level up.**
+   Moved behind expand; the word-only chip (unknown/holding/failing) stays visible collapsed, so
+   rule 7 ("colour is a hint, never the only signal") still holds without the sentence.
+2. Nothing else structurally overwhelming found — objectives are hard-capped at 5 (ADR 0025's own
+   rule), so this screen never has the Plan tab's unbounded-row-count problem to begin with.
+
+**Three more real bugs, found only because this was checked against real data before being shown,
+not because the spec named them:**
+
+1. **`stripEmphasisMarkers` left both asterisks on screen for a `**bold span**` that happens to
+   wrap onto a second line in the source** — `.` does not match a newline by default, and
+   `CHARTER.md`'s own "Pain points" section has exactly this shape. Every fixture this was checked
+   against before today had each bold span on one physical line. Fixed with `dotAll: true`, in
+   `markdown.dart` itself — this fixes every caller, not just this screen. Regression test added.
+2. **A Round's title can carry a code span** — the real roadmap has `` Round 11 — a real Windows
+   build, not `flutter run` from a terminal ``, and nothing stripped it before this screen showed
+   it. `roadmap.dart`'s own title parser already strips `**bold**`; backticks were never in scope
+   until a Round title needed them shown. Fixed at display time in `strategy_view.dart`, same
+   `stripCodeSpanMarkers` convention `tasks_view.dart` already uses.
+3. **"Pain points" rendered the whole section verbatim, including its own editorial preamble**
+   about when and why it was moved — real, but not a pain point, and considerably more to read
+   than the sketch's clean three-line list. Fixed in `charter.dart`: `painPoints` now starts from
+   the first numbered-list marker, the same structural rule `_parseObjectives` already applies to
+   its own section — not a new judgment about what counts as signal.
+
+**24 new tests** across `charter_test.dart`, `round_state_test.dart`, `strategy_view_test.dart`,
+plus one regression test in `markdown_test.dart` for the `dotAll` fix. `check.ps1` clean, **325
+tests total.**
+
+**Shown as a real data dump, not a screenshot** — a throwaway widget-test pump against Asa's own
+real `CHARTER.md`/`asa.md`/`rounds\APPROVED.md`: 5 real objectives, 32 real roadmap milestones, 18
+of them claimed by no objective yet (shown, not hidden — ADR 0024's own "the work is the finding"
+line, one level down from where 0024 itself would apply). Every objective currently reads
+**0 of N completed** and shows a **waiting for your approval** pill, because `rounds\APPROVED.md`
+is genuinely empty today — the round's own spec named this as the correct first-run state, not a
+bug, and the real run confirms it reads that way. Confirmed the three fixes above actually took
+effect against the real file after applying them, not just against invented fixtures.
+
+**Not part of this round:** Round 14 (the Roadmap tab) and the rest of the sketch's six-tab
+row — Strategy is the one new tab this round adds. Editing anything from this screen — never.
+Correcting the five candidate objectives' wording — Nico's own, likely to happen once he is
+looking at this screen for real rather than in the abstract.

@@ -92,10 +92,22 @@ String? sectionTextByPrefix(String text, String heading) {
 /// rendered with the asterisks still in it. The parsed `Decision` fields
 /// themselves stay verbatim; this is applied only where text is about to
 /// be shown, never inside the parser.
+///
+/// **`dotAll`, found 2026-09-14 on `CHARTER.md`'s real "Pain points"
+/// section:** a `**bold span**` that happens to wrap onto a second line
+/// in the source file — ordinary soft-wrapped prose, not a paragraph
+/// break — left both asterisks on screen, because `.` does not match a
+/// newline by default and the closing `**` was one line down. Every
+/// other real fixture this was checked against has each bold span on one
+/// physical line, so this was never hit until Round 16's Strategy tab
+/// read a section with a longer wrapped one.
 String stripEmphasisMarkers(String text) {
   return text
-      .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*'), (m) => m.group(1)!)
-      .replaceAllMapped(RegExp('__(.+?)__'), (m) => m.group(1)!);
+      .replaceAllMapped(
+        RegExp(r'\*\*(.+?)\*\*', dotAll: true),
+        (m) => m.group(1)!,
+      )
+      .replaceAllMapped(RegExp('__(.+?)__', dotAll: true), (m) => m.group(1)!);
 }
 
 /// Removes single-backtick code-span markers (`` `like this` ``) for

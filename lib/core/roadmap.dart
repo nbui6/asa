@@ -29,6 +29,7 @@ class Milestone {
     required this.done,
     this.tasks = const [],
     this.phase,
+    this.bodyLines = const [],
   });
 
   /// Just the `**...**`-wrapped span, markers stripped, when the line has
@@ -49,6 +50,18 @@ class Milestone {
   /// `## Roadmap` — null when the roadmap has no such heading at all, or
   /// this milestone comes before the first one. See [Phase].
   final String? phase;
+
+  /// Every indented line under this milestone that is not a nested task
+  /// line, in file order — a plain `List<String>` rather than the exposed
+  /// [body] itself so [parseRoadmap] can keep appending to the same
+  /// reference after the milestone is already constructed, same trick
+  /// already used for [tasks]. Round 16's own need: a commit hash, the
+  /// word "specced", or the literal `(no approval needed)` tag all live
+  /// in here today, in real prose nobody would otherwise have to type
+  /// into a second field.
+  final List<String> bodyLines;
+
+  String get body => bodyLines.join('\n').trim();
 }
 
 final RegExp _topLevelCheckbox = RegExp(r'^-\s*\[([ xX])\]\s*(.*)$');
@@ -65,6 +78,7 @@ List<Milestone> parseRoadmap(String fileContents) {
 
   final milestones = <Milestone>[];
   List<Task>? currentTasks;
+  List<String>? currentBodyLines;
   String? currentPhase;
 
   for (final line in section.split('\n')) {
@@ -96,12 +110,14 @@ List<Milestone> parseRoadmap(String fileContents) {
       final title = bold != null ? bold.group(1)!.trim() : rest;
 
       currentTasks = <Task>[];
+      currentBodyLines = <String>[];
       milestones.add(
         Milestone(
           title: title,
           done: done,
           tasks: currentTasks,
           phase: currentPhase,
+          bodyLines: currentBodyLines,
         ),
       );
       continue;
@@ -109,7 +125,11 @@ List<Milestone> parseRoadmap(String fileContents) {
 
     if (currentTasks == null) continue; // stray line before any milestone
     final task = parseTaskLine(line);
-    if (task != null) currentTasks.add(task);
+    if (task != null) {
+      currentTasks.add(task);
+    } else if (line.trim().isNotEmpty) {
+      currentBodyLines!.add(line.trim());
+    }
   }
 
   return milestones;

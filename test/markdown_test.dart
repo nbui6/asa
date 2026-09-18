@@ -87,6 +87,19 @@ Something else.
     test('text with no markers at all is returned unchanged', () {
       expect(stripEmphasisMarkers('plain text'), 'plain text');
     });
+
+    test('a bold span that wraps onto a second line is still stripped — '
+        "real shape, CHARTER.md's own Pain points section, found "
+        "2026-09-14 building Round 16's Strategy tab", () {
+      const raw =
+          'now given a real home here. **Short numbered lines, not '
+          'a\n   paragraph** — his own instruction.';
+      expect(
+        stripEmphasisMarkers(raw),
+        'now given a real home here. Short numbered lines, not a\n   '
+        'paragraph — his own instruction.',
+      );
+    });
   });
 
   group('stripCodeSpanMarkers', () {

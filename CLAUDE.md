@@ -15,14 +15,36 @@ same commit as the part it describes.
 
 ## Where we are
 
+**Pick up here — logged 2026-09-14 so a session in a few days doesn't have to re-derive this.**
+
+1. **Open Asa. This is the actual next step, and it has been waiting all session.** Look at the
+   real Strategy and Plan tabs. Nothing below matters until this happens once.
+2. **Correct or confirm the five candidate objectives in `CHARTER.md`'s `## Objectives`** — they
+   are still Claude's wording, drafted from your own words elsewhere, never approved by you.
+3. **Add or correct rows in `rounds\APPROVED.md`** for whatever you actually confirm in step 1.
+   Six historical yeses are already backfilled (Rounds 9 ×2, 11, 19, 20, 24); Rounds 26, 27, 29
+   and 16 are not, on purpose — that look hasn't happened yet.
+4. **Decide ADR 0024** (an area is the unit of the plan) — still genuinely `proposed`, no `## Your
+   call`. Cheap: nothing needs to be built against it for Asa specifically right now, so this is a
+   short decision, not a project.
+5. **Once 1–4 have happened, the next build candidates, in order:** Round 28 (typed links, both
+   ends) → Round 14 (the Roadmap tab, newly claimed by an objective) → Round 31 (blocked on the
+   real ADR 0021 question, named there — not a build to schedule until that's answered).
+6. **Known, named, not yet fixed:** Round links on the Strategy and Plan tabs open the whole
+   `asa.md` file, not the specific Round — no deep link yet. Not a bug, just not built.
+
 **Current as of 2026-09-14 — points at `projects\asa\PLAN.md`'s own dated entries rather than
 restating them, since this section had drifted a full session behind by the time this line was
-added.** Rounds 26, 27 and 29 are built and committed, not pushed; Round 27's real state is
-**waiting for your approval** (built, not yet seen — its Roadmap checkbox had gone stale saying
-"specced," corrected the same day it was found). ADR 0024/0025/0026 are all accepted. Round 16
-(the Strategy tab) is specced next, `HANDOVER.md`'s 2026-09-14 entry, against
-`sketches\asa-strategy-v3.html`. Everything below this line is the Round 9/19-24 narrative from
-2026-09-13 and earlier — still accurate for what it covers, just not the whole picture anymore.
+added.** Rounds 26, 27, 29 and 16 are all built and committed, not pushed; all four sit at
+**waiting for your approval** — built, none of them opened as the real running app yet, which is
+the actual next step, not more code. **Corrected here 2026-09-14 — this line, and `asa.md`'s own
+next-step and Round 16 entry, all said "ADR 0024/0025/0026 are all accepted."** Only 0025 and 0026
+are; **ADR 0024 has no `## Your call` and its header still reads "proposed"** — found by Code
+reading the ADR file itself rather than trusting the claim, same failure ADR 0004 exists to name.
+Nothing was built on the false premise (Round 16's own spec says ADR 0024 doesn't apply to Asa),
+but three files asserted it anyway, now fixed. Everything below this line is the Round 9/19-24
+narrative from 2026-09-13 and earlier — still accurate for what it covers, just not the whole
+picture anymore.
 
 **v1's feature list is complete; the goal it was redefined around is not yet proven.** Full
 reasoning in `projects\asa\PLAN.md`. The short version: Asa shows what it was built to show, but

@@ -1,7 +1,7 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-14 (Round 27 — the Plan tab).
+Last checked against the folder tree: 2026-09-14 (Round 16 — the Strategy tab).
 
 ---
 
@@ -68,6 +68,11 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
 | change what the Plan tab shows — "what changed," the collapsible outline, the Strategy pointer | `lib/hubs/product/plan_view.dart` |
 | change how a project's Tasks group sorts first when reached from its own project screen | `lib/hubs/product/tasks_view.dart`'s `pinnedProjectName` |
+| change how a project's strategy (`CHARTER.md`'s Origin / Who it's for / Pain points / Objectives) is read | `lib/core/charter.dart` |
+| change how a Round's state (planned / in progress / waiting for approval / completed / no approval needed) is derived, or how `rounds\APPROVED.md` is read | `lib/core/round_state.dart`, `lib/core/round_approvals.dart` |
+| change what the Strategy tab shows — who it's for, pain points, objectives, the segmented bar, the legend | `lib/hubs/product/strategy_view.dart` |
+| change the order or presence of `project_screen.dart`'s tabs (`Strategy · Plan · Decisions · Details`) | `lib/hubs/product/project_screen.dart`'s `_Tab`/`_visibleTabs` |
+| change how a project's `## Roadmap` milestone exposes the prose under its own checkbox | `lib/core/roadmap.dart`'s `Milestone.body`/`bodyLines` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
