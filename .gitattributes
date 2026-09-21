@@ -1,0 +1,8 @@
+# Every text file is committed as LF; autocrlf on any given shell decides
+# only what lands on that shell's own disk, never what's in the blob.
+# Added 2026-09-21: a repo-wide CRLF/LF diff (94 files, content-identical,
+# HANDOVER.md's own 2026-09-21 entry) was invisible from one shell and real
+# from another purely because of each one's own core.autocrlf setting, with
+# nothing here pinning it. This line makes the committed line ending
+# deterministic regardless of that setting.
+* text=auto eol=lf

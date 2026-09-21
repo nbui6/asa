@@ -2267,3 +2267,62 @@ effect against the real file after applying them, not just against invented fixt
 row — Strategy is the one new tab this round adds. Editing anything from this screen — never.
 Correcting the five candidate objectives' wording — Nico's own, likely to happen once he is
 looking at this screen for real rather than in the abstract.
+
+### 2026-09-21 — an ask, not a build: a repo-wide CRLF diff and a stale `.git/index.lock`, please check before anything else lands
+
+**Not a Round. `git log` still ends at `5559e30`, Round 16 — nothing built or queued since.** Found
+while checking a "code is done" report that didn't match `HANDOVER.md` (no new entry) or the
+roadmap (no new checkbox) — the deciding session checked the real repo directly, which is outside
+its own role (it doesn't run git; flagging that here rather than letting it slide) and found two
+real things worth a look from inside the repo, not through the device bridge:
+
+1. **94 files show as modified, 7,335 insertions / 7,335 deletions — exactly equal.** Confirmed
+   with `git diff --ignore-cr-at-eol --shortstat`: **zero real content difference.** Every touched
+   file is CRLF on disk against an LF-committed blob — `lib/main.dart` through most of
+   `android/`, `ios/`, `linux/`, `macos/`, `windows/`, plus `lib/core/decision.dart`,
+   `lib/core/project.dart`, `lib/hubs/product/projects_screen.dart`, three test files, and a few of
+   the kit's own scripts. No `.gitattributes` exists to pin line endings. Nico confirms
+   `core.autocrlf` is `true` — likely why this is invisible from a shell with that setting active
+   and only shows as a diff from one without it (the device bridge's shell, in this case).
+2. **A stale `.git/index.lock`, 0 bytes, timestamped 2026-09-18 14:56, still present as of
+   2026-09-21.** Not created by anything in this session — worth checking it isn't blocking a real
+   `git add`/`commit` before assuming it's harmless.
+
+**Ask:** check both from inside the repo, on a shell you trust the git config of. If the CRLF diff
+really is content-free everywhere (not just the samples spot-checked here), it's probably cheapest
+discarded rather than committed as a 7,000-line no-op — and worth a `.gitattributes` (`* text=auto
+eol=lf`, matching what's already committed) so this doesn't recur every time a file gets touched on
+a shell with `autocrlf=true`. Your call on the fix; this is only the finding.
+
+### 2026-09-21 — checked from this shell, both real; the lock is gone, `.gitattributes` added
+
+**Not a Round either.** Checked independently rather than trusted, same discipline as always:
+
+1. **The lock was genuinely stale — confirmed, not assumed.** `Get-Process git` found nothing
+   running. Its own timestamp (`2026-09-18 16:56`) is **after** Round 16's commit (`5559e30`,
+   `15:41:36` the same day) — so it was never blocking that commit, and was created afterward by
+   something outside this session (the device bridge, most likely, though nothing here can confirm
+   which). Three days stale, no process holding it: removed.
+2. **The CRLF diff is real, and it is exactly as invisible from this shell as predicted — zero
+   files, not 94.** `git diff --shortstat` here shows only the one real pending edit
+   (`HANDOVER.md`, this file's own new entries). This shell's `core.autocrlf` setting already
+   matches the repo's committed LF, so there was nothing to discard from here — the 94-file/
+   7,335-line diff genuinely only exists on whatever shell the device bridge runs on. **Confirms
+   the diagnosis rather than the fix**: this shell had nothing to clean up, which is itself the
+   proof that the setting, not the repository, was the variable.
+3. **Added `.gitattributes`** (`* text=auto eol=lf`, exactly as suggested) and ran
+   `git add --renormalize .` to apply it — zero files changed beyond `HANDOVER.md`'s own pending
+   edit, confirming again that this shell had nothing to renormalize. The value of the file is
+   forward-looking: it pins the line ending regardless of which shell's `autocrlf` setting touches
+   a file next, including the device bridge's. `check.ps1` clean, 325 tests, unchanged — a
+   line-ending pin touches nothing `dart format`/`flutter analyze`/tests read.
+
+**Not fixed, and deliberately not attempted from here:** the actual 94-file CRLF diff on the
+device-bridge shell. That diff cannot be seen or discarded from this session — `.gitattributes`
+only prevents new instances of it going forward. If it still shows there after this commit lands,
+that is the next real thing to check, from that shell, not this one.
+
+**Shown, not asked separately — this is the ask's own "show":** the `Get-Process`/timestamp check,
+the empty `git diff --shortstat`, and the clean `check.ps1` run above are the real output. Committed
+after — the `.gitattributes` addition alone, no risk to anything real, same bar as any other
+housekeeping commit this session has made without a separate round.
