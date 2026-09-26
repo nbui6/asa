@@ -41,6 +41,7 @@ class PlanView extends StatefulWidget {
     this.strategy,
     this.onOpenStrategy,
     this.onOpenObjective,
+    this.onOpenArea,
     this.onToggleTask,
     this.areaToOpen,
     this.openHomeOnStart = false,
@@ -88,6 +89,12 @@ class PlanView extends StatefulWidget {
   /// (`"1"` from `Objective 1` in a `## Goal` section). Null in a test
   /// that does not need it, or when an area names no objective at all.
   final void Function(String objectiveNumber)? onOpenObjective;
+
+  /// Round-36 §3, L17 — handed straight through to a `DecisionDetailScreen`
+  /// this widget pushes (an area's own ADR chip, L13), so an area chip
+  /// shown there lands back here with that area open. Null keeps that
+  /// chip inert, for a caller not wired for it yet.
+  final void Function(Area area)? onOpenArea;
 
   /// Round 34/F — ticks one task, in [Area.sourceFile] or
   /// [projectSourceFile] (for "Not in an area"). Null keeps every checkbox
@@ -821,7 +828,11 @@ class _PlanViewState extends State<PlanView> {
     if (decision != null) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => DecisionDetailScreen(decision: decision),
+          builder: (_) => DecisionDetailScreen(
+            decision: decision,
+            areasNaming: _areasNaming(number),
+            onOpenArea: widget.onOpenArea,
+          ),
         ),
       );
       return;
@@ -835,6 +846,14 @@ class _PlanViewState extends State<PlanView> {
     }
     return null;
   }
+
+  /// Round-36 §3, L17 — every area whose own `decisionNumbers` names
+  /// [number], same rule `ProjectScreen._areasNaming` already uses for
+  /// the decision row itself.
+  List<Area> _areasNaming(String number) => [
+    for (final area in widget.areas)
+      if (area.decisionNumbers.contains(number)) area,
+  ];
 
   String _decisionSourceFor(String number) {
     for (final result in widget.decisions) {

@@ -12,6 +12,7 @@
 /// note otherwise. Nothing here writes a byte anywhere.
 library;
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/markdown.dart';
@@ -33,6 +34,8 @@ class StrategyView extends StatefulWidget {
     required this.personaSourceFile,
     required this.projectSourceFile,
     this.objectiveToOpen,
+    this.areas = const [],
+    this.onOpenArea,
     super.key,
   });
 
@@ -50,6 +53,17 @@ class StrategyView extends StatefulWidget {
   /// Read once, on the change that sets it — see `_StrategyViewState`'s
   /// own `didUpdateWidget`, same pattern `PlanView.areaToOpen` uses.
   final String? objectiveToOpen;
+
+  /// Round-36 §3, L17 — every project area, so an ADR chip's own decision
+  /// detail screen (L15) can show which ones name it. Empty for a test
+  /// that does not need it — `Decisions` tab or `PlanView` already loads
+  /// the real list either way.
+  final List<Area> areas;
+
+  /// Handed straight through to a `DecisionDetailScreen` this widget
+  /// pushes, so an area chip shown there lands on the Plan tab with that
+  /// area open. Null keeps that chip inert.
+  final void Function(Area area)? onOpenArea;
 
   @override
   State<StrategyView> createState() => _StrategyViewState();
@@ -532,7 +546,11 @@ class _StrategyViewState extends State<StrategyView> {
       if (result.decision?.number == link.target) {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => DecisionDetailScreen(decision: result.decision!),
+            builder: (_) => DecisionDetailScreen(
+              decision: result.decision!,
+              areasNaming: _areasNaming(link.target),
+              onOpenArea: widget.onOpenArea,
+            ),
           ),
         );
         return;
@@ -540,6 +558,14 @@ class _StrategyViewState extends State<StrategyView> {
     }
     openUrl(widget.charterSourceFile);
   }
+
+  /// Round-36 §3, L17 — every area whose own `decisionNumbers` names
+  /// [number], same rule `ProjectScreen._areasNaming` and
+  /// `PlanView._areasNaming` already use.
+  List<Area> _areasNaming(String number) => [
+    for (final area in widget.areas)
+      if (area.decisionNumbers.contains(number)) area,
+  ];
 
   // --- Legend --------------------------------------------------------
 

@@ -403,6 +403,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ? read.project!.sourceFile
               : widget.folder,
           objectiveToOpen: _objectiveToOpen,
+          areas: _areas,
+          onOpenArea: _openArea,
         );
       case _Tab.plan:
         final plan = _plan;
@@ -418,6 +420,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             _activeTab = _Tab.strategy;
             _objectiveToOpen = number;
           }),
+          onOpenArea: _openArea,
           onToggleTask: _toggleAreaOrHomeTask,
           areaToOpen: _areaToOpen,
           openHomeOnStart: widget.initialOpenHome,
@@ -545,7 +548,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
     return InkWell(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => DecisionDetailScreen(decision: decision),
+          builder: (_) => DecisionDetailScreen(
+            decision: decision,
+            areasNaming: _areasNaming(decision.number),
+            onOpenArea: _openArea,
+          ),
         ),
       ),
       child: Container(
@@ -606,12 +613,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
     ];
   }
 
+  /// Round-36 §3, L17 — also handed to `DecisionDetailScreen`, `PlanView`
+  /// and `StrategyView` as `onOpenArea`, so an area chip anywhere in this
+  /// screen's tree lands the same way: Plan tab, that area open.
+  void _openArea(Area area) => setState(() {
+    _activeTab = _Tab.plan;
+    _areaToOpen = area.sourceFile;
+  });
+
   Widget _areaChip(Area area) {
     return InkWell(
-      onTap: () => setState(() {
-        _activeTab = _Tab.plan;
-        _areaToOpen = area.sourceFile;
-      }),
+      onTap: () => _openArea(area),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),

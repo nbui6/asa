@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -64,5 +65,69 @@ void main() {
 
     final contents = File(path).readAsStringSync();
     expect(RegExp('## Your call').allMatches(contents).length, 1);
+  });
+
+  group("round-36 §3, L17 — an area chip on the decision's own detail "
+      'screen', () {
+    const decision = Decision(
+      title: 'A real decision',
+      why: 'w',
+      decision: 'd',
+      whatWouldChangeThis: 'c',
+      sourceFile: 'decisions/0009.md',
+      number: '0009',
+    );
+
+    const area = Area(
+      name: 'Sales',
+      sourceFile: 'plan/sales.md',
+      tasks: [],
+      results: [],
+      decisionNumbers: ['0009'],
+      objectiveNumbers: [],
+    );
+
+    testWidgets('shows one chip per naming area; tapping pops, then '
+        'calls onOpenArea', (tester) async {
+      Area? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DecisionDetailScreen(
+                      decision: decision,
+                      areasNaming: const [area],
+                      onOpenArea: (a) => opened = a,
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sales'), findsOneWidget);
+      await tester.tap(find.text('Sales'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DecisionDetailScreen), findsNothing);
+      expect(opened, same(area));
+    });
+
+    testWidgets('no naming areas at all shows no chip', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: DecisionDetailScreen(decision: decision)),
+      );
+
+      expect(find.text('Sales'), findsNothing);
+    });
   });
 }

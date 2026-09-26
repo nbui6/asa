@@ -7,15 +7,31 @@
 /// write to a decision file, ever, and append-only.
 library;
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decision_writer.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:flutter/material.dart';
 
 class DecisionDetailScreen extends StatefulWidget {
-  const DecisionDetailScreen({required this.decision, super.key});
+  const DecisionDetailScreen({
+    required this.decision,
+    this.areasNaming = const [],
+    this.onOpenArea,
+    super.key,
+  });
 
   final Decision decision;
+
+  /// Round-36 §3, L17 — every area (any project's, in practice the
+  /// caller's own) whose `decisionNumbers` names this decision. Empty
+  /// shows no chip at all, same absence rule as everywhere else.
+  final List<Area> areasNaming;
+
+  /// Pops this screen, then tells the caller which area to open on its
+  /// own Plan tab. Null keeps every chip here inert, for a caller not
+  /// wired for it yet.
+  final void Function(Area area)? onOpenArea;
 
   @override
   State<DecisionDetailScreen> createState() => _DecisionDetailScreenState();
@@ -105,6 +121,16 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _statusLine(decision),
+            if (widget.areasNaming.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final area in widget.areasNaming) _areaChip(area),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
             _block('Decision', decision.decision),
             if (decision.why.isNotEmpty) ...[
@@ -174,6 +200,38 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
             style: const TextStyle(color: Colors.grey),
           ),
       ],
+    );
+  }
+
+  /// Round-36 §3, L17 — pops back to wherever this screen was pushed
+  /// from, then asks the caller to open this one area on its own Plan
+  /// tab. Inert (no `onTap`) when [DecisionDetailScreen.onOpenArea] is
+  /// null, for a caller not wired for it yet.
+  Widget _areaChip(Area area) {
+    final onOpenArea = widget.onOpenArea;
+    return InkWell(
+      onTap: onOpenArea == null
+          ? null
+          : () {
+              Navigator.of(context).pop();
+              onOpenArea(area);
+            },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEDE7F6),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          area.name,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF5E35B1),
+          ),
+        ),
+      ),
     );
   }
 
