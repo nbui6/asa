@@ -134,24 +134,41 @@ String? effectiveNextStep(
   List<Task> tasks,
   String typedNextStep, {
   List<Area> areas = const [],
+}) => effectiveNextStepWithArea(tasks, typedNextStep, areas: areas).text;
+
+/// Same chain as [effectiveNextStep], plus which [Area] (if any) the
+/// returned text actually came from — round-36 §2 b's own "Next" line
+/// needs this, for the small area chip next to the task text. Null area
+/// means the home note's own task, the typed field, or honest absence —
+/// never an area, so a caller never has to guess which case it got.
+({String? text, Area? area}) effectiveNextStepWithArea(
+  List<Task> tasks,
+  String typedNextStep, {
+  List<Area> areas = const [],
 }) {
   for (final task in tasks) {
     if (!task.done && !task.parked) {
-      return stripCodeSpanMarkers(stripEmphasisMarkers(task.text));
+      return (
+        text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+        area: null,
+      );
     }
   }
 
   for (final area in areas) {
     for (final task in area.tasks) {
       if (!task.done && !task.parked) {
-        return stripCodeSpanMarkers(stripEmphasisMarkers(task.text));
+        return (
+          text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+          area: area,
+        );
       }
     }
   }
 
   final typed = typedNextStep.trim();
-  if (typed.isEmpty || typed == '(not set)') return null;
-  return stripCodeSpanMarkers(stripEmphasisMarkers(typed));
+  if (typed.isEmpty || typed == '(not set)') return (text: null, area: null);
+  return (text: stripCodeSpanMarkers(stripEmphasisMarkers(typed)), area: null);
 }
 
 /// A project forest's roots, split into the flat "work" list and the

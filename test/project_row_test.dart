@@ -233,6 +233,36 @@ void main() {
         expect(effectiveNextStep(const [], 'Typed field'), 'Typed field');
       });
     });
+
+    group("effectiveNextStepWithArea — round-36 §2 b's Next line needs to "
+        'know which area, not just the text', () {
+      test('a home task names no area at all', () {
+        final result = effectiveNextStepWithArea([
+          task(text: 'Home task'),
+        ], 'Typed');
+        expect(result.text, 'Home task');
+        expect(result.area, isNull);
+      });
+
+      test('an area task names that area, by identity', () {
+        final sales = area(
+          name: 'Sales',
+          tasks: [task(text: 'Sales task')],
+        );
+        final result = effectiveNextStepWithArea(
+          const [],
+          'Typed',
+          areas: [sales],
+        );
+        expect(result.text, 'Sales task');
+        expect(result.area, same(sales));
+      });
+
+      test('the typed field and honest absence both name no area', () {
+        expect(effectiveNextStepWithArea(const [], 'Typed field').area, isNull);
+        expect(effectiveNextStepWithArea(const [], '').area, isNull);
+      });
+    });
   });
 
   group('splitByBucket — real chain, other -> asa -> vibe-coding-kit', () {
