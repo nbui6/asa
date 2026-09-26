@@ -412,9 +412,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
                         isDense: true,
-                        hintText: _folderChosen
-                            ? null
-                            : r'C:\path\to\projects',
+                        hintText: _folderChosen ? null : r'C:\path\to\projects',
                       ),
                       onSubmitted: (_) => _submitFolderField(),
                     ),

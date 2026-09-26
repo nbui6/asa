@@ -99,39 +99,31 @@ void main() {
       },
     );
 
-    test(
-      'Round 35/A — a folder whose only recent file is HOW-ASA-WORKS.md '
-      'reports the older, real date instead',
-      () async {
-        final real = File('${tempDir.path}${Platform.pathSeparator}real.md')
-          ..writeAsStringSync('real work');
-        final realStat = real.statSync().modified;
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        // Written after the real file, same as the onboarding process
-        // actually does — the newer mtime that must not win.
-        File(
-          '${tempDir.path}${Platform.pathSeparator}HOW-ASA-WORKS.md',
-        ).writeAsStringSync('process note, not project content');
+    test('Round 35/A — a folder whose only recent file is HOW-ASA-WORKS.md '
+        'reports the older, real date instead', () async {
+      final real = File('${tempDir.path}${Platform.pathSeparator}real.md')
+        ..writeAsStringSync('real work');
+      final realStat = real.statSync().modified;
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      // Written after the real file, same as the onboarding process
+      // actually does — the newer mtime that must not win.
+      File('${tempDir.path}${Platform.pathSeparator}HOW-ASA-WORKS.md')
+          .writeAsStringSync('process note, not project content');
 
-        final touched = await lastTouchedOf(tempDir.path, _noGit);
+      final touched = await lastTouchedOf(tempDir.path, _noGit);
 
-        expect(touched, isNotNull);
-        expect(touched!.difference(realStat).inSeconds.abs(), lessThan(2));
-      },
-    );
+      expect(touched, isNotNull);
+      expect(touched!.difference(realStat).inSeconds.abs(), lessThan(2));
+    });
 
-    test(
-      'a folder whose only file is HOW-ASA-WORKS.md has no answer, not '
-      "that file's own date",
-      () async {
-        File(
-          '${tempDir.path}${Platform.pathSeparator}HOW-ASA-WORKS.md',
-        ).writeAsStringSync('process note only');
+    test('a folder whose only file is HOW-ASA-WORKS.md has no answer, not '
+        "that file's own date", () async {
+      File('${tempDir.path}${Platform.pathSeparator}HOW-ASA-WORKS.md')
+          .writeAsStringSync('process note only');
 
-        final touched = await lastTouchedOf(tempDir.path, _noGit);
-        expect(touched, isNull);
-      },
-    );
+      final touched = await lastTouchedOf(tempDir.path, _noGit);
+      expect(touched, isNull);
+    });
 
     test('an empty, newly-created folder with no git has no answer', () async {
       final empty = Directory('${tempDir.path}${Platform.pathSeparator}empty')

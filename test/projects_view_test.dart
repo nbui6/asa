@@ -133,78 +133,75 @@ void main() {
     },
   );
 
-  testWidgets(
-    "Round 33/E, cp0's own done-when: every scanned project appears "
-    'exactly once, work bucket and Other alike',
-    (tester) async {
-      const git = GitState(command: '', rawOutput: '');
-      ProjectSummary summary({
-        required String folder,
-        required String name,
-        String? parent,
-      }) {
-        return ProjectSummary(
-          project: Project(
-            name: name,
-            status: 'building',
-            milestone: '',
-            nextStep: '',
-            repoPath: '',
-            updated: '2026-09-25',
-            sourceFile: '$folder/$name.md',
-            parent: parent,
-          ),
-          git: git,
-          folder: folder,
-        );
-      }
+  testWidgets("Round 33/E, cp0's own done-when: every scanned project appears "
+      'exactly once, work bucket and Other alike', (tester) async {
+    const git = GitState(command: '', rawOutput: '');
+    ProjectSummary summary({
+      required String folder,
+      required String name,
+      String? parent,
+    }) {
+      return ProjectSummary(
+        project: Project(
+          name: name,
+          status: 'building',
+          milestone: '',
+          nextStep: '',
+          repoPath: '',
+          updated: '2026-09-25',
+          sourceFile: '$folder/$name.md',
+          parent: parent,
+        ),
+        git: git,
+        folder: folder,
+      );
+    }
 
-      final scanned = [
-        summary(folder: 'work-root', name: 'Work root'),
-        summary(folder: 'work-child', name: 'Work child', parent: 'work-root'),
-        summary(folder: 'other', name: 'Other project'),
-        summary(folder: 'asa-like', name: 'Asa-like', parent: 'other'),
-        summary(
-          folder: 'kit-like',
-          name: 'Kit-like',
-          parent: 'asa-like',
-        ), // Other's grandchild — the real vibe-coding-kit shape.
-      ];
-      final forest = buildProjectForest(scanned);
-      final split = splitByBucket(forest);
+    final scanned = [
+      summary(folder: 'work-root', name: 'Work root'),
+      summary(folder: 'work-child', name: 'Work child', parent: 'work-root'),
+      summary(folder: 'other', name: 'Other project'),
+      summary(folder: 'asa-like', name: 'Asa-like', parent: 'other'),
+      summary(
+        folder: 'kit-like',
+        name: 'Kit-like',
+        parent: 'asa-like',
+      ), // Other's grandchild — the real vibe-coding-kit shape.
+    ];
+    final forest = buildProjectForest(scanned);
+    final split = splitByBucket(forest);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ProjectsView(
-              forest: forest,
-              onOpenProject: (_) {},
-              onAssignTask: (_, _) async {},
-            ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProjectsView(
+            forest: forest,
+            onOpenProject: (_) {},
+            onAssignTask: (_, _) async {},
           ),
         ),
-      );
+      ),
+    );
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('Work root'), findsOneWidget);
-      expect(find.text('Work child'), findsOneWidget);
-      // Other's own subtree is collapsed by default — expand it first,
-      // same as a person would, rather than assert on hidden widgets.
-      expect(find.text('Other project'), findsOneWidget);
-      await tester.tap(find.text('Other project'));
-      await tester.pumpAndSettle();
-      expect(find.text('Asa-like'), findsOneWidget);
-      expect(find.text('Kit-like'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expect(find.text('Work root'), findsOneWidget);
+    expect(find.text('Work child'), findsOneWidget);
+    // Other's own subtree is collapsed by default — expand it first,
+    // same as a person would, rather than assert on hidden widgets.
+    expect(find.text('Other project'), findsOneWidget);
+    await tester.tap(find.text('Other project'));
+    await tester.pumpAndSettle();
+    expect(find.text('Asa-like'), findsOneWidget);
+    expect(find.text('Kit-like'), findsOneWidget);
 
-      // Every one of the 5 scanned projects is a root or nested exactly
-      // once — never both a root and someone's child at the same time.
-      expect(split.work.length, 1);
-      expect(countDescendants(split.other!), 2);
+    // Every one of the 5 scanned projects is a root or nested exactly
+    // once — never both a root and someone's child at the same time.
+    expect(split.work.length, 1);
+    expect(countDescendants(split.other!), 2);
 
-      // Round 35/G — the summary line asa-front2 draws and the build
-      // dropped: N projects, split work vs. not-work, counting a subtree
-      // (child + grandchild) as part of its own root's side of the split.
-      expect(find.text('5 projects · 2 work · 3 not work'), findsOneWidget);
-    },
-  );
+    // Round 35/G — the summary line asa-front2 draws and the build
+    // dropped: N projects, split work vs. not-work, counting a subtree
+    // (child + grandchild) as part of its own root's side of the split.
+    expect(find.text('5 projects · 2 work · 3 not work'), findsOneWidget);
+  });
 }
