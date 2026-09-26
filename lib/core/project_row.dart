@@ -13,6 +13,7 @@
 /// is that one pure check — no new field, no new pill.
 library;
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/task.dart';
@@ -119,17 +120,32 @@ StatusEmphasis statusEmphasis(String status) {
   return StatusEmphasis.neutral;
 }
 
-/// Round 32/B, ADR 0020 (accepted): a project's next step comes from its
-/// tasks, never the typed field alone. The first open task in `## Tasks`
-/// that isn't parked, if there is one; otherwise [typedNextStep], if it is
-/// a real value; otherwise null — the caller shows "no next step" for
-/// that, honest absence rather than blank. [typedNextStep] stays in the
-/// file either way, unwritten and unremoved (ADR 0020's own rule) — this
-/// only decides what to show, never what to save.
-String? effectiveNextStep(List<Task> tasks, String typedNextStep) {
+/// Round 32/B, ADR 0020 (accepted); extended by Round 34/E: a project's
+/// next step comes from its tasks, never the typed field alone. The first
+/// open, unparked task in the home note's own `## Tasks`, if there is one;
+/// otherwise the first open, unparked task of the first area that has one,
+/// in area order; otherwise [typedNextStep], if it is a real value;
+/// otherwise null — the caller shows "no next step" for that, honest
+/// absence rather than blank. [typedNextStep] stays in the file either
+/// way, unwritten and unremoved (ADR 0020's own rule) — this only decides
+/// what to show, never what to save. [areas] defaults to none, so every
+/// existing caller keeps today's two-step chain until it opts in.
+String? effectiveNextStep(
+  List<Task> tasks,
+  String typedNextStep, {
+  List<Area> areas = const [],
+}) {
   for (final task in tasks) {
     if (!task.done && !task.parked) {
       return stripCodeSpanMarkers(stripEmphasisMarkers(task.text));
+    }
+  }
+
+  for (final area in areas) {
+    for (final task in area.tasks) {
+      if (!task.done && !task.parked) {
+        return stripCodeSpanMarkers(stripEmphasisMarkers(task.text));
+      }
     }
   }
 

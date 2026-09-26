@@ -357,6 +357,24 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     await _load();
   }
 
+  /// Round 34/F — the same narrow amendment to ADR 0021 the Plan tab
+  /// already exercises, from the Tasks view instead: checkbox state only,
+  /// in an area's own `plan\*.md` page, via the same `setTaskDone` every
+  /// other checkbox in this app already goes through.
+  Future<void> _toggleAreaTask(String areaSourceFile, Task task) async {
+    try {
+      await setTaskDone(
+        areaSourceFile,
+        rawLine: task.rawLine,
+        done: !task.done,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
   /// Round 32/B — same reasoning as `_toggleTask`: the next step can
   /// change here too.
   Future<void> _markAllDone(Project project) async {
@@ -482,6 +500,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   onToggleTask: _toggleTask,
                   onMarkAllDone: _markAllDone,
                   onToggleParked: _toggleParked,
+                  onToggleAreaTask: _toggleAreaTask,
                   pinnedProjectName: _pinnedProjectName,
                 ),
             ],

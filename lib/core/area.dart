@@ -12,6 +12,7 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/decisions_reader.dart' show FileAccess;
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
@@ -203,6 +204,29 @@ Future<List<Area>> readAreas(String projectFolder) async {
         await file.readAsString(),
         sourceFile: file.path,
         aspect: _stemOf(file.path),
+      ),
+  ];
+}
+
+/// Same contract as [readAreas], through [FileAccess] instead of raw
+/// `dart:io` — for a caller (`tasks_reader.dart`'s `buildTaskGroups`) that
+/// already takes a [FileAccess] so its own tests can fake the disk rather
+/// than touch it. `/` throughout, not `Platform.pathSeparator` — the same
+/// convention every other `FileAccess`-based reader in this codebase
+/// already uses, real and fake alike.
+Future<List<Area>> readAreasVia(String projectFolder, FileAccess files) async {
+  final planDir = '$projectFolder/plan';
+  final names = (await files.listFiles(planDir))
+      .where((name) => name.toLowerCase().endsWith('.md'))
+      .toList()
+    ..sort((a, b) => _compareAspects(_stemOf(a), _stemOf(b)));
+
+  return [
+    for (final name in names)
+      parseArea(
+        await files.readFile('$planDir/$name'),
+        sourceFile: '$planDir/$name',
+        aspect: _stemOf(name),
       ),
   ];
 }

@@ -1,0 +1,149 @@
+// Round 34/E — area tasks in the Tasks view, grouped by area name, after
+// the project's own home-note tasks. Invented data throughout.
+
+import 'package:asa/core/project.dart';
+import 'package:asa/core/task.dart';
+import 'package:asa/core/tasks_reader.dart';
+import 'package:asa/hubs/product/tasks_view.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+const _project = Project(
+  name: 'Demo',
+  status: 'building',
+  milestone: '',
+  nextStep: '',
+  repoPath: '',
+  updated: '2026-09-26',
+  sourceFile: 'demo/demo.md',
+);
+
+void main() {
+  Widget pumpTasksView(
+    TaskGroup group, {
+    Future<void> Function(String, Task)? onToggleAreaTask,
+  }) {
+    return MaterialApp(
+      home: Scaffold(
+        body: TasksView(
+          groups: [group],
+          onToggleTask: (_, _) async {},
+          onMarkAllDone: (_) async {},
+          onToggleParked: (_, _) async {},
+          onToggleAreaTask: onToggleAreaTask,
+        ),
+      ),
+    );
+  }
+
+  group('Round 34/E — area tasks group by area name', () {
+    testWidgets("an area group shows after the project's own tasks, "
+        'named in the sub-heading', (tester) async {
+      const group = TaskGroup(
+        project: _project,
+        tasks: [
+          Task(rawLine: '- [ ] Home task', text: 'Home task', done: false),
+        ],
+        areaGroups: [
+          AreaTaskGroup(
+            name: 'Sales',
+            sourceFile: 'demo/plan/sales.md',
+            tasks: [
+              Task(
+                rawLine: '- [ ] Sales task',
+                text: 'Sales task',
+                done: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(pumpTasksView(group));
+
+      expect(find.text('Home task'), findsOneWidget);
+      expect(find.text('SALES'), findsOneWidget);
+      expect(find.text('Sales task'), findsOneWidget);
+
+      final homeY = tester.getTopLeft(find.text('Home task')).dy;
+      final areaY = tester.getTopLeft(find.text('Sales task')).dy;
+      expect(homeY, lessThan(areaY));
+    });
+
+    testWidgets('ticking an area task calls onToggleAreaTask with the '
+        "area's own sourceFile, never the project's", (tester) async {
+      String? calledSourceFile;
+      const group = TaskGroup(
+        project: _project,
+        tasks: [],
+        areaGroups: [
+          AreaTaskGroup(
+            name: 'Sales',
+            sourceFile: 'demo/plan/sales.md',
+            tasks: [
+              Task(
+                rawLine: '- [ ] Sales task',
+                text: 'Sales task',
+                done: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        pumpTasksView(
+          group,
+          onToggleAreaTask: (sourceFile, _) async {
+            calledSourceFile = sourceFile;
+          },
+        ),
+      );
+
+      await tester.tap(find.byType(Checkbox));
+
+      expect(calledSourceFile, 'demo/plan/sales.md');
+    });
+
+    testWidgets('no parking icon on an area task — Round 34 F is checkbox '
+        'state only', (tester) async {
+      const group = TaskGroup(
+        project: _project,
+        tasks: [],
+        areaGroups: [
+          AreaTaskGroup(
+            name: 'Sales',
+            sourceFile: 'demo/plan/sales.md',
+            tasks: [
+              Task(
+                rawLine: '- [ ] Sales task',
+                text: 'Sales task',
+                done: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(pumpTasksView(group));
+
+      expect(find.byIcon(Icons.bookmark_border), findsNothing);
+      expect(find.byIcon(Icons.bookmark), findsNothing);
+    });
+
+    testWidgets('a project with no areas shows no area heading at all', (
+      tester,
+    ) async {
+      const group = TaskGroup(
+        project: _project,
+        tasks: [
+          Task(rawLine: '- [ ] Home task', text: 'Home task', done: false),
+        ],
+      );
+      await tester.pumpWidget(pumpTasksView(group));
+
+      expect(find.text('Home task'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is Text && (w.data ?? '').isEmpty),
+        findsNothing,
+      );
+    });
+  });
+}

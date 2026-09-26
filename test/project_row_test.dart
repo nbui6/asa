@@ -1,3 +1,4 @@
+import 'package:asa/core/area.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_row.dart';
@@ -140,6 +141,85 @@ void main() {
       final tasks = [task(text: 'Fix `the_bug.dart`')];
       expect(effectiveNextStep(tasks, ''), 'Fix the_bug.dart');
       expect(effectiveNextStep(const [], '**Typed** value'), 'Typed value');
+    });
+
+    Area area({required String name, required List<Task> tasks}) {
+      return Area(
+        name: name,
+        sourceFile: '$name.md',
+        tasks: tasks,
+        results: const [],
+        decisionNumbers: const [],
+        objectiveNumbers: const [],
+      );
+    }
+
+    group('Round 34/E — falls further, to the first area with an open '
+        'task, before the typed field', () {
+      test("no home tasks — the first area's first open task wins over "
+          'the typed field', () {
+        final areas = [
+          area(name: 'Sales', tasks: [task(text: 'Sales task')]),
+        ];
+        expect(
+          effectiveNextStep(const [], 'Typed field', areas: areas),
+          'Sales task',
+        );
+      });
+
+      test("the home note's own open task still wins over any area", () {
+        final areas = [
+          area(name: 'Sales', tasks: [task(text: 'Sales task')]),
+        ];
+        expect(
+          effectiveNextStep([task(text: 'Home task')], 'Typed', areas: areas),
+          'Home task',
+        );
+      });
+
+      test('areas are checked in order — the first with an open task '
+          'wins, not the first area overall', () {
+        final areas = [
+          area(
+            name: 'Finance',
+            tasks: [task(text: 'Finance done', done: true)],
+          ),
+          area(name: 'Sales', tasks: [task(text: 'Sales task')]),
+        ];
+        expect(
+          effectiveNextStep(const [], 'Typed', areas: areas),
+          'Sales task',
+        );
+      });
+
+      test('a parked area task is skipped, same rule as the home note', () {
+        final areas = [
+          area(
+            name: 'Sales',
+            tasks: [task(text: 'Parked', parked: true), task(text: 'Real')],
+          ),
+        ];
+        expect(effectiveNextStep(const [], 'Typed', areas: areas), 'Real');
+      });
+
+      test('every area task done or parked falls back to the typed '
+          'field, then to null', () {
+        final areas = [
+          area(name: 'Sales', tasks: [task(text: 'Done', done: true)]),
+        ];
+        expect(
+          effectiveNextStep(const [], 'Typed field', areas: areas),
+          'Typed field',
+        );
+        expect(effectiveNextStep(const [], '', areas: areas), isNull);
+      });
+
+      test("no areas at all — today's exact two-step chain, unchanged", () {
+        expect(
+          effectiveNextStep(const [], 'Typed field'),
+          'Typed field',
+        );
+      });
     });
   });
 

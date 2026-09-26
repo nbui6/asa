@@ -9,12 +9,19 @@ import 'package:asa/core/tasks_reader.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class FakeFileAccess implements FileAccess {
-  FakeFileAccess(this.files);
+  FakeFileAccess(this.files, [this.folders = const {}]);
 
   final Map<String, String> files;
 
+  /// Round 34/E — folder path to the bare filenames "inside" it, for
+  /// `readAreasVia`'s own `listFiles('<project>/plan')` call. Empty by
+  /// default: every test that does not name an area keeps seeing no
+  /// `plan\` folder, same as before this existed.
+  final Map<String, List<String>> folders;
+
   @override
-  Future<List<String>> listFiles(String folder) async => [];
+  Future<List<String>> listFiles(String folder) async =>
+      folders[folder] ?? [];
 
   @override
   Future<String> readFile(String path) async {
@@ -130,6 +137,82 @@ void main() {
 
     test('an empty project list yields an empty list', () async {
       expect(await buildTaskGroups([], FakeFileAccess({})), isEmpty);
+    });
+  });
+
+  group('Round 34/E — area tasks group by area name, after the home '
+      "note's own", () {
+    test('an area with tasks gets its own group, in area order', () async {
+      final project = _summary(folder: 'projects/demo', name: 'demo');
+      final files = FakeFileAccess(
+        {
+          project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
+          'projects/demo/plan/1-sales.md':
+              '# Sales\n\n## Tasks\n- [ ] Sales task\n',
+          'projects/demo/plan/finance.md':
+              '# Finance\n\n## Tasks\n- [ ] Finance task\n',
+        },
+        {
+          'projects/demo/plan': ['1-sales.md', 'finance.md'],
+        },
+      );
+
+      final groups = await buildTaskGroups([project], files);
+
+      expect(groups, hasLength(1));
+      expect(groups.single.tasks.single.text, 'Home task');
+      expect(groups.single.areaGroups, hasLength(2));
+      expect(groups.single.areaGroups[0].name, 'Sales');
+      expect(groups.single.areaGroups[0].tasks.single.text, 'Sales task');
+      expect(groups.single.areaGroups[1].name, 'Finance');
+    });
+
+    test('an area with no tasks at all gets no group — nothing to show, '
+        'no row, same rule as a project with none', () async {
+      final project = _summary(folder: 'projects/demo', name: 'demo');
+      final files = FakeFileAccess(
+        {
+          project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
+          'projects/demo/plan/empty.md': '# Empty\n\nNothing yet.\n',
+        },
+        {
+          'projects/demo/plan': ['empty.md'],
+        },
+      );
+
+      final groups = await buildTaskGroups([project], files);
+      expect(groups.single.areaGroups, isEmpty);
+    });
+
+    test('a project with no home tasks but a real area task still gets a '
+        'row — it has real, actionable tasks, just under an area', () async {
+      final project = _summary(folder: 'projects/demo', name: 'demo');
+      final files = FakeFileAccess(
+        {
+          project.project.sourceFile: '# Demo\n\nNo ## Tasks at all.\n',
+          'projects/demo/plan/sales.md':
+              '# Sales\n\n## Tasks\n- [ ] Sales task\n',
+        },
+        {
+          'projects/demo/plan': ['sales.md'],
+        },
+      );
+
+      final groups = await buildTaskGroups([project], files);
+      expect(groups, hasLength(1));
+      expect(groups.single.tasks, isEmpty);
+      expect(groups.single.areaGroups.single.name, 'Sales');
+    });
+
+    test(r'no plan\ folder at all — the existing behaviour, unchanged', (
+    ) async {
+      final project = _summary(folder: 'projects/demo', name: 'demo');
+      final files = FakeFileAccess({
+        project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
+      });
+
+      final groups = await buildTaskGroups([project], files);
+      expect(groups.single.areaGroups, isEmpty);
     });
   });
 }

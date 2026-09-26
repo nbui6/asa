@@ -725,7 +725,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
         ),
         _Field(
           'Next step',
-          effectiveNextStep(project.tasks, project.nextStep) ?? 'no next step',
+          effectiveNextStep(
+                project.tasks,
+                project.nextStep,
+                areas: _areas,
+              ) ??
+              'no next step',
         ),
         _Field('Note updated by hand', project.updated),
         _Field('Last moved (from git)', _lastMovedText(git)),

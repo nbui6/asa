@@ -35,6 +35,7 @@ class TasksView extends StatefulWidget {
     required this.onToggleTask,
     required this.onMarkAllDone,
     required this.onToggleParked,
+    this.onToggleAreaTask,
     this.pinnedProjectName,
     super.key,
   });
@@ -60,6 +61,12 @@ class TasksView extends StatefulWidget {
   /// two". Orthogonal to [onToggleTask]; parking never touches the
   /// checkbox.
   final Future<void> Function(Project project, Task task) onToggleParked;
+
+  /// Round 34/E, F — ticks a task inside one of a project's own areas
+  /// (checkbox state only, in that area's `plan\*.md` page). Null keeps
+  /// every area task here read-only.
+  final Future<void> Function(String areaSourceFile, Task task)?
+  onToggleAreaTask;
 
   @override
   State<TasksView> createState() => _TasksViewState();
@@ -147,6 +154,9 @@ class _TasksViewState extends State<TasksView> {
     final keys = <String>{};
     void visit(TaskGroup group) {
       keys.add(_keyOf(group));
+      for (final areaGroup in group.areaGroups) {
+        keys.add(areaGroup.sourceFile);
+      }
       group.children.forEach(visit);
     }
 
@@ -244,11 +254,103 @@ class _TasksViewState extends State<TasksView> {
                     for (final task in doneTasks) _taskRow(group.project, task),
                 ],
               ],
+              if (!collapsed)
+                for (final areaGroup in group.areaGroups)
+                  _areaGroupTile(areaGroup, depth: depth + 1),
               for (final child in group.children)
                 _groupTile(child, depth: depth + 1),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Round 34/E — an area's own tasks, indented under its project, same
+  /// collapse/hide-done/"Code tasks" rules as any other group here. No
+  /// "mark all done" and no parking: Round 34 F's amendment to ADR 0021
+  /// covers checkbox state only, in an area's own file — the two writes
+  /// this group deliberately does not offer.
+  Widget _areaGroupTile(AreaTaskGroup areaGroup, {required int depth}) {
+    final key = areaGroup.sourceFile;
+    final collapsed = _collapsed.contains(key);
+
+    final visibleTasks = _showCode
+        ? areaGroup.tasks
+        : areaGroup.tasks.where((t) => !t.isCode).toList();
+    final openTasks = visibleTasks.where((t) => !t.done).toList();
+    final doneTasks = visibleTasks.where((t) => t.done).toList();
+    final hiddenByCodeFilter =
+        visibleTasks.isEmpty && areaGroup.tasks.isNotEmpty;
+
+    return Padding(
+      padding: EdgeInsets.only(left: depth * 24.0, top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  collapsed ? Icons.chevron_right : Icons.expand_more,
+                ),
+                tooltip: collapsed
+                    ? 'Expand this area'
+                    : 'Collapse this area — click again to reopen',
+                onPressed: () => setState(() {
+                  if (collapsed) {
+                    _collapsed.remove(key);
+                  } else {
+                    _collapsed.add(key);
+                  }
+                }),
+              ),
+              Text(
+                areaGroup.name.toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  fontSize: 12.5,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          if (!collapsed)
+            if (hiddenByCodeFilter)
+              Padding(
+                padding: const EdgeInsets.only(left: 48),
+                child: Text(
+                  '${areaGroup.name} · ${areaGroup.tasks.length} tasks '
+                  'hidden, marked code',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              )
+            else ...[
+              for (final task in openTasks) _areaTaskRow(areaGroup, task),
+              if (doneTasks.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 48, top: 4),
+                  child: InkWell(
+                    onTap: () => setState(() {
+                      if (_showCompleted.contains(key)) {
+                        _showCompleted.remove(key);
+                      } else {
+                        _showCompleted.add(key);
+                      }
+                    }),
+                    child: Text(
+                      _showCompleted.contains(key)
+                          ? 'Hide completed'
+                          : 'Show completed (${doneTasks.length})',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ),
+                ),
+              if (_showCompleted.contains(key))
+                for (final task in doneTasks) _areaTaskRow(areaGroup, task),
+            ],
+        ],
       ),
     );
   }
@@ -308,6 +410,42 @@ class _TasksViewState extends State<TasksView> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Round 34/E, F — an area's own task row: the checkbox ticks (when
+  /// [TasksView.onToggleAreaTask] is set), same as any other task here.
+  /// No parking icon — Round 34 F's amendment to ADR 0021 covers checkbox
+  /// state only, and parking is a different write this group does not
+  /// offer for an area's file.
+  Widget _areaTaskRow(AreaTaskGroup areaGroup, Task task) {
+    final onToggle = widget.onToggleAreaTask;
+    return Padding(
+      padding: const EdgeInsets.only(left: 40, top: 2, bottom: 2),
+      child: Row(
+        children: [
+          Checkbox(
+            value: task.done,
+            onChanged: onToggle == null
+                ? null
+                : (_) => onToggle(areaGroup.sourceFile, task),
+          ),
+          Expanded(
+            child: Text(
+              stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+              style: task.done ? TextStyle(color: Colors.grey.shade500) : null,
+            ),
+          ),
+          if (task.isCode)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Tooltip(
+                message: "This task is Code's, not yours",
+                child: Icon(Icons.code, size: 16, color: Colors.grey.shade500),
+              ),
+            ),
         ],
       ),
     );
