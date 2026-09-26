@@ -24,6 +24,7 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
@@ -35,6 +36,8 @@ import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
+import 'package:asa/core/task.dart';
+import 'package:asa/core/task_writer.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
 import 'package:asa/hubs/product/start_menu.dart';
@@ -93,6 +96,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   GitState? _git;
   List<DecisionReadResult>? _decisions;
   Plan? _plan;
+  List<Area> _areas = const [];
   Strategy? _strategy;
   RoundApprovals _approvals = const RoundApprovals({});
   bool _loading = true;
@@ -169,6 +173,24 @@ class _ProjectScreenState extends State<ProjectScreen> {
     await _load();
   }
 
+  /// Round 34/F, the narrow amendment to ADR 0021 (2026-09-26): Asa may
+  /// change checkbox state only, `[ ]` ↔ `[x]`, in a `plan\*.md` page's own
+  /// `## Tasks` — reusing `task_writer.dart`'s existing `setTaskDone`
+  /// unchanged, the same writer and the same write log every other
+  /// checkbox in this app already goes through. [sourceFile] is either an
+  /// area's own file or the project's home note ("Not in an area") —
+  /// `setTaskDone` does not care which, it matches the exact line either
+  /// way.
+  Future<void> _toggleAreaOrHomeTask(String sourceFile, Task task) async {
+    await setTaskDone(
+      sourceFile,
+      rawLine: task.rawLine,
+      done: !task.done,
+      writeLogPath: widget.writeLogPath,
+    );
+    await _load();
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
 
@@ -181,6 +203,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       await readAllDecisions(widget.folder, const DiskFileAccess()),
     );
     final plan = await readPlan(widget.folder);
+    final areas = await readAreas(widget.folder);
     final strategy = await readCharter(widget.folder);
     final approvals = await readRoundApprovals(
       widget.folder,
@@ -193,6 +216,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _git = git;
       _decisions = decisions;
       _plan = plan;
+      _areas = areas;
       _strategy = strategy;
       _approvals = approvals;
       _loading = false;
@@ -354,7 +378,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (plan == null || plan.isEmpty) return _decisionsTab(read);
         return PlanView(
           plan: plan,
+          areas: _areas,
           decisions: _decisions ?? const [],
+          homeTasks: read.isSuccess ? read.project!.tasks : const [],
+          strategy: _strategy,
+          onOpenStrategy: () => setState(() => _activeTab = _Tab.strategy),
+          onToggleTask: _toggleAreaOrHomeTask,
           projectSourceFile: read.isSuccess
               ? read.project!.sourceFile
               : widget.folder,

@@ -1,36 +1,51 @@
-/// Product Hub — the Plan tab. Round 27, the visible half of Round 26.
+/// Product Hub — the Plan tab. Round 27 built it against `asa-plan-v3`;
+/// Round 34 (ADR 0024) adds areas — `plan\<area>.md`, one page per area,
+/// goal → plan → tasks → results → decisions — and rebuilds this screen
+/// around them, sketch `asa-plan-v5.html`. **A project with no `plan\`
+/// folder (`asa` today) keeps exactly the Round 27 screen** — regression,
+/// checked explicitly, not assumed.
 ///
-/// Sketch: `sketches\asa-plan-v3.html`, the redraw. The first draft,
-/// `asa-plan-v2.html`, was drawn straight from Round 26's data and Nico
-/// found it overwhelming — *"the sections in Plan + derived links parts
-/// are just very overwhelmed for me."* `persona-check` against
-/// `PERSONA.md` agreed: BLOCK, not a new finding — this persona already
-/// abandoned Obsidian for the same reason once. v3 fixes it by collapsing
-/// everything by default and showing only what a real heading says,
-/// never a paraphrase of it — v2's real defect was inventing summary text
-/// for a section that had none.
+/// Sketch history: `asa-plan-v2.html` was drawn straight from Round 26's
+/// data and Nico found it overwhelming — *"the sections in Plan + derived
+/// links parts are just very overwhelmed for me."* v3 fixed it by
+/// collapsing everything by default and showing only what a real heading
+/// says, never a paraphrase of it.
 ///
-/// **Read-only, all of it — ADR 0021 point 4.** Nothing here writes to
-/// `PLAN.md`, a plan page, or anything else. Tapping a change entry, a
-/// page, or a section opens that page's real `sourceFile` with
-/// `open_url.dart`; nothing is ever pre-read or summarised for display.
+/// **Read-only, all of it — ADR 0021 point 4 — except one narrow amendment
+/// (2026-09-26): Asa may change checkbox state only, `[ ]` ↔ `[x]`, in a
+/// `plan\*.md` page's own `## Tasks` (Round 34 F, now approved).** No
+/// prose, no new lines, no reordering, and still never `PLAN.md` or
+/// `CHARTER.md`. Everything else here opens the real file with
+/// `open_url.dart` instead of writing anything.
 library;
 
+import 'package:asa/core/area.dart';
+import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
+import 'package:asa/core/task.dart';
 import 'package:flutter/material.dart';
 
 class PlanView extends StatefulWidget {
   const PlanView({
     required this.plan,
+    required this.areas,
     required this.decisions,
     required this.projectSourceFile,
+    required this.homeTasks,
+    this.strategy,
+    this.onOpenStrategy,
+    this.onToggleTask,
     super.key,
   });
 
   final Plan plan;
+
+  /// Every `plan\<area>.md` page, already parsed — Round 34/A. Empty for a
+  /// project with no `plan\` folder, which keeps today's Round 27 screen.
+  final List<Area> areas;
 
   /// Already loaded by `ProjectScreen` for the Decisions tab — reused here
   /// so a "what changed" ADR chip can open the real decision file instead
@@ -40,8 +55,27 @@ class PlanView extends StatefulWidget {
   /// A Round has no file of its own — the project's own note is where its
   /// `## Roadmap` entry actually lives, so a Round chip opens this rather
   /// than `PLAN.md` too. Same fallback when an ADR chip's number cannot be
-  /// found in [decisions].
+  /// found in [decisions]. Also "Not in an area"'s own file, and where its
+  /// checkbox ticks land.
   final String projectSourceFile;
+
+  /// The project's own home-note tasks — Round 34/B's "Not in an area"
+  /// row, the last one in the area list, same tasks `TasksView` already
+  /// shows, read once by `ProjectScreen` rather than re-read here.
+  final List<Task> homeTasks;
+
+  /// Null when the project has no `CHARTER.md` — "What this project is
+  /// for" only shows once there is a real strategy to point at.
+  final Strategy? strategy;
+
+  /// Switches `ProjectScreen`'s own tab to Strategy — null in a test that
+  /// does not need it.
+  final VoidCallback? onOpenStrategy;
+
+  /// Round 34/F — ticks one task, in [Area.sourceFile] or
+  /// [projectSourceFile] (for "Not in an area"). Null keeps every checkbox
+  /// here read-only, for a caller not ready to wire the write path yet.
+  final Future<void> Function(String sourceFile, Task task)? onToggleTask;
 
   @override
   State<PlanView> createState() => _PlanViewState();
@@ -56,8 +90,15 @@ class _PlanViewState extends State<PlanView> {
   // every group is collapsed by default without having to know every
   // group's id in advance.
   final Set<int> _expanded = {};
+
+  /// Areas keyed by [Area.sourceFile], not `identityHashCode` — see
+  /// `_areaRow`'s own comment: ticking a task reloads the project and
+  /// re-parses a brand new `Area`, and identity would not survive that.
+  final Set<String> _expandedAreas = {};
   bool _olderChangesShown = false;
   bool _moreGroupsShown = false;
+  bool _overviewExpanded = false;
+  bool _notInAnAreaExpanded = false;
 
   // Persona-check, re-run against this real screen: showing all ~24 of a
   // real project's top-level groups at once — even one line each,
@@ -71,6 +112,26 @@ class _PlanViewState extends State<PlanView> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.areas.isEmpty) return _legacyBody();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.strategy != null && !widget.strategy!.isEmpty) ...[
+          _whatThisProjectIsFor(widget.strategy!),
+          const SizedBox(height: 4),
+        ],
+        for (final area in widget.areas) _areaRow(area),
+        _notInAnAreaRow(),
+        const SizedBox(height: 16),
+        _overviewRow(),
+      ],
+    );
+  }
+
+  /// Round 27's own screen, unchanged — a project with no `plan\` folder
+  /// (`asa` today) never sees anything Round 34 added.
+  Widget _legacyBody() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -83,6 +144,508 @@ class _PlanViewState extends State<PlanView> {
         _strategyPointer(),
         const SizedBox(height: 12),
         _readOnlyNote(),
+      ],
+    );
+  }
+
+  // --- What this project is for ---------------------------------------
+
+  Widget _whatThisProjectIsFor(Strategy strategy) {
+    final line = strategy.objectives.isNotEmpty
+        ? stripCodeSpanMarkers(
+            stripEmphasisMarkers(strategy.objectives.first.title),
+          )
+        : stripCodeSpanMarkers(stripEmphasisMarkers(strategy.origin ?? ''));
+
+    return InkWell(
+      onTap: widget.onOpenStrategy,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                'What this project is for: $line',
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Strategy →',
+              style: TextStyle(
+                color: Colors.blue.shade700,
+                fontSize: 11,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- One area's row ---------------------------------------------------
+
+  Widget _areaRow(Area area) {
+    // Keyed by sourceFile, not identityHashCode — ticking a task inside
+    // an area reloads the whole project, which re-parses a brand new
+    // Area object from disk. identityHashCode would change on every
+    // reload and silently collapse the row that was just ticked open;
+    // the file path is the one thing that stays the same.
+    final expanded = _expandedAreas.contains(area.sourceFile);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() {
+              if (expanded) {
+                _expandedAreas.remove(area.sourceFile);
+              } else {
+                _expandedAreas.add(area.sourceFile);
+              }
+            }),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  expanded ? Icons.expand_more : Icons.chevron_right,
+                  size: 16,
+                  color: Colors.grey.shade600,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            area.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${area.doneCount} of ${area.totalCount}',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (area.summary != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          stripCodeSpanMarkers(
+                            stripEmphasisMarkers(area.summary!),
+                          ),
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Expanded(child: _progressBar(area)),
+                          const SizedBox(width: 8),
+                          Text(
+                            _resultLabel(area),
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.only(left: 22, top: 8),
+              child: _areaDetail(area),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _progressBar(Area area) {
+    final total = area.totalCount;
+    final fraction = total == 0 ? 0.0 : area.doneCount / total;
+    return SizedBox(
+      height: 6,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: LinearProgressIndicator(
+          value: total == 0 ? 0 : fraction,
+          backgroundColor: const Color(0xFFEDEEF1),
+          valueColor: const AlwaysStoppedAnimation(Color(0xFF2A7355)),
+        ),
+      ),
+    );
+  }
+
+  String _resultLabel(Area area) {
+    for (final result in area.results) {
+      if (result.date != null) return 'result ${_humanDate(result.date!)}';
+    }
+    return 'no result yet';
+  }
+
+  Widget _areaDetail(Area area) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _textField('Goal', area.goal, empty: 'No goal yet'),
+        _textField('Plan', area.planText, empty: 'No plan yet'),
+        _tasksField(area.tasks, sourceFile: area.sourceFile),
+        _resultsField(area.results),
+        _decisionsField(area.decisionNumbers),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () => openUrl(area.sourceFile),
+          child: Text(
+            'open the page ↗',
+            style: TextStyle(
+              color: Colors.blue.shade700,
+              fontSize: 11,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _textField(String label, String? value, {required String empty}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel(label),
+          Text(
+            value == null || value.isEmpty
+                ? empty
+                : stripCodeSpanMarkers(stripEmphasisMarkers(value)),
+            style: TextStyle(
+              color: value == null || value.isEmpty
+                  ? Colors.grey.shade500
+                  : Colors.black87,
+              fontStyle: value == null || value.isEmpty
+                  ? FontStyle.italic
+                  : FontStyle.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: Colors.grey.shade500,
+        ),
+      ),
+    );
+  }
+
+  Widget _tasksField(List<Task> tasks, {required String sourceFile}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel('Tasks'),
+          if (tasks.isEmpty)
+            Text(
+              'Nothing yet',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            for (final task in tasks) _taskRow(task, sourceFile: sourceFile),
+        ],
+      ),
+    );
+  }
+
+  Widget _taskRow(Task task, {required String sourceFile}) {
+    final canToggle = widget.onToggleTask != null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: task.done,
+              onChanged: canToggle
+                  ? (_) => widget.onToggleTask!(sourceFile, task)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+              style: TextStyle(
+                fontSize: 13,
+                color: task.done ? Colors.grey.shade500 : Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultsField(List<AreaResult> results) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel('Results'),
+          if (results.isEmpty)
+            Text(
+              'Nothing yet',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            for (final result in results) _resultRow(result),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultRow(AreaResult result) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (result.date != null) ...[
+            SizedBox(
+              width: 60,
+              child: Text(
+                _humanDate(result.date!),
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+          Expanded(
+            child: Text(result.text, style: const TextStyle(fontSize: 12.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _decisionsField(List<String> decisionNumbers) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel('Decisions'),
+          if (decisionNumbers.isEmpty)
+            Text(
+              'None yet',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final number in decisionNumbers) _adrChip(number),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _adrChip(String number) {
+    return InkWell(
+      onTap: () => openUrl(_decisionSourceFor(number)),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE6ECF7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'ADR $number',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2F5FA6),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _decisionSourceFor(String number) {
+    for (final result in widget.decisions) {
+      if (result.decision?.number == number) return result.decision!.sourceFile;
+    }
+    return widget.projectSourceFile;
+  }
+
+  // --- Not in an area ----------------------------------------------------
+
+  Widget _notInAnAreaRow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () =>
+                setState(() => _notInAnAreaExpanded = !_notInAnAreaExpanded),
+            child: Row(
+              children: [
+                Icon(
+                  _notInAnAreaExpanded
+                      ? Icons.expand_more
+                      : Icons.chevron_right,
+                  size: 16,
+                  color: Colors.grey.shade600,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Not in an area',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.homeTasks.where((t) => !t.done).length} open',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (_notInAnAreaExpanded)
+            Padding(
+              padding: const EdgeInsets.only(left: 22, top: 6),
+              child: widget.homeTasks.isEmpty
+                  ? Text(
+                      'Nothing yet',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final task in widget.homeTasks)
+                          _taskRow(task, sourceFile: widget.projectSourceFile),
+                      ],
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // --- Overview — What changed and the outline, folded one level down --
+
+  Widget _overviewRow() {
+    if (!widget.plan.pages.any((p) => p.aspect == null)) {
+      return const SizedBox.shrink();
+    }
+
+    final entries = _changeEntries(widget.plan);
+    final summary = entries.isEmpty
+        ? 'nothing dated yet'
+        : 'last changed ${_humanDate(entries.first.date)}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _overviewExpanded = !_overviewExpanded),
+          child: Row(
+            children: [
+              Icon(
+                _overviewExpanded ? Icons.expand_more : Icons.chevron_right,
+                size: 16,
+                color: Colors.grey.shade600,
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Overview',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                summary,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        if (_overviewExpanded)
+          Padding(
+            padding: const EdgeInsets.only(left: 22, top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _label('What changed'),
+                _whatChanged(),
+                const SizedBox(height: 16),
+                _label('The plan'),
+                ..._outline(),
+                const SizedBox(height: 12),
+                _readOnlyNote(),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -266,6 +829,11 @@ class _PlanViewState extends State<PlanView> {
   List<Widget> _outline() {
     final all = <Widget>[];
     for (final page in widget.plan.pages) {
+      // Round 34 — every `plan\*.md` page is now an area, already drawn by
+      // its own row above; the Overview's outline only ever repeats the
+      // front page's own sections, never an area a second time.
+      if (page.aspect != null && widget.areas.isNotEmpty) continue;
+
       final roots = _sectionTree(page.sections);
       if (page.aspect == null) {
         for (final node in roots) {

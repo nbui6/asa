@@ -2,8 +2,11 @@
 // memory (Round 26 already proves parsing against real files), so these
 // only check what this screen does with data it is handed.
 
+import 'package:asa/core/area.dart';
+import 'package:asa/core/charter.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/plan.dart';
+import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/plan_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +21,9 @@ Future<void> _pump(WidgetTester tester, Plan plan) async {
       home: Scaffold(
         body: PlanView(
           plan: plan,
+          areas: const [],
           decisions: const [],
+          homeTasks: const [],
           projectSourceFile: 'asa.md',
         ),
       ),
@@ -248,5 +253,253 @@ void main() {
         expect(find.text('+5'), findsOneWidget);
       },
     );
+  });
+
+  group(r'Round 34/B — areas, when a project has any plan\*.md page', () {
+    Area area({
+      String name = 'Sales',
+      String sourceFile = 'plan/sales.md',
+      String? summary = 'The partner registers and closes its own deals.',
+      String? goal = 'Serves Objective 1.',
+      String? planText = 'Two joint pitches a month.',
+      List<Task> tasks = const [],
+      List<AreaResult> results = const [],
+      List<String> decisionNumbers = const [],
+    }) {
+      return Area(
+        name: name,
+        sourceFile: sourceFile,
+        summary: summary,
+        goal: goal,
+        planText: planText,
+        tasks: tasks,
+        results: results,
+        decisionNumbers: decisionNumbers,
+        objectiveNumbers: const ['1'],
+      );
+    }
+
+    Future<void> pumpAreas(
+      WidgetTester tester, {
+      required List<Area> areas,
+      List<Task> homeTasks = const [],
+      Strategy? strategy,
+      VoidCallback? onOpenStrategy,
+      Future<void> Function(String, Task)? onToggleTask,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: areas,
+              decisions: const [],
+              homeTasks: homeTasks,
+              strategy: strategy,
+              onOpenStrategy: onOpenStrategy,
+              onToggleTask: onToggleTask,
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('an area row is collapsed by default: name, summary, '
+        'done/total and a result label, no Goal/Plan/Tasks text yet', (
+      tester,
+    ) async {
+      await pumpAreas(
+        tester,
+        areas: [
+          area(
+            tasks: [
+              const Task(rawLine: '- [x] a', text: 'a', done: true),
+              const Task(rawLine: '- [ ] b', text: 'b', done: false),
+            ],
+          ),
+        ],
+      );
+
+      expect(find.text('Sales'), findsOneWidget);
+      expect(
+        find.text('The partner registers and closes its own deals.'),
+        findsOneWidget,
+      );
+      expect(find.text('1 of 2'), findsOneWidget);
+      expect(find.text('no result yet'), findsOneWidget);
+      expect(find.text('Serves Objective 1.'), findsNothing);
+    });
+
+    testWidgets('opening a row shows Goal, Plan, Tasks, Results and '
+        'Decisions, in that order', (tester) async {
+      await pumpAreas(
+        tester,
+        areas: [
+          area(
+            tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
+            results: [
+              AreaResult(date: DateTime(2026, 9, 20), text: 'A result.'),
+            ],
+            decisionNumbers: ['0003'],
+          ),
+        ],
+      );
+
+      await tester.tap(find.text('Sales'));
+      await tester.pump();
+
+      expect(find.text('Serves Objective 1.'), findsOneWidget);
+      expect(find.text('Two joint pitches a month.'), findsOneWidget);
+      expect(find.text('a'), findsOneWidget);
+      expect(find.text('A result.'), findsOneWidget);
+      expect(find.text('ADR 0003'), findsOneWidget);
+
+      final goalIndex = tester.getTopLeft(find.text('GOAL')).dy;
+      final planIndex = tester.getTopLeft(find.text('PLAN')).dy;
+      final tasksIndex = tester.getTopLeft(find.text('TASKS')).dy;
+      final resultsIndex = tester.getTopLeft(find.text('RESULTS')).dy;
+      final decisionsIndex = tester.getTopLeft(find.text('DECISIONS')).dy;
+      expect(goalIndex, lessThan(planIndex));
+      expect(planIndex, lessThan(tasksIndex));
+      expect(tasksIndex, lessThan(resultsIndex));
+      expect(resultsIndex, lessThan(decisionsIndex));
+    });
+
+    testWidgets('missing parts are honest absence, never invented text', (
+      tester,
+    ) async {
+      await pumpAreas(
+        tester,
+        areas: [
+          area(summary: null, goal: null, planText: null),
+        ],
+      );
+      await tester.tap(find.text('Sales'));
+      await tester.pump();
+
+      expect(find.text('No goal yet'), findsOneWidget);
+      expect(find.text('No plan yet'), findsOneWidget);
+      expect(find.text('Nothing yet'), findsWidgets); // Tasks and Results
+      expect(find.text('None yet'), findsOneWidget); // Decisions
+    });
+
+    testWidgets("ticking a task calls onToggleTask with the area's own "
+        'sourceFile', (tester) async {
+      String? calledWith;
+      Task? calledTask;
+      const task = Task(rawLine: '- [ ] b', text: 'b', done: false);
+
+      await pumpAreas(
+        tester,
+        areas: [area(tasks: [task])],
+        onToggleTask: (sourceFile, t) async {
+          calledWith = sourceFile;
+          calledTask = t;
+        },
+      );
+      await tester.tap(find.text('Sales'));
+      await tester.pump();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
+      expect(calledWith, 'plan/sales.md');
+      expect(calledTask, task);
+    });
+
+    testWidgets(
+      '"Not in an area" is the last row — the home note\'s own ## Tasks, '
+      'open count shown collapsed',
+      (tester) async {
+        await pumpAreas(
+          tester,
+          areas: [area()],
+          homeTasks: [
+            const Task(rawLine: '- [ ] c', text: 'c', done: false),
+            const Task(rawLine: '- [x] d', text: 'd', done: true),
+          ],
+        );
+
+        expect(find.text('Not in an area'), findsOneWidget);
+        expect(find.text('1 open'), findsOneWidget);
+        expect(find.text('c'), findsNothing);
+
+        await tester.tap(find.text('Not in an area'));
+        await tester.pump();
+        expect(find.text('c'), findsOneWidget);
+        expect(find.text('d'), findsOneWidget);
+      },
+    );
+
+    testWidgets('"What this project is for" shows the first objective and '
+        'opens Strategy on tap — only when a real strategy exists', (
+      tester,
+    ) async {
+      var opened = false;
+      await pumpAreas(
+        tester,
+        areas: [area()],
+        strategy: const Strategy(
+          origin: 'o',
+          whoItsFor: 'w',
+          painPoints: 'p',
+          objectives: [
+            Objective(
+              title: 'Grow the partner channel',
+              evidence: 'e',
+              sentence: 's',
+            ),
+          ],
+        ),
+        onOpenStrategy: () => opened = true,
+      );
+
+      expect(
+        find.textContaining('What this project is for: Grow the partner '
+            'channel'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Strategy →'));
+      expect(opened, isTrue);
+    });
+
+    testWidgets('no CHARTER.md — "What this project is for" does not show '
+        'at all', (tester) async {
+      await pumpAreas(tester, areas: [area()]);
+      expect(find.textContaining('What this project is for'), findsNothing);
+    });
+
+    testWidgets('Overview only shows when PLAN.md itself exists as a page', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(
+                pages: [
+                  PlanPage(
+                    aspect: null,
+                    sourceFile: 'PLAN.md',
+                    sections: [],
+                    links: [],
+                  ),
+                ],
+              ),
+              areas: [area()],
+              decisions: const [],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Overview'), findsOneWidget);
+    });
+
+    testWidgets('no PLAN.md at all — no Overview row', (tester) async {
+      await pumpAreas(tester, areas: [area()]);
+      expect(find.text('Overview'), findsNothing);
+    });
   });
 }
