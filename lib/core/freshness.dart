@@ -36,6 +36,11 @@ Future<DateTime?> _newestModification(Directory dir) async {
         newest = sub;
       }
     } else if (entry is File) {
+      // Round 35/A — the one file Asa's own onboarding process copies into
+      // every folder, not something a real session touched. Every row read
+      // "1 day" the day it was rewritten into all 13 folders at once,
+      // answering nothing about which project is actually stuck.
+      if (name == 'HOW-ASA-WORKS.md') continue;
       final modified = entry.statSync().modified;
       if (newest == null || modified.isAfter(newest)) newest = modified;
     }
