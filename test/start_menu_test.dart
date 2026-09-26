@@ -29,7 +29,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.rocket_launch_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.text('Copy opener for Claude'), findsOneWidget);
+    expect(find.text('Copy opener'), findsOneWidget);
     expect(find.text('Open folder'), findsOneWidget);
     expect(find.text('Open code in VS Code'), findsOneWidget);
   });

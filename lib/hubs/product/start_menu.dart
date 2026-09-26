@@ -39,7 +39,7 @@ class StartMenu extends StatelessWidget {
       itemBuilder: (context) => [
         const PopupMenuItem(
           value: _StartAction.copyOpener,
-          child: Text('Copy opener for Claude'),
+          child: Text('Copy opener'),
         ),
         const PopupMenuItem(
           value: _StartAction.openFolder,

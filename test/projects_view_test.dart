@@ -2,8 +2,11 @@
 // note had a whole paragraph as its status; this proves the pill clips
 // instead of widening or wrapping the card.
 
+import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/projects_scan.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,4 +94,112 @@ void main() {
       expect(find.text(status), findsOneWidget);
     }
   });
+
+  testWidgets(
+    'Round 33/E — a child and a grandchild of a work-bucket project both '
+    'render, not just the root',
+    (tester) async {
+      Project named(String name) => Project(
+        name: name,
+        status: 'building',
+        milestone: '',
+        nextStep: '',
+        repoPath: '',
+        updated: '2026-09-25',
+        sourceFile: '$name/$name.md',
+      );
+
+      final grandchild = ProjectNode(
+        project: named('Grandchild'),
+        folder: 'grandchild',
+      );
+      final child = ProjectNode(
+        project: named('Child'),
+        folder: 'child',
+        children: [grandchild],
+      );
+      final root = ProjectNode(
+        project: named('Parent'),
+        folder: 'parent',
+        children: [child],
+      );
+
+      await _pump(tester, [root]);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Parent'), findsOneWidget);
+      expect(find.text('Child'), findsOneWidget);
+      expect(find.text('Grandchild'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    "Round 33/E, cp0's own done-when: every scanned project appears "
+    'exactly once, work bucket and Other alike',
+    (tester) async {
+      const git = GitState(command: '', rawOutput: '');
+      ProjectSummary summary({
+        required String folder,
+        required String name,
+        String? parent,
+      }) {
+        return ProjectSummary(
+          project: Project(
+            name: name,
+            status: 'building',
+            milestone: '',
+            nextStep: '',
+            repoPath: '',
+            updated: '2026-09-25',
+            sourceFile: '$folder/$name.md',
+            parent: parent,
+          ),
+          git: git,
+          folder: folder,
+        );
+      }
+
+      final scanned = [
+        summary(folder: 'work-root', name: 'Work root'),
+        summary(folder: 'work-child', name: 'Work child', parent: 'work-root'),
+        summary(folder: 'other', name: 'Other project'),
+        summary(folder: 'asa-like', name: 'Asa-like', parent: 'other'),
+        summary(
+          folder: 'kit-like',
+          name: 'Kit-like',
+          parent: 'asa-like',
+        ), // Other's grandchild — the real vibe-coding-kit shape.
+      ];
+      final forest = buildProjectForest(scanned);
+      final split = splitByBucket(forest);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProjectsView(
+              forest: forest,
+              onOpenProject: (_) {},
+              onAssignTask: (_, _) async {},
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Work root'), findsOneWidget);
+      expect(find.text('Work child'), findsOneWidget);
+      // Other's own subtree is collapsed by default — expand it first,
+      // same as a person would, rather than assert on hidden widgets.
+      expect(find.text('Other project'), findsOneWidget);
+      await tester.tap(find.text('Other project'));
+      await tester.pumpAndSettle();
+      expect(find.text('Asa-like'), findsOneWidget);
+      expect(find.text('Kit-like'), findsOneWidget);
+
+      // Every one of the 5 scanned projects is a root or nested exactly
+      // once — never both a root and someone's child at the same time.
+      expect(split.work.length, 1);
+      expect(countDescendants(split.other!), 2);
+    },
+  );
 }

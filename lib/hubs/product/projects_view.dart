@@ -137,6 +137,22 @@ class _ProjectsViewState extends State<ProjectsView> {
   }
 
   Widget _row(ProjectNode node, {required int depth}) {
+    // Round 33/E — a child or grandchild wasn't drawn at all before this:
+    // `_row` only ever rendered its own node, and the one caller that
+    // walked `node.children` (`_otherGroup`) only went one level deep.
+    // Recursing here, once, makes every depth show up everywhere a forest
+    // is walked — the work bucket's own children included, which never
+    // had a caller for them before.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _card(node, depth: depth),
+        for (final child in node.children) _row(child, depth: depth + 1),
+      ],
+    );
+  }
+
+  Widget _card(ProjectNode node, {required int depth}) {
     final project = node.project;
     final jira = jiraLabel(project.jira);
     final deadline = humanizeDeadline(project.deadline);
@@ -148,15 +164,11 @@ class _ProjectsViewState extends State<ProjectsView> {
       project.status,
       DateTime.now(),
     );
-    // Round 32/A — the deadline when there is one, otherwise the age since
-    // the project was actually touched (git, or the newest file on disk).
     final freshness = freshnessText(
       humanizedDeadline: deadline,
       lastTouched: node.lastTouched,
       now: DateTime.now(),
     );
-    // Round 32/B, ADR 0020 — the first open, unparked task; the typed
-    // field only when there is no task; honest absence otherwise.
     final nextStep = effectiveNextStep(project.tasks, project.nextStep);
 
     return Padding(
