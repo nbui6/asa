@@ -141,7 +141,13 @@ String? effectiveNextStep(
 /// needs this, for the small area chip next to the task text. Null area
 /// means the home note's own task, the typed field, or honest absence —
 /// never an area, so a caller never has to guess which case it got.
-({String? text, Area? area}) effectiveNextStepWithArea(
+///
+/// **`task` — round-36 §3, L3/L9/L10:** the real [Task] the text came
+/// from, when it came from a real task at all (home or area) — null for
+/// the typed field or honest absence, same as `area`. A caller that needs
+/// to highlight the exact row just tapped, or name it in a clipboard
+/// opener, needs the task itself, not only its already-stripped text.
+({String? text, Area? area, Task? task}) effectiveNextStepWithArea(
   List<Task> tasks,
   String typedNextStep, {
   List<Area> areas = const [],
@@ -151,6 +157,7 @@ String? effectiveNextStep(
       return (
         text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
         area: null,
+        task: task,
       );
     }
   }
@@ -161,14 +168,21 @@ String? effectiveNextStep(
         return (
           text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
           area: area,
+          task: task,
         );
       }
     }
   }
 
   final typed = typedNextStep.trim();
-  if (typed.isEmpty || typed == '(not set)') return (text: null, area: null);
-  return (text: stripCodeSpanMarkers(stripEmphasisMarkers(typed)), area: null);
+  if (typed.isEmpty || typed == '(not set)') {
+    return (text: null, area: null, task: null);
+  }
+  return (
+    text: stripCodeSpanMarkers(stripEmphasisMarkers(typed)),
+    area: null,
+    task: null,
+  );
 }
 
 /// A project forest's roots, split into the flat "work" list and the

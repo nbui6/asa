@@ -262,6 +262,30 @@ void main() {
         expect(effectiveNextStepWithArea(const [], 'Typed field').area, isNull);
         expect(effectiveNextStepWithArea(const [], '').area, isNull);
       });
+
+      test('a home task also names its own Task, by identity — round-36 '
+          "§3, L3/L9/L10's highlight and opener text need the real row, "
+          'not just its text', () {
+        final home = task(text: 'Home task');
+        expect(effectiveNextStepWithArea([home], 'Typed').task, same(home));
+      });
+
+      test('an area task also names its own Task, by identity', () {
+        final sales = task(text: 'Sales task');
+        final result = effectiveNextStepWithArea(
+          const [],
+          'Typed',
+          areas: [
+            area(name: 'Sales', tasks: [sales]),
+          ],
+        );
+        expect(result.task, same(sales));
+      });
+
+      test('the typed field and honest absence both name no task', () {
+        expect(effectiveNextStepWithArea(const [], 'Typed field').task, isNull);
+        expect(effectiveNextStepWithArea(const [], '').task, isNull);
+      });
     });
   });
 
