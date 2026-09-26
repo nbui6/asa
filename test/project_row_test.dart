@@ -159,7 +159,10 @@ void main() {
       test("no home tasks — the first area's first open task wins over "
           'the typed field', () {
         final areas = [
-          area(name: 'Sales', tasks: [task(text: 'Sales task')]),
+          area(
+            name: 'Sales',
+            tasks: [task(text: 'Sales task')],
+          ),
         ];
         expect(
           effectiveNextStep(const [], 'Typed field', areas: areas),
@@ -169,7 +172,10 @@ void main() {
 
       test("the home note's own open task still wins over any area", () {
         final areas = [
-          area(name: 'Sales', tasks: [task(text: 'Sales task')]),
+          area(
+            name: 'Sales',
+            tasks: [task(text: 'Sales task')],
+          ),
         ];
         expect(
           effectiveNextStep([task(text: 'Home task')], 'Typed', areas: areas),
@@ -184,7 +190,10 @@ void main() {
             name: 'Finance',
             tasks: [task(text: 'Finance done', done: true)],
           ),
-          area(name: 'Sales', tasks: [task(text: 'Sales task')]),
+          area(
+            name: 'Sales',
+            tasks: [task(text: 'Sales task')],
+          ),
         ];
         expect(
           effectiveNextStep(const [], 'Typed', areas: areas),
@@ -196,7 +205,10 @@ void main() {
         final areas = [
           area(
             name: 'Sales',
-            tasks: [task(text: 'Parked', parked: true), task(text: 'Real')],
+            tasks: [
+              task(text: 'Parked', parked: true),
+              task(text: 'Real'),
+            ],
           ),
         ];
         expect(effectiveNextStep(const [], 'Typed', areas: areas), 'Real');
@@ -205,7 +217,10 @@ void main() {
       test('every area task done or parked falls back to the typed '
           'field, then to null', () {
         final areas = [
-          area(name: 'Sales', tasks: [task(text: 'Done', done: true)]),
+          area(
+            name: 'Sales',
+            tasks: [task(text: 'Done', done: true)],
+          ),
         ];
         expect(
           effectiveNextStep(const [], 'Typed field', areas: areas),
@@ -215,10 +230,7 @@ void main() {
       });
 
       test("no areas at all — today's exact two-step chain, unchanged", () {
-        expect(
-          effectiveNextStep(const [], 'Typed field'),
-          'Typed field',
-        );
+        expect(effectiveNextStep(const [], 'Typed field'), 'Typed field');
       });
     });
   });

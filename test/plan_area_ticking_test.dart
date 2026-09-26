@@ -43,13 +43,11 @@ void main() {
     tempDir = Directory.systemTemp.createTempSync('asa-area-ticking-test-');
     folder = tempDir.path;
     final name = tempDir.path.split(Platform.pathSeparator).last;
-    File(
-      '${tempDir.path}${Platform.pathSeparator}$name.md',
-    ).writeAsStringSync(_homeNote);
+    File('${tempDir.path}${Platform.pathSeparator}$name.md')
+        .writeAsStringSync(_homeNote);
 
-    final planDir = Directory(
-      '${tempDir.path}${Platform.pathSeparator}plan',
-    )..createSync();
+    final planDir = Directory('${tempDir.path}${Platform.pathSeparator}plan')
+      ..createSync();
     areaFile = '${planDir.path}${Platform.pathSeparator}1-sales.md';
     File(areaFile).writeAsStringSync(_areaPage);
 

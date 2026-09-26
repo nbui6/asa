@@ -20,8 +20,7 @@ class FakeFileAccess implements FileAccess {
   final Map<String, List<String>> folders;
 
   @override
-  Future<List<String>> listFiles(String folder) async =>
-      folders[folder] ?? [];
+  Future<List<String>> listFiles(String folder) async => folders[folder] ?? [];
 
   @override
   Future<String> readFile(String path) async {
@@ -204,15 +203,17 @@ void main() {
       expect(groups.single.areaGroups.single.name, 'Sales');
     });
 
-    test(r'no plan\ folder at all — the existing behaviour, unchanged', (
-    ) async {
-      final project = _summary(folder: 'projects/demo', name: 'demo');
-      final files = FakeFileAccess({
-        project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
-      });
+    test(
+      r'no plan\ folder at all — the existing behaviour, unchanged',
+      () async {
+        final project = _summary(folder: 'projects/demo', name: 'demo');
+        final files = FakeFileAccess({
+          project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
+        });
 
-      final groups = await buildTaskGroups([project], files);
-      expect(groups.single.areaGroups, isEmpty);
-    });
+        final groups = await buildTaskGroups([project], files);
+        expect(groups.single.areaGroups, isEmpty);
+      },
+    );
   });
 }

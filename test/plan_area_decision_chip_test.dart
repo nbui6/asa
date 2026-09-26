@@ -54,26 +54,21 @@ void main() {
     );
     folder = tempDir.path;
     final name = tempDir.path.split(Platform.pathSeparator).last;
-    File(
-      '${tempDir.path}${Platform.pathSeparator}$name.md',
-    ).writeAsStringSync(_homeNote);
+    File('${tempDir.path}${Platform.pathSeparator}$name.md')
+        .writeAsStringSync(_homeNote);
 
-    final planDir = Directory(
-      '${tempDir.path}${Platform.pathSeparator}plan',
-    )..createSync();
-    File(
-      '${planDir.path}${Platform.pathSeparator}sales.md',
-    ).writeAsStringSync(_areaPage);
-    File(
-      '${planDir.path}${Platform.pathSeparator}finance.md',
-    ).writeAsStringSync(_secondAreaPage);
+    final planDir = Directory('${tempDir.path}${Platform.pathSeparator}plan')
+      ..createSync();
+    File('${planDir.path}${Platform.pathSeparator}sales.md')
+        .writeAsStringSync(_areaPage);
+    File('${planDir.path}${Platform.pathSeparator}finance.md')
+        .writeAsStringSync(_secondAreaPage);
 
     final decisionsDir = Directory(
       '${tempDir.path}${Platform.pathSeparator}decisions',
     )..createSync();
-    File(
-      '${decisionsDir.path}${Platform.pathSeparator}0003-partner-portal.md',
-    ).writeAsStringSync(_decisionFile);
+    File('${decisionsDir.path}${Platform.pathSeparator}0003-partner-portal.md')
+        .writeAsStringSync(_decisionFile);
   });
 
   tearDown(() => tempDir.deleteSync(recursive: true));
@@ -105,23 +100,18 @@ void main() {
     },
   );
 
-  testWidgets(
-    'one decision named by two areas gets two chips, one per area, '
-    'neither merged nor dropped',
-    (tester) async {
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(home: ProjectScreen(folder: folder)),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-      });
-      await tester.pumpAndSettle();
+  testWidgets('one decision named by two areas gets two chips, one per area, '
+      'neither merged nor dropped', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(MaterialApp(home: ProjectScreen(folder: folder)));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    });
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Decisions'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Decisions'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Sales'), findsOneWidget);
-      expect(find.text('Finance'), findsOneWidget);
-    },
-  );
+    expect(find.text('Sales'), findsOneWidget);
+    expect(find.text('Finance'), findsOneWidget);
+  });
 }

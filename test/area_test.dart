@@ -143,10 +143,8 @@ void main() {
   });
 
   group('progress counts a checkbox anywhere on the page', () {
-    test(
-      "round-34.md's own note: on asa, Round checkboxes named in the "
-      "page count too, because they're checkboxes like any other",
-      () {
+    test("round-34.md's own note: on asa, Round checkboxes named in the "
+        "page count too, because they're checkboxes like any other", () {
       final area = parseArea(
         '# x\n\n## Plan\n- [x] A Round-shaped checkbox outside ## Tasks\n\n'
         '## Tasks\n- [ ] A real task\n',
@@ -191,18 +189,14 @@ void main() {
     });
 
     test('sorted by number prefix first, then by name', () async {
-      final planDir = Directory(
-        '${tempDir.path}${Platform.pathSeparator}plan',
-      )..createSync();
-      File(
-        '${planDir.path}${Platform.pathSeparator}2-finance.md',
-      ).writeAsStringSync('# Finance');
-      File(
-        '${planDir.path}${Platform.pathSeparator}1-sales.md',
-      ).writeAsStringSync('# Sales');
-      File(
-        '${planDir.path}${Platform.pathSeparator}enablement.md',
-      ).writeAsStringSync('# Enablement');
+      final planDir = Directory('${tempDir.path}${Platform.pathSeparator}plan')
+        ..createSync();
+      File('${planDir.path}${Platform.pathSeparator}2-finance.md')
+          .writeAsStringSync('# Finance');
+      File('${planDir.path}${Platform.pathSeparator}1-sales.md')
+          .writeAsStringSync('# Sales');
+      File('${planDir.path}${Platform.pathSeparator}enablement.md')
+          .writeAsStringSync('# Enablement');
 
       final areas = await readAreas(tempDir.path);
       expect(areas.map((a) => a.name).toList(), [

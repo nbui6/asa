@@ -291,9 +291,7 @@ class _TasksViewState extends State<TasksView> {
           Row(
             children: [
               IconButton(
-                icon: Icon(
-                  collapsed ? Icons.chevron_right : Icons.expand_more,
-                ),
+                icon: Icon(collapsed ? Icons.chevron_right : Icons.expand_more),
                 tooltip: collapsed
                     ? 'Expand this area'
                     : 'Collapse this area — click again to reopen',

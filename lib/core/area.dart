@@ -120,9 +120,9 @@ Area parseArea(
   // this reference sits in still matters elsewhere (the Plan tab's own
   // chip), so this reads the whole page, same as deriveLinks always does.
   final decisionNumbers = _dedupe(
-    deriveLinks(
-      pageText,
-    ).where((l) => l.kind == PlanLinkKind.adr).map((l) => l.target),
+    deriveLinks(pageText)
+        .where((l) => l.kind == PlanLinkKind.adr)
+        .map((l) => l.target),
   );
 
   return Area(
@@ -146,7 +146,9 @@ List<String> _dedupe(Iterable<String> values) {
   ];
 }
 
-final RegExp _datedResultLine = RegExp(r'^-\s*(\d{4}-\d{2}-\d{2})\s*[—-]\s*(.*)$');
+final RegExp _datedResultLine = RegExp(
+  r'^-\s*(\d{4}-\d{2}-\d{2})\s*[—-]\s*(.*)$',
+);
 
 List<AreaResult> _parseResults(String? sectionBody) {
   if (sectionBody == null) return const [];
@@ -216,10 +218,11 @@ Future<List<Area>> readAreas(String projectFolder) async {
 /// already uses, real and fake alike.
 Future<List<Area>> readAreasVia(String projectFolder, FileAccess files) async {
   final planDir = '$projectFolder/plan';
-  final names = (await files.listFiles(planDir))
-      .where((name) => name.toLowerCase().endsWith('.md'))
-      .toList()
-    ..sort((a, b) => _compareAspects(_stemOf(a), _stemOf(b)));
+  final names =
+      (await files.listFiles(planDir))
+          .where((name) => name.toLowerCase().endsWith('.md'))
+          .toList()
+        ..sort((a, b) => _compareAspects(_stemOf(a), _stemOf(b)));
 
   return [
     for (final name in names)

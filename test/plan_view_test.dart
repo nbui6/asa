@@ -371,9 +371,7 @@ void main() {
     ) async {
       await pumpAreas(
         tester,
-        areas: [
-          area(summary: null, goal: null, planText: null),
-        ],
+        areas: [area(summary: null, goal: null, planText: null)],
       );
       await tester.tap(find.text('Sales'));
       await tester.pump();
@@ -392,7 +390,9 @@ void main() {
 
       await pumpAreas(
         tester,
-        areas: [area(tasks: [task])],
+        areas: [
+          area(tasks: [task]),
+        ],
         onToggleTask: (sourceFile, t) async {
           calledWith = sourceFile;
           calledTask = t;
@@ -455,8 +455,10 @@ void main() {
       );
 
       expect(
-        find.textContaining('What this project is for: Grow the partner '
-            'channel'),
+        find.textContaining(
+          'What this project is for: Grow the partner '
+          'channel',
+        ),
         findsOneWidget,
       );
       await tester.tap(find.text('Strategy →'));
