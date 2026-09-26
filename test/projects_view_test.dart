@@ -200,6 +200,11 @@ void main() {
       // once — never both a root and someone's child at the same time.
       expect(split.work.length, 1);
       expect(countDescendants(split.other!), 2);
+
+      // Round 35/G — the summary line asa-front2 draws and the build
+      // dropped: N projects, split work vs. not-work, counting a subtree
+      // (child + grandchild) as part of its own root's side of the split.
+      expect(find.text('5 projects · 2 work · 3 not work'), findsOneWidget);
     },
   );
 }

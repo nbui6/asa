@@ -88,14 +88,41 @@ class _ProjectsViewState extends State<ProjectsView> {
       return const _Panel(child: Text('No projects here yet.'));
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final node in split.work) _row(node, depth: 0),
-        if (split.other != null) _otherGroup(split.other!),
-      ],
+    final workCount = split.work.fold(
+      0,
+      (sum, root) => sum + _subtreeSize(root),
+    );
+    final otherCount = split.other == null ? 0 : _subtreeSize(split.other!);
+
+    // Round 35/G — `asa-front2`'s biggest drift: no summary line, and rows
+    // stretched full width instead of a readable column. Centred at a
+    // fixed max width, same fix a long line of prose would get, applied to
+    // a long line of pills and a Start button instead.
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                '${workCount + otherCount} projects · $workCount work · '
+                '$otherCount not work',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
+            ),
+            for (final node in split.work) _row(node, depth: 0),
+            if (split.other != null) _otherGroup(split.other!),
+          ],
+        ),
+      ),
     );
   }
+
+  /// 1 plus every descendant — the whole subtree [node] heads, for the
+  /// summary line's work/not-work counts.
+  int _subtreeSize(ProjectNode node) => 1 + countDescendants(node);
 
   Widget _otherGroup(ProjectNode other) {
     final count = countDescendants(other);
@@ -190,7 +217,12 @@ class _ProjectsViewState extends State<ProjectsView> {
             child: InkWell(
               onTap: () => widget.onOpenProject(node.folder),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                // Round 35/G — `asa-front2` draws a compact row, not a tall
+                // card with a lot of empty space around its own content.
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
