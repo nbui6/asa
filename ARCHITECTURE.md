@@ -1,7 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-14 (Round 16 — the Strategy tab).
+Last checked against the folder tree: 2026-09-25 (Round 32 — freshness, next-step from tasks, the
+status pill's clip guard, and the Start menu).
 
 ---
 
@@ -47,7 +48,11 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change what the projects list shows, the home screen, or the folder picker | `lib/hubs/product/projects_screen.dart` |
 | change what one project's detail screen shows, or its tabs | `lib/hubs/product/project_screen.dart` |
 | change what a single decision's detail screen shows, or the accept/reject "Your call" UI | `lib/hubs/product/decision_detail_screen.dart` |
-| change which folders count as projects, or the staleness sort and labels | `lib/core/projects_scan.dart` |
+| change which folders count as projects, the staleness sort and labels, or a project's derived `lastTouched` (git's last commit, else the newest file mtime in its folder) | `lib/core/projects_scan.dart` |
+| change the right-hand freshness value a row shows (a deadline, or `today`/`1 day`/`N days` since the project was last actually touched) | `lib/core/freshness.dart` |
+| change how a project's next step is derived — the first open, unparked task, else the typed field, else "no next step" (ADR 0020) — or how the status pill's colour bucket is chosen | `lib/core/project_row.dart` |
+| change the exact text the "Start → Copy opener for Claude" action puts on the clipboard | `lib/core/opener.dart` |
+| change the "Start" menu itself (copy opener, open folder, open code in VS Code) shown on a project row or the project screen's header | `lib/hubs/product/start_menu.dart` |
 | change how frontmatter is parsed, including `parent`/`priority`/`deadline`/`jira`/`links` | `lib/core/project.dart` |
 | change how the one-line description is derived from a note's body | `lib/core/project.dart`'s `deriveDescription` |
 | change how a project note is found on disk | `lib/core/project_reader.dart` |
@@ -119,6 +124,12 @@ the moment `roadmap.dart` needed `### Foundation`-style phase headings living in
 the `###` was read as ending the roadmap section, not as part of it. Fixed to stop only at a
 heading of the same level or shallower; checked every existing test fixture across the repo first
 and confirmed none relied on the old, incorrect boundary.
+
+**Found 2026-09-25, Round 32, left alone on purpose:** `projects_scan.dart`'s `daysStale` /
+`sortByStaleness` / `stalenessLabel` are fully unit-tested but called from no screen — `repo-path`
+staleness was never wired in past its tests. Round 32/A builds `freshness.dart` alongside them
+instead of retrofitting this dead code, since consolidating or removing it was outside this round's
+own file list. Whoever touches staleness next should read both before choosing one.
 
 **Found 2026-09-13, Round 20:** the spec for making the five ADR-0007 fields editable said all
 five were "already shown" on `project_screen.dart`. Checked the actual file first: only `status`

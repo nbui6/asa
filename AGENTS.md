@@ -112,6 +112,14 @@ rewrite of what's there. Decided 2026-09-13, after a first pass proposed the opp
 UI creating a bare three-field stub) and Nico said no: *"how about let claude works on the notes
 and make it into Asa properly there?"*
 
+**Copy `HOW-ASA-WORKS.md` into the new folder too, and shape the frontmatter exactly as it
+specifies** — not a close approximation. **The evidence (Round 32, 2026-09-25):** the last project
+onboarded through this section came out with a whole paragraph as its `status` value and `(not
+set)` used as a literal typed string rather than left genuinely absent, and four of the project's
+13 folders had no `HOW-ASA-WORKS.md` at all until that day. Reading `HOW-ASA-WORKS.md`'s own
+frontmatter shape before writing, not after, is what keeps the next onboarded project off this
+same list.
+
 ## Before you touch anything
 
 Read the repo before proposing work for it — check `projects\asa\asa.md`'s Roadmap and

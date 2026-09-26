@@ -15,6 +15,10 @@ same commit as the part it describes.
 
 ## Where we are
 
+**Pick up here — 2026-09-25. The goal narrowed to one thing: a working overview of all 13 projects, kept current by Claude.** Seven steps, who does each and what to expect: `projects\asa\PLAN.md`, "2026-09-25 — the goal narrowed". Research behind it: `projects\asa\RESEARCH-SIMILAR-TOOLS-2026-09-25.md`. **Revised the same day: steps 1, 5 and 6 are now one round, Round 32** (`projects\asa\rounds\round-32.md`). One build, self-tested, then one 20-minute test by Nico. Code: read that file end to end and build it. Round 28 and the rest are parked until after step 7, not cancelled.
+
+**Superseded 2026-09-25 by the line above; kept for history:**
+
 **Pick up here — logged 2026-09-14 so a session in a few days doesn't have to re-derive this.**
 
 1. **Open Asa. This is the actual next step, and it has been waiting all session.** Look at the
@@ -195,8 +199,9 @@ using it means saying why in the commit message.
 
 The standing bar for everything, not restated per session:
 
-> Criteria met - handover check written - reviewed - `CLAUDE.md` updated - **result shown to Nico
-> and a yes back** - committed.
+> Criteria met - handover check written - reviewed - `CLAUDE.md` updated - **for any round that
+> touches `lib/`: release exe rebuilt and confirmed starting outside the IDE** (doc-only commits
+> are exempt) - **result shown to Nico and a yes back** - committed.
 
 **Shown, then approved, then committed - in that order.** Rule 19.
 

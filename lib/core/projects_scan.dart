@@ -7,6 +7,7 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/freshness.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
@@ -17,6 +18,7 @@ class ProjectSummary {
     required this.project,
     required this.git,
     required this.folder,
+    this.lastTouched,
   });
 
   final Project project;
@@ -24,6 +26,12 @@ class ProjectSummary {
 
   /// The folder this project was read from.
   final String folder;
+
+  /// Round 32/A — git's last commit when readable, otherwise the newest
+  /// file modification time inside [folder]. See `freshness.dart`'s
+  /// `lastTouchedOf`, computed once here at scan time rather than per
+  /// row, since it is the same real disk read either way.
+  final DateTime? lastTouched;
 
   /// Whole days since the last commit, or null when git could not say.
   int? daysStale(DateTime now) => git.daysSinceLastCommit(now);
@@ -80,8 +88,14 @@ Future<ScanResult> scanProjects(String projectsRoot) async {
     }
 
     final git = await readGitState(read.project!.repoPath);
+    final touched = await lastTouchedOf(entry.path, git);
     found.add(
-      ProjectSummary(project: read.project!, git: git, folder: entry.path),
+      ProjectSummary(
+        project: read.project!,
+        git: git,
+        folder: entry.path,
+        lastTouched: touched,
+      ),
     );
   }
 

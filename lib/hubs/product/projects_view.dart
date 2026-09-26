@@ -44,13 +44,14 @@
 /// new pill, no new icon, no new line.
 library;
 
-import 'package:asa/core/markdown.dart';
+import 'package:asa/core/freshness.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/phase_bar.dart';
+import 'package:asa/hubs/product/start_menu.dart';
 import 'package:flutter/material.dart';
 
 class ProjectsView extends StatefulWidget {
@@ -147,6 +148,16 @@ class _ProjectsViewState extends State<ProjectsView> {
       project.status,
       DateTime.now(),
     );
+    // Round 32/A — the deadline when there is one, otherwise the age since
+    // the project was actually touched (git, or the newest file on disk).
+    final freshness = freshnessText(
+      humanizedDeadline: deadline,
+      lastTouched: node.lastTouched,
+      now: DateTime.now(),
+    );
+    // Round 32/B, ADR 0020 — the first open, unparked task; the typed
+    // field only when there is no task; honest absence otherwise.
+    final nextStep = effectiveNextStep(project.tasks, project.nextStep);
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
@@ -183,7 +194,13 @@ class _ProjectsViewState extends State<ProjectsView> {
                           _jiraChip(jira, project.jira!),
                         ],
                         const Spacer(),
-                        _deadlineText(deadline, overdue),
+                        _freshnessLabel(freshness, overdue),
+                        const SizedBox(width: 4),
+                        StartMenu(
+                          projectName: project.name,
+                          projectFolder: node.folder,
+                          repoPath: project.repoPath,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -201,12 +218,15 @@ class _ProjectsViewState extends State<ProjectsView> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            stripCodeSpanMarkers(
-                              stripEmphasisMarkers(project.nextStep),
-                            ),
+                            nextStep ?? 'no next step',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.grey.shade700),
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontStyle: nextStep == null
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                            ),
                           ),
                         ),
                       ],
@@ -289,15 +309,18 @@ class _ProjectsViewState extends State<ProjectsView> {
     );
   }
 
-  /// The deadline, in a warning colour once it is overdue — `HANDOVER.md`,
-  /// "an overdue signal for `deadline`". No new pill, no new icon; just
-  /// this text's own colour changes. [ColorScheme.error] rather than a
+  /// Round 32/A — the deadline when there is one, in a warning colour
+  /// once it is overdue (`HANDOVER.md`, 2026-09-13, "an overdue signal for
+  /// `deadline`"), otherwise the age since the project was last actually
+  /// touched. Same widget either way; only the source of the text and
+  /// whether the overdue styling can ever apply changes upstream, in
+  /// `freshnessText`/`isPastDeadline`. `ColorScheme.error` rather than a
   /// literal red, so it reads correctly in both a light and dark Windows
   /// theme, same requirement the phase bar and the parked badge already
   /// met.
-  Widget _deadlineText(String? deadline, bool overdue) {
+  Widget _freshnessLabel(String? freshness, bool overdue) {
     final text = Text(
-      deadline ?? '—',
+      freshness ?? '—',
       style: TextStyle(
         color: overdue
             ? Theme.of(context).colorScheme.error
@@ -308,17 +331,30 @@ class _ProjectsViewState extends State<ProjectsView> {
     return overdue ? Tooltip(message: 'Past its deadline', child: text) : text;
   }
 
+  /// Round 32/C — a status can be any of ADR 0017's seven words, but one
+  /// real note had a whole paragraph as its value until this round. A
+  /// pill with no width limit would widen or wrap the row for that; this
+  /// one clips to a single line with an ellipsis instead, however long
+  /// the real value is — shown as written, never rewritten or hidden.
   Widget _pill(String text, StatusEmphasis emphasis) {
     final color = emphasis == StatusEmphasis.active
         ? Colors.blue.shade700
         : Colors.grey.shade700;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(12),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 160),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: color, fontSize: 12),
+        ),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 12)),
     );
   }
 }

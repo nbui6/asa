@@ -219,8 +219,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   /// Re-reads the inbox from disk after a capture or an assignment — never
-  /// trusts that the write happened as assumed, same discipline as
-  /// [_reloadTaskGroups].
+  /// trusts that the write happened as assumed, same discipline as every
+  /// other write in this file.
   Future<void> _reloadInbox() async {
     final home = _homePath;
     if (home == null) return;
@@ -245,8 +245,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   /// An inbox task dropped on one of [ProjectsView]'s rows — the drag that
   /// assigns it, per ADR 0014's addendum. Moves the line out of `HOME.md`
-  /// and into that project's own `## Tasks` section; reloads both, since a
-  /// project gaining a task changes what the Tasks view shows too.
+  /// and into that project's own `## Tasks` section. **Round 32/B:** a
+  /// full reload, not just the task groups — the newly-arrived task can
+  /// become that project's own next step (ADR 0020), which the Projects
+  /// view's row reads from `Project.tasks`, populated at scan time.
   Future<void> _assignInboxTask(Task task, ProjectNode node) async {
     final home = _homePath;
     if (home == null) return;
@@ -261,24 +263,14 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       return;
     }
     await _reloadInbox();
-    await _reloadTaskGroups();
+    await _load();
   }
 
-  /// Rebuilds the Tasks groups from disk after a write — never trusts that
-  /// a checkbox flip or mark-all-done happened as assumed. Cheap: a
-  /// handful of small markdown reads, not a full rescan of git state.
-  Future<void> _reloadTaskGroups() async {
-    final scan = _scan;
-    if (scan == null || scan.error != null) return;
-
-    final taskGroups = await buildTaskGroups(
-      scan.projects,
-      const DiskFileAccess(),
-    );
-    if (!mounted) return;
-    setState(() => _taskGroups = taskGroups);
-  }
-
+  /// Round 32/B — reloads everything, not just the task groups.
+  /// `ProjectsView`'s row now derives its next step from `Project.tasks`
+  /// (ADR 0020), populated at scan time — same reasoning `_toggleParked`
+  /// already established for the "N parked" count, extended here because
+  /// a checked-off task can now change what a row's next step says.
   Future<void> _toggleTask(Project project, Task task) async {
     try {
       await setTaskDone(
@@ -290,7 +282,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       _say('Could not save: $e');
       return;
     }
-    await _reloadTaskGroups();
+    await _load();
   }
 
   /// Toggles a task's `(parked)` tag — `PLAN.md` v0.3, "the rule of two".
@@ -311,6 +303,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     await _load();
   }
 
+  /// Round 32/B — same reasoning as `_toggleTask`: the next step can
+  /// change here too.
   Future<void> _markAllDone(Project project) async {
     try {
       await markAllTasksDone(project.sourceFile);
@@ -318,7 +312,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       _say('Could not save: $e');
       return;
     }
-    await _reloadTaskGroups();
+    await _load();
   }
 
   @override

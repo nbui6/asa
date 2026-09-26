@@ -84,6 +84,63 @@ void main() {
         'than throwing', () {
       expect(statusEmphasis('archived'), StatusEmphasis.neutral);
     });
+
+    test('Round 32/C — ongoing gets the same active emphasis as building, '
+        "closing the gap this file's own comment already named", () {
+      expect(statusEmphasis('ongoing'), StatusEmphasis.active);
+    });
+  });
+
+  group('effectiveNextStep — Round 32/B, ADR 0020', () {
+    Task task({required String text, bool done = false, bool parked = false}) {
+      return Task(
+        rawLine: '- [ ] $text',
+        text: text,
+        done: done,
+        parked: parked,
+      );
+    }
+
+    test('the first open, unparked task wins over the typed field', () {
+      final tasks = [
+        task(text: 'Already done', done: true),
+        task(text: 'Parked one', parked: true),
+        task(text: 'Real next step'),
+        task(text: 'A later one'),
+      ];
+      expect(effectiveNextStep(tasks, 'Typed field value'), 'Real next step');
+    });
+
+    test('a parked task is skipped even though it is not done', () {
+      final tasks = [task(text: 'Parked', parked: true), task(text: 'Real')];
+      expect(effectiveNextStep(tasks, ''), 'Real');
+    });
+
+    test('every task done falls back to the typed field', () {
+      final tasks = [
+        task(text: 'One', done: true),
+        task(text: 'Two', done: true),
+      ];
+      expect(effectiveNextStep(tasks, 'Typed fallback'), 'Typed fallback');
+    });
+
+    test('no tasks at all falls back to the typed field', () {
+      expect(effectiveNextStep(const [], 'Typed fallback'), 'Typed fallback');
+    });
+
+    test('neither a real task nor a real typed value — null, for the '
+        'caller to show "no next step"', () {
+      expect(effectiveNextStep(const [], ''), isNull);
+      expect(effectiveNextStep(const [], '(not set)'), isNull);
+      final allDone = [task(text: 'Done', done: true)];
+      expect(effectiveNextStep(allDone, ''), isNull);
+    });
+
+    test('markdown markers are stripped from whichever source is used', () {
+      final tasks = [task(text: 'Fix `the_bug.dart`')];
+      expect(effectiveNextStep(tasks, ''), 'Fix the_bug.dart');
+      expect(effectiveNextStep(const [], '**Typed** value'), 'Typed value');
+    });
   });
 
   group('splitByBucket — real chain, other -> asa -> vibe-coding-kit', () {

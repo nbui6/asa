@@ -21,11 +21,17 @@ class ProjectNode {
     required this.project,
     required this.folder,
     this.children = const [],
+    this.lastTouched,
   });
 
   final Project project;
   final String folder;
   final List<ProjectNode> children;
+
+  /// Carried straight from the scan's own `ProjectSummary.lastTouched` —
+  /// Round 32/A. Not recomputed here; the forest is a regrouping of
+  /// already-scanned data, never a second read of disk.
+  final DateTime? lastTouched;
 }
 
 /// The full parent-chain forest of every scanned project. A project
@@ -58,6 +64,7 @@ List<ProjectNode> buildProjectForest(List<ProjectSummary> projects) {
       project: summary.project,
       folder: summary.folder,
       children: (childSlugsOf[slug] ?? const <String>[]).map(build).toList(),
+      lastTouched: summary.lastTouched,
     );
   }
 

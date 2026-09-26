@@ -13,6 +13,7 @@
 /// is that one pure check — no new field, no new pill.
 library;
 
+import 'package:asa/core/markdown.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/task.dart';
 
@@ -110,10 +111,31 @@ enum StatusEmphasis { active, neutral }
 
 StatusEmphasis statusEmphasis(String status) {
   final lower = status.toLowerCase();
-  if (lower.contains('progress') || lower.contains('building')) {
+  if (lower.contains('progress') ||
+      lower.contains('building') ||
+      lower.contains('ongoing')) {
     return StatusEmphasis.active;
   }
   return StatusEmphasis.neutral;
+}
+
+/// Round 32/B, ADR 0020 (accepted): a project's next step comes from its
+/// tasks, never the typed field alone. The first open task in `## Tasks`
+/// that isn't parked, if there is one; otherwise [typedNextStep], if it is
+/// a real value; otherwise null — the caller shows "no next step" for
+/// that, honest absence rather than blank. [typedNextStep] stays in the
+/// file either way, unwritten and unremoved (ADR 0020's own rule) — this
+/// only decides what to show, never what to save.
+String? effectiveNextStep(List<Task> tasks, String typedNextStep) {
+  for (final task in tasks) {
+    if (!task.done && !task.parked) {
+      return stripCodeSpanMarkers(stripEmphasisMarkers(task.text));
+    }
+  }
+
+  final typed = typedNextStep.trim();
+  if (typed.isEmpty || typed == '(not set)') return null;
+  return stripCodeSpanMarkers(stripEmphasisMarkers(typed));
 }
 
 /// A project forest's roots, split into the flat "work" list and the

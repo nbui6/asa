@@ -31,11 +31,13 @@ import 'package:asa/core/git_state.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
+import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
+import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/strategy_view.dart';
 import 'package:flutter/material.dart';
 
@@ -273,6 +275,13 @@ class _ProjectScreenState extends State<ProjectScreen> {
           tooltip: 'Back',
         ),
         const Spacer(),
+        // Round 32/D — Round 3's handoff, finally built.
+        if (read != null && read.isSuccess)
+          StartMenu(
+            projectName: read.project!.name,
+            projectFolder: widget.folder,
+            repoPath: read.project!.repoPath,
+          ),
         // Round 27: "one button, not a fourth real tab" — styled
         // distinctly (the sketch's small ↗ glyph) so it reads as leaving
         // this screen, which it does: it pops back to the front page.
@@ -637,7 +646,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
           'Milestone',
           effectiveMilestone(project.roadmap, project.milestone),
         ),
-        _Field('Next step', project.nextStep),
+        _Field(
+          'Next step',
+          effectiveNextStep(project.tasks, project.nextStep) ?? 'no next step',
+        ),
         _Field('Note updated by hand', project.updated),
         _Field('Last moved (from git)', _lastMovedText(git)),
         _Field(
