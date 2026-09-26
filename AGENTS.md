@@ -43,17 +43,18 @@ Three fixed roles, always:
 
 - **The deciding session** — writes specs, decisions, and records. Never runs `git`, `flutter`,
   or a shell.
-- **The building session ("Code")** — writes Dart/PowerShell, runs the machine check, commits
-  only after Nico's yes. Never pushes.
+- **The building session ("Code")** — writes Dart/PowerShell, runs the machine check, **commits as
+  often as possible** (after every piece that passes the tests; ADR 0028). Never pushes.
 - **Nico** — reviews, says yes or no. The only one who runs `git push`.
 
 If you are a fresh session and unsure which role you're in, the tools available to you are the
 answer: if you can run `flutter`/`git`, you are Code; if you cannot, you are the deciding session.
 
 **The one rule that overrides urgency: no round ends until Nico has seen the result and said
-yes.** Show → Ask → Commit, in that order. A commit before Nico has looked is a rule break, not a
-shortcut — the one narrow exception is Nico explicitly pre-authorizing a commit before looking,
-which gets logged as exactly that, not disguised as a normal yes.
+yes.** Commit often → Show → Ask → Record the yes, in that order (rule 19, changed 2026-09-26 by ADR
+0028: *"always tell code to commit as often as possible"*). Commits along the way are save points,
+not approvals: a round is approved only by the commit that records Nico's yes. Nothing is pushed
+before that.
 
 ## Gate 1 — the second-developer fork is one-way
 
@@ -105,7 +106,7 @@ job, done with judgment, the same way this file and every decision in `projects\
 written: read what is actually there (a `CLAUDE.md`, a `README`, whatever notes already exist),
 form an honest read of where the project really stands, and write a proper `<folder-name>.md`
 next to it — real `project`/`status`/`priority`/`parent`/`deadline`/`jira` values where you can
-honestly say them, `(not set)` left alone where you can't guess, a `## Tasks` section if real open
+honestly say them, the value left empty where you can't guess, a `## Tasks` section if real open
 items are worth tracking. **Never invent a status you have not actually formed an opinion on**,
 and never touch or delete anything already in the folder — this is one new file, added, not a
 rewrite of what's there. Decided 2026-09-13, after a first pass proposed the opposite (Asa's own

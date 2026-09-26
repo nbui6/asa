@@ -201,9 +201,10 @@ The standing bar for everything, not restated per session:
 
 > Criteria met - handover check written - reviewed - `CLAUDE.md` updated - **for any round that
 > touches `lib/`: release exe rebuilt and confirmed starting outside the IDE** (doc-only commits
-> are exempt) - **result shown to Nico and a yes back** - committed.
+> are exempt) - **result shown to Nico and a yes back** - the yes recorded in a commit.
 
-**Shown, then approved, then committed - in that order.** Rule 19.
+**Commit as often as possible along the way; the round is done only after Nico's yes.** Rule 19,
+as changed by ADR 0028 on 2026-09-26.
 
 ## Hard rules
 
@@ -319,13 +320,17 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
     apart because neither could see the other. The folder is the only channel between sessions, and
     a folder cannot notify anyone — so something has to go and look.*
 
-19. **No round ends until Nico has seen the result and said yes.** Every time, in this order:
+19. **Commit as often as possible. No round ends until Nico has seen the result and said yes.**
+    Changed 2026-09-26 by ADR 0028 (`projects\asa\decisions\0028-commit-as-often-as-possible.md`).
+    Nico: *"always tell code to commit as often as possible. write that as rule now"*. Every time,
+    in this order:
 
     | # | | |
     |---|---|---|
-    | 1 | **Show** | The screen itself, or the command and its real pasted output. A summary of a result is not a result. |
-    | 2 | **Ask** | *"Is this right?"* - asked out loud, as a question. Handing something over does not ask it. |
-    | 3 | **Commit** | Only after a yes. If he names a fix, make it and show it again - the round goes back to line 1. |
+    | 1 | **Commit often** | After every piece that passes `flutter test` (the hook enforces it), and at once for doc-only changes. Small commits, one piece each, message starting `Round N:`. Never push. |
+    | 2 | **Show** | The screen itself, or the command and its real pasted output. A summary of a result is not a result. |
+    | 3 | **Ask** | *"Is this right?"* - asked out loud, as a question. Handing something over does not ask it. |
+    | 4 | **Record the yes** | One commit, `Round N: approved by Nico <date>`, plus the `HANDOVER.md` line. If he names a fix, make it (committing as you go) and show it again - back to line 2. Something he rejects is undone with a new commit, never by rewriting history. |
 
     **A round reported done with nothing shown and nothing committed is not done.** That is what
     happened on 2026-09-02 with v0.1, in his words: *"Show me result, ask me if everything is
