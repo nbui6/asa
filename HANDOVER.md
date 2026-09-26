@@ -2974,3 +2974,84 @@ loop, which the plan already treats as the real screenshot pass, not this one.
 **Open questions for Nico:** none.
 
 **Next:** cp2 — Round 34 A–G, including F (ticking inside area pages, now approved).
+
+### Round 36 cp2 — Round 34, A–G, including F. Areas exist now.
+
+**Built:**
+- **A** — `lib/core/area.dart`: `Area {name, sourceFile, summary, goal, planText, tasks, results,
+  decisionNumbers, objectiveNumbers}`, read from one `plan\<area>.md` page — pages only, per ADR
+  0024's 2026-09-26 revision. Name from the filename stem (a number prefix sets sort order, never
+  shown). Results: dated lines newest first, anything else kept verbatim, undated, never dropped.
+  Progress counts every checkbox on the whole page, not only `## Tasks` (round-34.md's own note
+  about Round checkboxes on `asa`'s future plan pages). A new `PlanLinkKind.objective` (`Objective
+  N`), read from the Goal section only — a mention elsewhere is not an area's own claim on it.
+- **B** — `plan_view.dart` branches: a project with any area gets the new screen (each area
+  collapsed to name/summary/done-total/result-date; opening one shows Goal, Plan, Tasks, Results,
+  Decisions, in that order, honest absence throughout); "Not in an area" for the home note's own
+  tasks; "What this project is for" pointing at Strategy, only with a real `CHARTER.md`; today's
+  outline and "What changed" folded one level down into a new "Overview" row. A project with no
+  `plan\` folder (`asa` today) gets exactly the Round 27 screen — checked directly, not assumed.
+- **C — skipped**, as instructed (dropped by round-36 §2 d; Strategy stays exactly `asa-strategy-v3`).
+- **D** — a chip on every decision row for each area naming it (ADR number match) — one decision
+  named by two areas gets two chips, never merged. Tapping one opens Plan with that area already
+  open (`PlanView.areaToOpen`, applied once per genuinely new request).
+- **E** — `effectiveNextStep` falls one step further (home tasks → first area with an open task, in
+  order → typed field → absence), wired into the Details tab; the overview's own row is deliberately
+  not wired yet (see "Calls I made"). The Tasks view groups each project's area tasks by name after
+  its own, same collapse/hide-done/"Code tasks" rules, no parking icon (checkbox state only).
+- **F** — ticking a task inside an area writes through the existing `setTaskDone`, checkbox state
+  only, proven byte-level against a real file: exactly one line changes, the write log gets an
+  entry, unticking returns the file to byte-identical.
+- **G** — an "Areas" section in `templates\HOW-ASA-WORKS.md`: the exact file shape, how to name an
+  objective/decision, the Results line shape, and one new "Before you finish" step. **Not done, and
+  not mine:** copying the file into the 13 real folders is the deciding session's own step.
+
+**Tests (count):** 412 (369 → 412, +43 across this checkpoint). `check.ps1` green, all four steps,
+confirmed twice (one run showed 10 unrelated failures after an abnormal ~3h47m wall-clock time with
+no stray process found — re-ran clean at the normal ~14–34 minutes twice after; treated as a machine
+flake, not a regression, and named here rather than quietly re-run past). Release exe rebuilt and
+confirmed starting outside the IDE.
+
+**Commits:**
+- `dc1eab0` — Round 36 cp2 (Round 34/A, 1 of 2): a new link kind, objective
+- `bb84f8f` — Round 36 cp2 (Round 34/A, 2 of 2): core/ — read an area
+- `8031f3a` — Round 36 cp2 (Round 34/B, F): the Plan tab shows areas; ticking is on
+- `a44a7d1` — Round 36 cp2 (Round 34/D): area chips on decision rows
+- `9a2668e` — Round 36 cp2 (Round 34/E): next step and the Tasks view read areas too
+- `99d7aae` — Round 36 cp2 (Round 34/G): an "Areas" section in templates\HOW-ASA-WORKS.md
+- `daa85f6` — Round 36 cp2: ARCHITECTURE.md, hard rule 11
+- `459d4d7` — Round 36 cp2: self-test — one decision named by two areas
+- `a4af64a` — Round 36 cp2: dart format
+
+**Screenshots:** none this checkpoint, on purpose — round-36.md's own §5 (the match-the-sketch
+loop, with real screenshots side by side with the sketches) is cp5's job, not cp2's; building the
+whole area feature against a screenshot loop this early would mean redoing it once cp3's tab-order
+and Next-line changes land on top. Every piece here is proven by an automated test instead,
+including three real-disk ones (byte-level file verification, real widget interaction).
+
+**Calls I made:**
+1. **The overview's own next-step and per-area bar segments do not read areas yet.**
+   `effectiveNextStep`'s new fallback only reaches the Details tab; `projects_view.dart`'s row still
+   has no area data (`ProjectSummary`/`ProjectNode` carry none). Round 36 §2 f and cp3's own "one
+   source for every count" test already own this plumbing — building it twice, once now and once
+   reshaped for cp3, seemed like the wrong order. Named in `ARCHITECTURE.md`'s "Known differences"
+   so it reads as planned, not missed.
+2. **`readAreasVia` added alongside `readAreas`**, not a replacement — `buildTaskGroups` needed a
+   `FileAccess`-based path so its own tests can fake the disk, same convention every other
+   `FileAccess` reader here follows; `project_screen.dart`'s direct read stays on raw `dart:io`,
+   matching `plan.dart`'s own existing precedent.
+3. **A real bug found by a real-disk test, not a unit test:** area rows were tracked by
+   `identityHashCode`, which changes every time a tick reloads the project and re-parses a fresh
+   `Area`. The row that was just opened silently collapsed on reload. Re-keyed by `Area.sourceFile`.
+4. **Decisions and objectives read from different scopes, on purpose:** `decisionNumbers` scans the
+   whole area page (an ADR named anywhere counts, matching how `deriveLinks` is read everywhere
+   else); `objectiveNumbers` scans only the Goal section (round-34.md's own text: "not the whole
+   page — a different section naming an objective in passing is not this area's own claim on it").
+5. **No parking on an area task** — Round 34 F's amendment to ADR 0021 covers checkbox state only;
+   the parked-tag write is a different write this round was never asked to extend to `plan\*.md`.
+
+**Open questions for Nico:** none.
+
+**Next:** cp3 — §2 a–c and f of `round-36.md`: tab order, opening on Plan, the Next line, next task
+on closed rows, overview segments, decision area chips (already built in cp2 — cp3 re-confirms them
+against the sketch rows).
