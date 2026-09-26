@@ -191,10 +191,6 @@ class _StrategyViewState extends State<StrategyView> {
                   _waitingPill(waiting),
                   const SizedBox(width: 8),
                 ],
-                if (_evidenceWord(objective.evidence) case final word?) ...[
-                  _evidenceChip(word),
-                  const SizedBox(width: 8),
-                ],
                 Text(
                   '$completed of ${rounds.length} completed',
                   style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
@@ -202,27 +198,39 @@ class _StrategyViewState extends State<StrategyView> {
               ],
             ),
           ),
+          // Round 35/G — `asa-strategy-v3`'s own approved drawing puts the
+          // state chip and the "Would show: …" sentence under the title,
+          // visible while collapsed — this had moved the chip into the
+          // header row and hidden the sentence behind the expand arrow, on
+          // an earlier persona-check's own overwhelm worry. Nico's call
+          // when he approved the sketch, not the builder's: visible.
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 22),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_evidenceWord(objective.evidence) case final word?) ...[
+                  _evidenceChip(word),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(child: _evidenceRow(objective.evidence)),
+              ],
+            ),
+          ),
           if (rounds.isNotEmpty) ...[
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(left: 22),
-              child: _segmentBar(rounds.map((r) => r.state).toList()),
+              child: ConstrainedBox(
+                // Round 35/G — the sketch's bars run about the width of the
+                // title column, not the full stretch of the window.
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _segmentBar(rounds.map((r) => r.state).toList()),
+              ),
             ),
           ],
-          // persona-check, re-run against the real screen: the evidence
-          // line is a full sentence of real prose, not a glance — showing
-          // it for all (up to 5) objectives at once is exactly the
-          // row-count-times-density overwhelm this project just fixed on
-          // the Plan tab, one level up. Collapsed keeps only what is
-          // colour or a count (title, the waiting pill, "N of M
-          // completed," the segment bar); the sentence itself is one tap
-          // away, same trade PERSONA.md already says he will pay.
           if (expanded) ...[
-            const SizedBox(height: 5),
-            Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: _evidenceRow(objective.evidence),
-            ),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(left: 22),

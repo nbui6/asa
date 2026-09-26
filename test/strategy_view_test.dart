@@ -195,36 +195,41 @@ void main() {
       },
     );
 
-    testWidgets('the evidence sentence stays hidden until expanded, but '
-        'its word-only chip is visible collapsed — rule 7, colour is '
-        'never the only signal', (tester) async {
-      const strategy = Strategy(
-        origin: 'o',
-        whoItsFor: 'Nico',
-        painPoints: '1. a pain',
-        objectives: [
-          Objective(
-            title: 'Ship the thing',
-            evidence: 'a decision gets recovered. **Failing.**',
-            sentence: 'Ship the thing. Served by Round 1.',
-          ),
-        ],
-      );
+    testWidgets(
+      'Round 35/G — the evidence sentence and its word-only chip are both '
+      'visible collapsed, under the title, as asa-strategy-v3 draws them '
+      "— reversing an earlier persona-check's own overwhelm worry, "
+      "Nico's call once he approved the sketch",
+      (tester) async {
+        const strategy = Strategy(
+          origin: 'o',
+          whoItsFor: 'Nico',
+          painPoints: '1. a pain',
+          objectives: [
+            Objective(
+              title: 'Ship the thing',
+              evidence: 'a decision gets recovered. **Failing.**',
+              sentence: 'Ship the thing. Served by Round 1.',
+            ),
+          ],
+        );
 
-      await _pump(
-        tester,
-        strategy: strategy,
-        roadmap: [_round('1', done: true)],
-      );
+        await _pump(
+          tester,
+          strategy: strategy,
+          roadmap: [_round('1', done: true)],
+        );
 
-      expect(find.text('failing'), findsOneWidget);
-      expect(find.textContaining('Would show:'), findsNothing);
+        expect(find.text('failing'), findsOneWidget);
+        expect(find.textContaining('Would show:'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.chevron_right));
-      await tester.pump();
+        await tester.tap(find.byIcon(Icons.chevron_right));
+        await tester.pump();
 
-      expect(find.textContaining('Would show:'), findsOneWidget);
-    });
+        // Still visible expanded too — never a second, duplicate copy.
+        expect(find.textContaining('Would show:'), findsOneWidget);
+      },
+    );
   });
 
   group('the legend', () {
