@@ -98,6 +98,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   // on a second person's machine is a broken first run, not a convenience.
   bool _folderChosen = false;
 
+  /// Round 35/B — once a folder is saved, the field/button/explanation that
+  /// used to fill the top third of the screen on every launch collapses to
+  /// one line. Starts false: a fresh launch with a saved folder should
+  /// never show the full box first and then shrink it. "· change" sets
+  /// this true; loading again while already chosen sets it back.
+  bool _folderRowExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -183,6 +190,53 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     if (_loading) return 'Loading…';
     if (_folderChosen) return 'Load';
     return widget.pickFolder == null ? 'Use this folder' : 'Choose folder…';
+  }
+
+  /// The field/button's own submit action, whichever door it came through
+  /// (Enter in the box, or the button). Round 35/B: once a folder is
+  /// already chosen, submitting it again collapses the box back to one
+  /// line — the box only stays open while there's a real decision to make.
+  Future<void> _submitFolderField() async {
+    if (_folderChosen) {
+      await _load();
+      if (mounted) setState(() => _folderRowExpanded = false);
+    } else {
+      await _chooseFolder();
+    }
+  }
+
+  /// Round 35/B — the one line a saved folder collapses to, so the folder
+  /// box stops taking the top third of the screen on every launch. The
+  /// whole line opens the field back up; "change" is the visible
+  /// affordance for that, not the only place a tap works.
+  Widget _folderSummaryRow() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () => setState(() => _folderRowExpanded = true),
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(color: Colors.grey.shade700),
+              children: [
+                TextSpan(text: 'Projects: ${_rootField.text}'),
+                TextSpan(
+                  text: '  ·  change',
+                  style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ),
+    );
   }
 
   void _say(String message) {
@@ -339,37 +393,40 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Projects folder'),
-            Text(
-              'Where Asa reads project state from. Change it here any time '
-              "— it's remembered for next launch.",
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    key: const Key('projectsFolderField'),
-                    controller: _rootField,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      hintText: _folderChosen ? null : r'C:\path\to\projects',
+            if (_folderChosen && !_folderRowExpanded)
+              _folderSummaryRow()
+            else ...[
+              const Text('Projects folder'),
+              Text(
+                'Where Asa reads project state from. Change it here any time '
+                "— it's remembered for next launch.",
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const Key('projectsFolderField'),
+                      controller: _rootField,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        hintText: _folderChosen
+                            ? null
+                            : r'C:\path\to\projects',
+                      ),
+                      onSubmitted: (_) => _submitFolderField(),
                     ),
-                    onSubmitted: (_) =>
-                        _folderChosen ? _load() : _submitTypedFolder(),
                   ),
-                ),
-                const SizedBox(width: 16),
-                FilledButton(
-                  onPressed: _loading
-                      ? null
-                      : (_folderChosen ? _load : _chooseFolder),
-                  child: Text(_buttonLabel),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 16),
+                  FilledButton(
+                    onPressed: _loading ? null : _submitFolderField,
+                    child: Text(_buttonLabel),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 32),
             if (_folderChosen && _inboxTasks != null) ...[
               InboxPanel(tasks: _inboxTasks!, onCapture: _captureInboxTask),

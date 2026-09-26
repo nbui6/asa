@@ -87,7 +87,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(SnackBar), findsNothing);
-      expect(find.text('Load'), findsOneWidget);
+      // Round 35/B — once a folder is accepted, the field/button collapse
+      // to the one-line summary rather than staying open relabelled "Load".
+      expect(find.text('Load'), findsNothing);
+      expect(find.textContaining('Projects: '), findsOneWidget);
     });
   });
 
@@ -142,5 +145,57 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('That box is empty'), findsOneWidget);
+  });
+
+  group('Round 35/B — the folder box collapses once a folder is set', () {
+    testWidgets('first run (nothing saved yet) is unchanged — the full box, '
+        'not the one-line summary', (tester) async {
+      await pumpScreen(tester, null);
+
+      expect(find.text('Projects folder'), findsOneWidget);
+      expect(find.byKey(const Key('projectsFolderField')), findsOneWidget);
+      expect(find.textContaining('Projects: '), findsNothing);
+    });
+
+    testWidgets('after accepting a folder, the box is one line, not the '
+        'field and button', (tester) async {
+      await pumpScreen(tester, null);
+      await tester.enterText(find.byType(TextField), tempDir.path);
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Use this folder'));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Projects folder'), findsNothing);
+      expect(find.byKey(const Key('projectsFolderField')), findsNothing);
+      expect(find.textContaining('Projects: ${tempDir.path}'), findsOneWidget);
+    });
+
+    testWidgets('"change" reopens the field, and loading again collapses '
+        'it back', (tester) async {
+      await pumpScreen(tester, null);
+      await tester.enterText(find.byType(TextField), tempDir.path);
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Use this folder'));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.textContaining('Projects: '));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('projectsFolderField')), findsOneWidget);
+      expect(find.text('Load'), findsOneWidget);
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Load'));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('projectsFolderField')), findsNothing);
+      expect(find.textContaining('Projects: ${tempDir.path}'), findsOneWidget);
+    });
   });
 }
