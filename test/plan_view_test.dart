@@ -210,5 +210,43 @@ void main() {
 
       expect(find.text('Nothing dated yet.'), findsOneWidget);
     });
+
+    testWidgets(
+      'Round 35/C — an entry with many links caps its chips at 3 and shows '
+      '"+N", never squeezing its own sentence to nothing',
+      (tester) async {
+        final page = PlanPage(
+          aspect: null,
+          sourceFile: 'PLAN.md',
+          sections: [
+            _section(
+              '2026-09-07 — the goal narrowed: one working overview of all '
+              '13 projects, kept current by Claude',
+              body:
+                  'Round 2 Round 6 Round 3 Round 28 Round 14 Round 10 '
+                  'Round 31 Round 32',
+            ),
+          ],
+          links: const [],
+        );
+        await _pump(tester, Plan(pages: [page]));
+
+        expect(tester.takeException(), isNull);
+        // The sentence itself must still be one real, un-mangled Text —
+        // not sliced into single characters by a starved Expanded.
+        expect(
+          find.text(
+            'the goal narrowed: one working overview of all 13 projects, '
+            'kept current by Claude',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Round 2'), findsOneWidget);
+        expect(find.text('Round 6'), findsOneWidget);
+        expect(find.text('Round 3'), findsOneWidget);
+        expect(find.text('Round 28'), findsNothing);
+        expect(find.text('+5'), findsOneWidget);
+      },
+    );
   });
 }

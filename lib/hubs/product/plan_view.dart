@@ -135,8 +135,21 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
+  /// Round 35/C — the chip `Wrap` used to have no width limit in this
+  /// `Row`, so once a real entry accumulated enough Round/ADR links it
+  /// claimed all the width it wanted first, and the sibling `Expanded`
+  /// text — the actual sentence this whole panel exists to show — was
+  /// squeezed to a few pixels and wrapped one letter per line. Capping the
+  /// chip *count* rather than a pixel width fixes it at the source: with
+  /// at most 4 small chip-shaped things ever in this row, the text always
+  /// gets the room it needs.
+  static const _maxChipsShown = 3;
+
   Widget _changeRow(_ChangeEntry entry) {
     final links = _dedupeLinks(entry.links);
+    final shownLinks = links.take(_maxChipsShown).toList();
+    final hiddenCount = links.length - shownLinks.length;
+
     return InkWell(
       onTap: () => openUrl(entry.sourceFile),
       child: Container(
@@ -165,7 +178,23 @@ class _PlanViewState extends State<PlanView> {
             Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: [for (final link in links) _linkChip(link)],
+              children: [
+                for (final link in shownLinks) _linkChip(link),
+                if (hiddenCount > 0)
+                  Tooltip(
+                    message: links
+                        .skip(_maxChipsShown)
+                        .map((l) => l.sentence)
+                        .join('\n'),
+                    child: Text(
+                      '+$hiddenCount',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
