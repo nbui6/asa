@@ -1,8 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-25 (Round 32 — freshness, next-step from tasks, the
-status pill's clip guard, and the Start menu).
+Last checked against the folder tree: 2026-09-26 (Round 36 cp2 — Round 34: areas, `plan\<area>.md`,
+one page per area, and the amendment letting Asa tick a checkbox inside one).
 
 ---
 
@@ -37,6 +37,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | **`core/`'s public surface is a contract with a second developer.** Renaming a public field breaks someone else's build. | The release note names what moved in `core/`. See `projects\asa\decisions\0010-second-developer-and-forks.md`. |
 | **A decision file's existing bytes are never modified, deleted or reordered — only appended to.** | `decision_writer.dart`'s `appendVerdict`: read, concatenate, write to a temp file, rename over the original. A feature test asserts the file's content before the new section is byte-identical to what it was. See `projects\asa\decisions\0011-append-only-verdicts.md`. |
 | **A project note's `## Tasks` section may be written to — checkbox lines and their order, nothing else in the file.** ADR 0007 (accepted 2026-09-01) whitelists exactly this. | `task_writer.dart`: `setTaskDone`, `markAllTasksDone` (2026-09-07), `captureTask`, `moveTask` (2026-09-13). Every one matches or replaces a specific line and rewrites nothing else; a feature test per function round-trips a real file whose other bytes must come back untouched. |
+| **An area page's `## Tasks` section may *also* be written to — checkbox state only, `[ ]` ↔ `[x]`, nothing else.** Round 34 F, ADR 0021's 2026-09-26 amendment — `PLAN.md` and `CHARTER.md` still may never be written to. | Reuses `task_writer.dart`'s existing `setTaskDone` unchanged, called against an area's own `sourceFile` instead of a project note's — `project_screen.dart`'s `_toggleAreaOrHomeTask`, `projects_screen.dart`'s `_toggleAreaTask`. Proven against a real temp file: exactly one line changes, the write log gets an entry. |
 | **A project note's frontmatter may be written to — five named fields, nothing else.** ADR 0007's own whitelist, in code: `parent`, `status`, `priority`, `deadline`, `jira`. Ten fields re-decides the ADR rather than extending it. | `project_writer.dart`'s `setProjectField` — refuses any other field with a `StateError`; refuses on drift (the frontmatter changed on disk since it was read); a round-trip test per field. |
 | **Every write in `core/` is logged — what, when, which file, what it was, what it became.** ADR 0007 guardrail 3, unmet for twelve days after the ADR was accepted. | `write_log.dart`'s `appendWriteLogEntry`, append-only, in `%APPDATA%\Asa\write-log.jsonl` next to `settings.json` — never inside `projects\`. Every function in `task_writer.dart` and `project_writer.dart` calls it after a successful write. |
 | Every other write stays structured fields only, never prose | Review. `settings.dart` writes Asa's own settings file — never a project note. |
@@ -50,8 +51,10 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change what a single decision's detail screen shows, or the accept/reject "Your call" UI | `lib/hubs/product/decision_detail_screen.dart` |
 | change which folders count as projects, the staleness sort and labels, or a project's derived `lastTouched` (git's last commit, else the newest file mtime in its folder) | `lib/core/projects_scan.dart` |
 | change the right-hand freshness value a row shows (a deadline, or `today`/`1 day`/`N days` since the project was last actually touched) | `lib/core/freshness.dart` |
-| change how a project's next step is derived — the first open, unparked task, else the typed field, else "no next step" (ADR 0020) — or how the status pill's colour bucket is chosen | `lib/core/project_row.dart` |
-| change the exact text the "Start → Copy opener for Claude" action puts on the clipboard | `lib/core/opener.dart` |
+| change how a project's next step is derived — the home note's first open, unparked task; else the first open task of the first area with one (Round 34/E); else the typed field; else "no next step" (ADR 0020) — or how the status pill's colour bucket is chosen | `lib/core/project_row.dart` |
+| change the exact text the "Start → Copy opener" action puts on the clipboard | `lib/core/opener.dart` |
+| change how an area (`plan\<area>.md`: goal, plan, tasks, results, decision/objective numbers, progress) is parsed, or how an area's name and sort order come from its filename | `lib/core/area.dart` |
+| change how a project's areas are found on disk | `lib/core/area.dart`'s `readAreas` (raw `dart:io`) / `readAreasVia` (through `FileAccess`, for a caller that fakes the disk in its own tests) |
 | change the "Start" menu itself (copy opener, open folder, open code in VS Code) shown on a project row or the project screen's header | `lib/hubs/product/start_menu.dart` |
 | change how frontmatter is parsed, including `parent`/`priority`/`deadline`/`jira`/`links` | `lib/core/project.dart` |
 | change how the one-line description is derived from a note's body | `lib/core/project.dart`'s `deriveDescription` |
@@ -71,8 +74,9 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/phase_bar.dart` |
 | change how a project's plan (`PLAN.md` plus `plan\*.md`, ADR 0021) is read, its headings split into sections, or its derived `[[wikilink]]`/ADR/Round links found | `lib/core/plan.dart` |
 | change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
-| change what the Plan tab shows — "what changed," the collapsible outline, the Strategy pointer | `lib/hubs/product/plan_view.dart` |
-| change how a project's Tasks group sorts first when reached from its own project screen | `lib/hubs/product/tasks_view.dart`'s `pinnedProjectName` |
+| change what the Plan tab shows — a project with any area: the area list, "Not in an area," "What this project is for," and the folded Overview row; a project with none (`asa` today): "what changed," the collapsible outline, the Strategy pointer, unchanged since Round 27 | `lib/hubs/product/plan_view.dart` |
+| change how a project's Tasks group sorts first when reached from its own project screen, or how an area's own tasks group under its project, after the home note's own | `lib/hubs/product/tasks_view.dart`'s `pinnedProjectName` / `AreaTaskGroup` |
+| change how the Tasks view's groups are built from a scan — the parent-chain nesting rule, or which areas get their own group | `lib/core/tasks_reader.dart` |
 | change how a project's strategy (`CHARTER.md`'s Origin / Who it's for / Pain points / Objectives) is read | `lib/core/charter.dart` |
 | change how a Round's state (planned / in progress / waiting for approval / completed / no approval needed) is derived, or how `rounds\APPROVED.md` is read | `lib/core/round_state.dart`, `lib/core/round_approvals.dart` |
 | change what the Strategy tab shows — who it's for, pain points, objectives, the segmented bar, the legend | `lib/hubs/product/strategy_view.dart` |
@@ -124,6 +128,13 @@ the moment `roadmap.dart` needed `### Foundation`-style phase headings living in
 the `###` was read as ending the roadmap section, not as part of it. Fixed to stop only at a
 heading of the same level or shallower; checked every existing test fixture across the repo first
 and confirmed none relied on the old, incorrect boundary.
+
+**Found 2026-09-26, Round 36 cp2, deliberately deferred:** `effectiveNextStep`'s new area fallback
+(Round 34/E) is wired into `project_screen.dart`'s Details tab, not yet into `projects_view.dart`'s
+own overview row — the overview's `ProjectSummary`/`ProjectNode` carry no area data yet, and
+plumbing it in is a bigger, cross-cutting change that Round 36 cp3 already owns (the overview's own
+next-step and per-area bar segments, part of the "one source for every count" test). Not a gap in
+this checkpoint's own scope; named here so it reads as planned, not missed.
 
 **Found 2026-09-25, Round 32, left alone on purpose:** `projects_scan.dart`'s `daysStale` /
 `sortByStaleness` / `stalenessLabel` are fully unit-tested but called from no screen — `repo-path`
