@@ -5,6 +5,7 @@
 import 'package:asa/core/area.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
@@ -25,13 +26,17 @@ Project _project({required String status}) {
   );
 }
 
-Future<void> _pump(WidgetTester tester, List<ProjectNode> forest) async {
+Future<void> _pump(
+  WidgetTester tester,
+  List<ProjectNode> forest, {
+  void Function(ProjectOpenTarget target)? onOpenProject,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: ProjectsView(
           forest: forest,
-          onOpenProject: (_) {},
+          onOpenProject: onOpenProject ?? (_) {},
           onAssignTask: (_, _) async {},
         ),
       ),
@@ -270,6 +275,111 @@ void main() {
       await _pump(tester, [node]);
 
       expect(find.text('Sales next task'), findsOneWidget);
+    });
+  });
+
+  group("round-36 §3 — L1, L2, L3: the overview's own links", () {
+    testWidgets('L1 — a plain row tap builds a bare target, just the folder', (
+      tester,
+    ) async {
+      ProjectOpenTarget? opened;
+      final node = ProjectNode(
+        project: _project(status: 'building'),
+        folder: 'demo',
+      );
+
+      await _pump(tester, [node], onOpenProject: (t) => opened = t);
+      await tester.tap(find.text('Demo'));
+
+      expect(opened?.folder, 'demo');
+      expect(opened?.areaSourceFile, isNull);
+      expect(opened?.openHome, isFalse);
+      expect(opened?.highlightRawLine, isNull);
+    });
+
+    testWidgets("L2 — an area's bar segment opens that one area", (
+      tester,
+    ) async {
+      ProjectOpenTarget? opened;
+      const area = Area(
+        name: 'Sales',
+        sourceFile: 'plan/sales.md',
+        tasks: [],
+        results: [],
+        decisionNumbers: [],
+        objectiveNumbers: [],
+      );
+      final node = ProjectNode(
+        project: _project(status: 'building'),
+        folder: 'demo',
+        areas: const [area],
+      );
+
+      await _pump(tester, [node], onOpenProject: (t) => opened = t);
+      await tester.tap(find.text('Sales'));
+
+      expect(opened?.folder, 'demo');
+      expect(opened?.areaSourceFile, 'plan/sales.md');
+    });
+
+    testWidgets('L3 — the next step text opens the area holding that '
+        'task, and highlights it', (tester) async {
+      ProjectOpenTarget? opened;
+      const task = Task(
+        rawLine: '- [ ] Sales next task',
+        text: 'Sales next task',
+        done: false,
+      );
+      const area = Area(
+        name: 'Sales',
+        sourceFile: 'plan/sales.md',
+        tasks: [task],
+        results: [],
+        decisionNumbers: [],
+        objectiveNumbers: [],
+      );
+      final node = ProjectNode(
+        project: _project(status: 'building'),
+        folder: 'demo',
+        areas: const [area],
+      );
+
+      await _pump(tester, [node], onOpenProject: (t) => opened = t);
+      await tester.tap(find.text('Sales next task'));
+
+      expect(opened?.areaSourceFile, 'plan/sales.md');
+      expect(opened?.openHome, isFalse);
+      expect(opened?.highlightRawLine, task.rawLine);
+    });
+
+    testWidgets('L3 — a home task with no area opens "Not in an area" '
+        'instead', (tester) async {
+      ProjectOpenTarget? opened;
+      const task = Task(
+        rawLine: '- [ ] Home task',
+        text: 'Home task',
+        done: false,
+      );
+      const node = ProjectNode(
+        project: Project(
+          name: 'Demo',
+          status: 'building',
+          milestone: '',
+          nextStep: '',
+          repoPath: '',
+          updated: '2026-09-25',
+          sourceFile: 'demo/demo.md',
+          tasks: [task],
+        ),
+        folder: 'demo',
+      );
+
+      await _pump(tester, [node], onOpenProject: (t) => opened = t);
+      await tester.tap(find.text('Home task'));
+
+      expect(opened?.areaSourceFile, isNull);
+      expect(opened?.openHome, isTrue);
+      expect(opened?.highlightRawLine, task.rawLine);
     });
   });
 }

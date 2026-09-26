@@ -25,6 +25,7 @@ library;
 
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/tasks_reader.dart';
 import 'package:flutter/material.dart';
@@ -35,12 +36,26 @@ class TasksView extends StatefulWidget {
     required this.onToggleTask,
     required this.onMarkAllDone,
     required this.onToggleParked,
+    required this.onOpenProject,
+    required this.folderBySlug,
     this.onToggleAreaTask,
     this.pinnedProjectName,
     super.key,
   });
 
   final List<TaskGroup> groups;
+
+  /// Round-36 §3, L5/L6/L7 — a project's group name, an area's own
+  /// sub-heading, and a resolvable `[[project]]` chip all open the named
+  /// project's Plan tab this way, the same shared navigation the overview
+  /// already uses.
+  final void Function(ProjectOpenTarget target) onOpenProject;
+
+  /// Round-36 §3, L7 — every scanned project's folder, by slug, so a
+  /// `[[project]]` chip can resolve to a real project even one with no
+  /// tasks of its own, and so absent from [groups] itself. A slug this
+  /// does not contain leaves the chip inert, same as before this round.
+  final Map<String, String> folderBySlug;
 
   /// Round 27's navigation fix — when set, the top-level group whose
   /// `project.name` matches sorts first. Nothing else about the grouping
@@ -166,6 +181,16 @@ class _TasksViewState extends State<TasksView> {
 
   String _keyOf(TaskGroup group) => group.project.sourceFile;
 
+  /// A project note's own `sourceFile` (`projects/demo/demo.md`) to its
+  /// containing folder (`projects/demo`) — the one thing every navigation
+  /// target here actually needs, derived rather than threaded down as a
+  /// second field alongside `Project` everywhere it is used.
+  String _folderOf(String sourceFile) {
+    final separator = sourceFile.contains(r'\') ? r'\' : '/';
+    final index = sourceFile.lastIndexOf(separator);
+    return index == -1 ? sourceFile : sourceFile.substring(0, index);
+  }
+
   Widget _groupTile(TaskGroup group, {required int depth}) {
     final key = _keyOf(group);
     final collapsed = _collapsed.contains(key);
@@ -210,11 +235,17 @@ class _TasksViewState extends State<TasksView> {
                         ? null
                         : () => widget.onMarkAllDone(group.project),
                   ),
-                  Text(
-                    group.project.name.toUpperCase(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                  // L5 — the project's own name opens its Plan tab.
+                  InkWell(
+                    onTap: () => widget.onOpenProject(
+                      openTarget(_folderOf(group.project.sourceFile)),
+                    ),
+                    child: Text(
+                      group.project.name.toUpperCase(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ],
@@ -256,7 +287,11 @@ class _TasksViewState extends State<TasksView> {
               ],
               if (!collapsed)
                 for (final areaGroup in group.areaGroups)
-                  _areaGroupTile(areaGroup, depth: depth + 1),
+                  _areaGroupTile(
+                    areaGroup,
+                    depth: depth + 1,
+                    projectFolder: _folderOf(group.project.sourceFile),
+                  ),
               for (final child in group.children)
                 _groupTile(child, depth: depth + 1),
             ],
@@ -271,7 +306,11 @@ class _TasksViewState extends State<TasksView> {
   /// "mark all done" and no parking: Round 34 F's amendment to ADR 0021
   /// covers checkbox state only, in an area's own file — the two writes
   /// this group deliberately does not offer.
-  Widget _areaGroupTile(AreaTaskGroup areaGroup, {required int depth}) {
+  Widget _areaGroupTile(
+    AreaTaskGroup areaGroup, {
+    required int depth,
+    required String projectFolder,
+  }) {
     final key = areaGroup.sourceFile;
     final collapsed = _collapsed.contains(key);
 
@@ -303,13 +342,22 @@ class _TasksViewState extends State<TasksView> {
                   }
                 }),
               ),
-              Text(
-                areaGroup.name.toUpperCase(),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                  fontSize: 12.5,
-                  color: Colors.grey.shade700,
+              // L6 — the area's own sub-heading opens that one area.
+              InkWell(
+                onTap: () => widget.onOpenProject(
+                  openTarget(
+                    projectFolder,
+                    areaSourceFile: areaGroup.sourceFile,
+                  ),
+                ),
+                child: Text(
+                  areaGroup.name.toUpperCase(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    fontSize: 12.5,
+                    color: Colors.grey.shade700,
+                  ),
                 ),
               ),
             ],
@@ -368,19 +416,7 @@ class _TasksViewState extends State<TasksView> {
               style: task.done ? TextStyle(color: Colors.grey.shade500) : null,
             ),
           ),
-          if (task.crossProjectRef != null)
-            Container(
-              margin: const EdgeInsets.only(left: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '↳ ${task.crossProjectRef}',
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              ),
-            ),
+          if (task.crossProjectRef != null) _crossProjectChip(task),
           if (task.isCode)
             Padding(
               padding: const EdgeInsets.only(left: 8),
@@ -410,6 +446,31 @@ class _TasksViewState extends State<TasksView> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Round-36 §3, L7 — a `[[project]]` reference, tappable when
+  /// [TasksView.folderBySlug] can resolve it to a real project; inert
+  /// otherwise, same as every task here already was before this round.
+  Widget _crossProjectChip(Task task) {
+    final folder = widget.folderBySlug[task.crossProjectRef];
+    final chip = Container(
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '↳ ${task.crossProjectRef}',
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+      ),
+    );
+    if (folder == null) return chip;
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: () => widget.onOpenProject(openTarget(folder)),
+      child: chip,
     );
   }
 

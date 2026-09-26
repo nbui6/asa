@@ -2,6 +2,7 @@
 // the project's own home-note tasks. Invented data throughout.
 
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/tasks_reader.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
@@ -22,6 +23,8 @@ void main() {
   Widget pumpTasksView(
     TaskGroup group, {
     Future<void> Function(String, Task)? onToggleAreaTask,
+    void Function(ProjectOpenTarget)? onOpenProject,
+    Map<String, String> folderBySlug = const {},
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -31,6 +34,8 @@ void main() {
           onMarkAllDone: (_) async {},
           onToggleParked: (_, _) async {},
           onToggleAreaTask: onToggleAreaTask,
+          onOpenProject: onOpenProject ?? (_) {},
+          folderBySlug: folderBySlug,
         ),
       ),
     );
@@ -144,6 +149,112 @@ void main() {
         find.byWidgetPredicate((w) => w is Text && (w.data ?? '').isEmpty),
         findsNothing,
       );
+    });
+  });
+
+  group("round-36 §3 — L5, L6, L7: the Tasks view's own links", () {
+    testWidgets("L5 — the project's own group name opens its Plan tab", (
+      tester,
+    ) async {
+      ProjectOpenTarget? opened;
+      const group = TaskGroup(
+        project: _project,
+        tasks: [
+          Task(rawLine: '- [ ] Home task', text: 'Home task', done: false),
+        ],
+      );
+      await tester.pumpWidget(
+        pumpTasksView(group, onOpenProject: (t) => opened = t),
+      );
+
+      await tester.tap(find.text('DEMO'));
+
+      expect(opened?.folder, 'demo');
+      expect(opened?.areaSourceFile, isNull);
+    });
+
+    testWidgets("L6 — an area's own sub-heading opens that one area", (
+      tester,
+    ) async {
+      ProjectOpenTarget? opened;
+      const group = TaskGroup(
+        project: _project,
+        tasks: [],
+        areaGroups: [
+          AreaTaskGroup(
+            name: 'Sales',
+            sourceFile: 'demo/plan/sales.md',
+            tasks: [
+              Task(
+                rawLine: '- [ ] Sales task',
+                text: 'Sales task',
+                done: false,
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        pumpTasksView(group, onOpenProject: (t) => opened = t),
+      );
+
+      await tester.tap(find.text('SALES'));
+
+      expect(opened?.folder, 'demo');
+      expect(opened?.areaSourceFile, 'demo/plan/sales.md');
+    });
+
+    testWidgets('L7 — a resolvable [[project]] chip opens that project', (
+      tester,
+    ) async {
+      ProjectOpenTarget? opened;
+      const group = TaskGroup(
+        project: _project,
+        tasks: [
+          Task(
+            rawLine: '- [ ] Depends on other — [[other-project]]',
+            text: 'Depends on other',
+            done: false,
+            crossProjectRef: 'other-project',
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        pumpTasksView(
+          group,
+          onOpenProject: (t) => opened = t,
+          folderBySlug: const {'other-project': 'projects/other-project'},
+        ),
+      );
+
+      await tester.tap(find.text('↳ other-project'));
+
+      expect(opened?.folder, 'projects/other-project');
+    });
+
+    testWidgets('an unresolvable [[project]] chip stays inert — no crash, '
+        'no navigation', (tester) async {
+      var openedCount = 0;
+      const group = TaskGroup(
+        project: _project,
+        tasks: [
+          Task(
+            rawLine: '- [ ] Depends on other — [[no-such-project]]',
+            text: 'Depends on other',
+            done: false,
+            crossProjectRef: 'no-such-project',
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        pumpTasksView(group, onOpenProject: (_) => openedCount++),
+      );
+
+      await tester.tap(find.text('↳ no-such-project'));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(openedCount, 0);
     });
   });
 }

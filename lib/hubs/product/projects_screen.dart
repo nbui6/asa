@@ -14,6 +14,7 @@ import 'dart:io';
 import 'package:asa/core/decisions_reader.dart' show DiskFileAccess;
 import 'package:asa/core/inbox.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/settings.dart';
@@ -387,6 +388,40 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     await _load();
   }
 
+  /// Round-36 §3, L1-L7 — the one place every link that lands on a
+  /// project actually navigates, shared by [ProjectsView] and [TasksView]
+  /// so both sets of links (the overview's, the Tasks view's) open the
+  /// same way. [target]'s optional fields carry where inside the project
+  /// to land — an area, "Not in an area", a task to highlight — through
+  /// to [ProjectScreen]'s own `initial*` constructor params.
+  void _openProject(ProjectOpenTarget target) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProjectScreen(
+          folder: target.folder,
+          initialAreaToOpen: target.areaSourceFile,
+          initialOpenHome: target.openHome,
+          initialHighlightRawLine: target.highlightRawLine,
+          onOpenTasks: (projectName) {
+            Navigator.of(context).pop();
+            setState(() {
+              _viewMode = _ViewMode.tasks;
+              _pinnedProjectName = projectName;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Round-36 §3, L7 — every scanned project's folder, by slug, so a
+  /// `[[project]]` chip in the Tasks view can resolve to a real project
+  /// even one with no tasks of its own (and so absent from `_taskGroups`,
+  /// which only ever groups projects that have some).
+  Map<String, String> _folderBySlug(List<ProjectSummary> projects) => {
+    for (final summary in projects) slugOf(summary.folder): summary.folder,
+  };
+
   @override
   Widget build(BuildContext context) {
     final scan = _scan;
@@ -472,20 +507,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               if (_viewMode == _ViewMode.projects) ...[
                 ProjectsView(
                   forest: buildProjectForest(scan.projects),
-                  onOpenProject: (folder) => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ProjectScreen(
-                        folder: folder,
-                        onOpenTasks: (projectName) {
-                          Navigator.of(context).pop();
-                          setState(() {
-                            _viewMode = _ViewMode.tasks;
-                            _pinnedProjectName = projectName;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
+                  onOpenProject: _openProject,
                   onAssignTask: _assignInboxTask,
                 ),
                 if (scan.skipped.isNotEmpty) ...[
@@ -501,6 +523,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   onMarkAllDone: _markAllDone,
                   onToggleParked: _toggleParked,
                   onToggleAreaTask: _toggleAreaTask,
+                  onOpenProject: _openProject,
+                  folderBySlug: _folderBySlug(scan.projects),
                   pinnedProjectName: _pinnedProjectName,
                 ),
             ],

@@ -47,6 +47,7 @@ library;
 import 'package:asa/core/area.dart';
 import 'package:asa/core/freshness.dart';
 import 'package:asa/core/open_url.dart';
+import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/roadmap.dart';
@@ -65,9 +66,11 @@ class ProjectsView extends StatefulWidget {
 
   final List<ProjectNode> forest;
 
-  /// Opens the project's own detail screen — same destination the old
-  /// flat list's row tap already used.
-  final void Function(String folder) onOpenProject;
+  /// Opens the project's own detail screen — round-36 §3, L1/L2/L3/L4: a
+  /// plain row tap builds a bare [ProjectOpenTarget] (lands wherever the
+  /// project screen opens by default); an area's bar segment or the row's
+  /// own next-step text name where inside the project to land instead.
+  final void Function(ProjectOpenTarget target) onOpenProject;
 
   /// A row accepted an inbox task dropped on it — the write half of "drag
   /// it onto a project" lives one level up, in `ProjectsScreen`. This view
@@ -197,11 +200,12 @@ class _ProjectsViewState extends State<ProjectsView> {
       lastTouched: node.lastTouched,
       now: DateTime.now(),
     );
-    final nextStep = effectiveNextStep(
+    final nextStepResult = effectiveNextStepWithArea(
       project.tasks,
       project.nextStep,
       areas: node.areas,
     );
+    final nextStep = nextStepResult.text;
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
@@ -220,7 +224,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                   : BorderSide.none,
             ),
             child: InkWell(
-              onTap: () => widget.onOpenProject(node.folder),
+              onTap: () => widget.onOpenProject(openTarget(node.folder)),
               child: Padding(
                 // Round 35/G — `asa-front2` draws a compact row, not a tall
                 // card with a lot of empty space around its own content.
@@ -266,15 +270,33 @@ class _ProjectsViewState extends State<ProjectsView> {
                         ],
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            nextStep ?? 'no next step',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontStyle: nextStep == null
-                                  ? FontStyle.italic
-                                  : FontStyle.normal,
+                          child: InkWell(
+                            // L3 — only tappable when a real task backs the
+                            // text; the typed field or honest absence has
+                            // nowhere more specific to land than the row's
+                            // own tap already goes.
+                            onTap: nextStepResult.task == null
+                                ? null
+                                : () => widget.onOpenProject(
+                                    openTarget(
+                                      node.folder,
+                                      areaSourceFile:
+                                          nextStepResult.area?.sourceFile,
+                                      openHome: nextStepResult.area == null,
+                                      highlightRawLine:
+                                          nextStepResult.task!.rawLine,
+                                    ),
+                                  ),
+                            child: Text(
+                              nextStep ?? 'no next step',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontStyle: nextStep == null
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                              ),
                             ),
                           ),
                         ),
@@ -282,7 +304,16 @@ class _ProjectsViewState extends State<ProjectsView> {
                     ),
                     if (node.areas.isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      _AreaBar(areas: node.areas),
+                      _AreaBar(
+                        areas: node.areas,
+                        // L2 — a segment or its label opens that one area.
+                        onTapArea: (area) => widget.onOpenProject(
+                          openTarget(
+                            node.folder,
+                            areaSourceFile: area.sourceFile,
+                          ),
+                        ),
+                      ),
                     ] else if (phases.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       PhaseBar(phases: phases),
@@ -419,9 +450,12 @@ class _ProjectsViewState extends State<ProjectsView> {
 /// the two segment kinds mean different things (ADR 0024) and
 /// [PhaseBar] stays the unchanged fallback for a project with no areas.
 class _AreaBar extends StatelessWidget {
-  const _AreaBar({required this.areas});
+  const _AreaBar({required this.areas, required this.onTapArea});
 
   final List<Area> areas;
+
+  /// Round-36 §3, L2 — a segment or its own label opens that one area.
+  final void Function(Area area) onTapArea;
 
   @override
   Widget build(BuildContext context) {
@@ -434,7 +468,12 @@ class _AreaBar extends StatelessWidget {
           children: [
             for (var i = 0; i < areas.length; i++) ...[
               if (i > 0) const SizedBox(width: 3),
-              Expanded(child: _segment(areas[i], colors)),
+              Expanded(
+                child: InkWell(
+                  onTap: () => onTapArea(areas[i]),
+                  child: _segment(areas[i], colors),
+                ),
+              ),
             ],
           ],
         ),
@@ -444,12 +483,15 @@ class _AreaBar extends StatelessWidget {
             for (var i = 0; i < areas.length; i++) ...[
               if (i > 0) const SizedBox(width: 3),
               Expanded(
-                child: Text(
-                  areas[i].name,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 9.5, color: colors.outline),
+                child: InkWell(
+                  onTap: () => onTapArea(areas[i]),
+                  child: Text(
+                    areas[i].name,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 9.5, color: colors.outline),
+                  ),
                 ),
               ),
             ],

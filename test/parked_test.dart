@@ -30,6 +30,8 @@ void main() {
             onToggleTask: (_, _) async {},
             onMarkAllDone: (_) async {},
             onToggleParked: (_, _) async {},
+            onOpenProject: (_) {},
+            folderBySlug: const {},
           ),
         ),
       );
@@ -74,6 +76,8 @@ void main() {
               onToggleTask: (_, _) async {},
               onMarkAllDone: (_) async {},
               onToggleParked: (_, t) async => toggled = t,
+              onOpenProject: (_) {},
+              folderBySlug: const {},
             ),
           ),
         ),
