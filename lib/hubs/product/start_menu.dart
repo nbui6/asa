@@ -20,6 +20,8 @@ class StartMenu extends StatelessWidget {
     required this.projectName,
     required this.projectFolder,
     required this.repoPath,
+    this.nextTaskText,
+    this.areaSourceFile,
     super.key,
   });
 
@@ -29,6 +31,12 @@ class StartMenu extends StatelessWidget {
   /// Empty when the project has none set — `Project.repoPath`'s own
   /// convention, never null.
   final String repoPath;
+
+  /// Round-36 §3, L10 — passed straight to `opener.dart`'s `openerText`.
+  /// Null everywhere except the Plan tab's own Next line, and only when a
+  /// real task is behind it — see that function's own doc for why.
+  final String? nextTaskText;
+  final String? areaSourceFile;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +70,8 @@ class StartMenu extends StatelessWidget {
             text: openerText(
               projectName: projectName,
               projectFolder: projectFolder,
+              nextTaskText: nextTaskText,
+              areaSourceFile: areaSourceFile,
             ),
           ),
         );

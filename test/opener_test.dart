@@ -36,5 +36,42 @@ void main() {
       );
       expect(text, contains('Read demo.md'));
     });
+
+    test('round-36 §3, L10 — a real next task names itself and its own '
+        'area page', () {
+      final text = openerText(
+        projectName: 'Northwind partnership',
+        projectFolder: r'C:\projects\northwind',
+        nextTaskText: 'Agree the shared account list',
+        areaSourceFile: r'plan\sales.md',
+      );
+      expect(
+        text,
+        contains(
+          'The next task: Agree the shared account list. Its own page: '
+          r'plan\sales.md.',
+        ),
+      );
+    });
+
+    test('a next task with no area names just the task, no dangling '
+        'sentence about a page that does not exist', () {
+      final text = openerText(
+        projectName: 'demo',
+        projectFolder: 'projects/demo',
+        nextTaskText: 'Home task',
+      );
+      expect(text, contains('The next task: Home task.'));
+      expect(text, isNot(contains('Its own page')));
+    });
+
+    test('no next task at all leaves the opener exactly as before this '
+        'round', () {
+      final text = openerText(
+        projectName: 'demo',
+        projectFolder: 'projects/demo',
+      );
+      expect(text, isNot(contains('next task')));
+    });
   });
 }

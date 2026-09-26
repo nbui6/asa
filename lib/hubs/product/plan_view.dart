@@ -27,6 +27,7 @@ import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/project_row.dart' show effectiveNextStepWithArea;
 import 'package:asa/core/task.dart';
+import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:flutter/material.dart';
 
@@ -39,8 +40,11 @@ class PlanView extends StatefulWidget {
     required this.homeTasks,
     this.strategy,
     this.onOpenStrategy,
+    this.onOpenObjective,
     this.onToggleTask,
     this.areaToOpen,
+    this.openHomeOnStart = false,
+    this.highlightTaskRawLine,
     this.typedNextStep = '',
     this.projectName = '',
     this.projectFolder = '',
@@ -79,6 +83,12 @@ class PlanView extends StatefulWidget {
   /// does not need it.
   final VoidCallback? onOpenStrategy;
 
+  /// Round-36 §3, L12 — switches `ProjectScreen`'s own tab to Strategy and
+  /// asks it to open one specific objective, named by its 1-based number
+  /// (`"1"` from `Objective 1` in a `## Goal` section). Null in a test
+  /// that does not need it, or when an area names no objective at all.
+  final void Function(String objectiveNumber)? onOpenObjective;
+
   /// Round 34/F — ticks one task, in [Area.sourceFile] or
   /// [projectSourceFile] (for "Not in an area"). Null keeps every checkbox
   /// here read-only, for a caller not ready to wire the write path yet.
@@ -89,6 +99,17 @@ class PlanView extends StatefulWidget {
   /// this tab is shown. Read once, on the change that sets it — see
   /// `_PlanViewState.didUpdateWidget`.
   final String? areaToOpen;
+
+  /// Round-36 §3, L3 — a caller that wants "Not in an area" open the next
+  /// time this tab is shown, the same way [areaToOpen] opens one area.
+  /// False in a test that does not need it.
+  final bool openHomeOnStart;
+
+  /// Round-36 §3, L3/L9 — the exact [Task.rawLine] to briefly highlight
+  /// the next time this tab is shown, wherever that task actually renders
+  /// (an area's own tasks, or "Not in an area"). Null shows no highlight
+  /// at all — the ordinary case for every existing caller.
+  final String? highlightTaskRawLine;
 
   /// The project's own typed `next-step:` field — round-36 §2 b's "Next"
   /// line falls back to this only when no home or area task is open,
@@ -128,6 +149,11 @@ class _PlanViewState extends State<PlanView> {
   bool _overviewExpanded = false;
   bool _notInAnAreaExpanded = false;
 
+  /// Round-36 §3, L3/L9 — the task row currently drawn highlighted, or
+  /// null for none. Cleared automatically about 2 s after it is set —
+  /// [_armHighlightTimer] — never left showing.
+  String? _highlightedRawLine;
+
   // Persona-check, re-run against this real screen: showing all ~24 of a
   // real project's top-level groups at once — even one line each,
   // collapsed — reproduces the row-count version of the overwhelm that
@@ -143,6 +169,9 @@ class _PlanViewState extends State<PlanView> {
     super.initState();
     final target = widget.areaToOpen;
     if (target != null) _expandedAreas.add(target);
+    if (widget.openHomeOnStart) _notInAnAreaExpanded = true;
+    _highlightedRawLine = widget.highlightTaskRawLine;
+    if (_highlightedRawLine != null) _armHighlightTimer();
   }
 
   @override
@@ -155,6 +184,20 @@ class _PlanViewState extends State<PlanView> {
     if (target != null && target != oldWidget.areaToOpen) {
       _expandedAreas.add(target);
     }
+    final line = widget.highlightTaskRawLine;
+    if (line != null && line != oldWidget.highlightTaskRawLine) {
+      setState(() => _highlightedRawLine = line);
+      _armHighlightTimer();
+    }
+  }
+
+  /// Round-36 §3, L3/L9 — clears [_highlightedRawLine] about 2 s after it
+  /// is set. `Future.delayed` rather than an `AnimationController`: the
+  /// highlight is "on, then off", never something to scrub or reverse.
+  void _armHighlightTimer() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightedRawLine = null);
+    });
   }
 
   @override
@@ -260,7 +303,9 @@ class _PlanViewState extends State<PlanView> {
         children: [
           Expanded(
             child: InkWell(
-              onTap: text == null ? null : () => _openNextTask(result.area),
+              onTap: text == null
+                  ? null
+                  : () => _openNextTask(result.area, result.task),
               child: Row(
                 children: [
                   Text(
@@ -301,6 +346,10 @@ class _PlanViewState extends State<PlanView> {
             projectName: widget.projectName,
             projectFolder: widget.projectFolder,
             repoPath: widget.repoPath,
+            // L10 — only a real task names itself and its area page; the
+            // typed field or honest absence has no task to point at.
+            nextTaskText: result.task != null ? text : null,
+            areaSourceFile: result.area?.sourceFile,
           ),
         ],
       ),
@@ -308,14 +357,19 @@ class _PlanViewState extends State<PlanView> {
   }
 
   /// L9 — tapping the Next line's task opens the area holding it (or
-  /// "Not in an area" for a home task). Highlighting the task itself is
-  /// cp4's own job, alongside the rest of `test/links_test.dart`.
-  void _openNextTask(Area? area) {
-    if (area == null) {
-      setState(() => _notInAnAreaExpanded = true);
-    } else {
-      setState(() => _expandedAreas.add(area.sourceFile));
-    }
+  /// "Not in an area" for a home task) and briefly highlights the task
+  /// row itself, same mechanism L3 (the overview's own next-step text)
+  /// uses to land here.
+  void _openNextTask(Area? area, Task? task) {
+    setState(() {
+      if (area == null) {
+        _notInAnAreaExpanded = true;
+      } else {
+        _expandedAreas.add(area.sourceFile);
+      }
+      if (task != null) _highlightedRawLine = task.rawLine;
+    });
+    if (task != null) _armHighlightTimer();
   }
 
   Widget _areaNameChip(String name) {
@@ -477,7 +531,7 @@ class _PlanViewState extends State<PlanView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _textField('Goal', area.goal, empty: 'No goal yet'),
+        _goalField(area),
         _textField('Plan', area.planText, empty: 'No plan yet'),
         _tasksField(area.tasks, sourceFile: area.sourceFile),
         _resultsField(area.results),
@@ -523,6 +577,69 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
+  /// Round-36 §3, L12 — same shape as [_textField], plus one chip per
+  /// number in [Area.objectiveNumbers] (only ever parsed from this same
+  /// Goal section — `area.dart`'s own scoping rule). Tapping one switches
+  /// to Strategy with that objective expanded.
+  Widget _goalField(Area area) {
+    final goal = area.goal;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel('Goal'),
+          Text(
+            goal == null || goal.isEmpty
+                ? 'No goal yet'
+                : stripCodeSpanMarkers(stripEmphasisMarkers(goal)),
+            style: TextStyle(
+              color: goal == null || goal.isEmpty
+                  ? Colors.grey.shade500
+                  : Colors.black87,
+              fontStyle: goal == null || goal.isEmpty
+                  ? FontStyle.italic
+                  : FontStyle.normal,
+            ),
+          ),
+          if (area.objectiveNumbers.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final number in area.objectiveNumbers)
+                  _objectiveChip(number),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _objectiveChip(String number) {
+    return InkWell(
+      onTap: () => widget.onOpenObjective?.call(number),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE4F0EA),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'Objective $number',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2A7355),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _fieldLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
@@ -562,7 +679,10 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _taskRow(Task task, {required String sourceFile}) {
     final canToggle = widget.onToggleTask != null;
-    return Padding(
+    final highlighted = _highlightedRawLine == task.rawLine;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      color: highlighted ? const Color(0xFFFFF3CD) : Colors.transparent,
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
@@ -671,7 +791,7 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _adrChip(String number) {
     return InkWell(
-      onTap: () => openUrl(_decisionSourceFor(number)),
+      onTap: () => _openDecision(number),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -689,6 +809,31 @@ class _PlanViewState extends State<PlanView> {
         ),
       ),
     );
+  }
+
+  /// Round-36 §3, L13 — the decision detail screen when [number] is
+  /// already loaded (real in-app navigation, so popping back returns to
+  /// this same Plan tab with this same area still open); the raw file
+  /// otherwise, same fallback as before this round, for a number this
+  /// screen never loaded a decision for.
+  void _openDecision(String number) {
+    final decision = _decisionFor(number);
+    if (decision != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => DecisionDetailScreen(decision: decision),
+        ),
+      );
+      return;
+    }
+    openUrl(_decisionSourceFor(number));
+  }
+
+  Decision? _decisionFor(String number) {
+    for (final result in widget.decisions) {
+      if (result.decision?.number == number) return result.decision;
+    }
+    return null;
   }
 
   String _decisionSourceFor(String number) {

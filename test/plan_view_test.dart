@@ -4,9 +4,11 @@
 
 import 'package:asa/core/area.dart';
 import 'package:asa/core/charter.dart';
+import 'package:asa/core/decision.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/task.dart';
+import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -648,6 +650,133 @@ void main() {
       await tester.pump();
 
       expect(find.text('Serves Objective 1.'), findsOneWidget);
+
+      // The tap also arms the highlight timer (round-36 §3, L9) — flush it
+      // rather than leave a pending Timer when the widget tree is torn down.
+      await tester.pump(const Duration(seconds: 2));
+    });
+  });
+
+  group("round-36 §3, L12 — an area's Objective chip", () {
+    Area area({List<String> objectiveNumbers = const []}) {
+      return Area(
+        name: 'Sales',
+        sourceFile: 'plan/sales.md',
+        goal: 'Serves Objective 1.',
+        objectiveNumbers: objectiveNumbers,
+        tasks: const [],
+        results: const [],
+        decisionNumbers: const [],
+      );
+    }
+
+    testWidgets('shows one chip per objective number the Goal names, tap '
+        'switches to Strategy with that objective', (tester) async {
+      String? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [
+                area(objectiveNumbers: const ['1']),
+              ],
+              decisions: const [],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+              onOpenObjective: (n) => opened = n,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Sales'));
+      await tester.pump();
+
+      expect(find.text('Objective 1'), findsOneWidget);
+      await tester.tap(find.text('Objective 1'));
+      expect(opened, '1');
+    });
+
+    testWidgets('no objective named at all shows no chip', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [area()],
+              decisions: const [],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Sales'));
+      await tester.pump();
+
+      expect(find.text('Objective 1'), findsNothing);
+    });
+  });
+
+  group("round-36 §3, L13 — an area's ADR chip opens decision detail", () {
+    Area area(List<String> decisionNumbers) {
+      return Area(
+        name: 'Sales',
+        sourceFile: 'plan/sales.md',
+        decisionNumbers: decisionNumbers,
+        tasks: const [],
+        results: const [],
+        objectiveNumbers: const [],
+      );
+    }
+
+    const decision = Decision(
+      title: 'Deals go through the partner portal',
+      why: 'w',
+      decision: 'd',
+      whatWouldChangeThis: 'c',
+      sourceFile: 'decisions/0003.md',
+      number: '0003',
+    );
+
+    testWidgets('a loaded decision opens the real in-app detail screen, '
+        'not the raw file', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [
+                area(const ['0003']),
+              ],
+              decisions: const [
+                DecisionReadResult(
+                  sourceFile: 'decisions/0003.md',
+                  decision: decision,
+                ),
+              ],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Sales'));
+      await tester.pump();
+      await tester.tap(find.text('ADR 0003'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DecisionDetailScreen), findsOneWidget);
+      expect(find.text('Deals go through the partner portal'), findsOneWidget);
+
+      // Back returns to Plan, this same area still open.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(DecisionDetailScreen), findsNothing);
+      expect(find.text('No goal yet'), findsOneWidget);
     });
   });
 }
