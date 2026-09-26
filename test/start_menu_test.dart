@@ -24,6 +24,18 @@ Future<void> _pump(WidgetTester tester, String repoPath) async {
 }
 
 void main() {
+  testWidgets(
+    'Round 35/F — the rocket icon has a real tooltip, not just an icon',
+    (tester) async {
+      await _pump(tester, r'C:\demo\repo');
+
+      final button = tester.widget<PopupMenuButton<dynamic>>(
+        find.byWidgetPredicate((w) => w is PopupMenuButton<dynamic>),
+      );
+      expect(button.tooltip, 'Start working on this project');
+    },
+  );
+
   testWidgets('shows all three actions', (tester) async {
     await _pump(tester, r'C:\demo\repo');
     await tester.tap(find.byIcon(Icons.rocket_launch_outlined));

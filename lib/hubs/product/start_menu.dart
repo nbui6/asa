@@ -34,7 +34,7 @@ class StartMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<_StartAction>(
       icon: const Icon(Icons.rocket_launch_outlined, size: 18),
-      tooltip: 'Start',
+      tooltip: 'Start working on this project',
       onSelected: (action) => _run(context, action),
       itemBuilder: (context) => [
         const PopupMenuItem(
