@@ -44,12 +44,12 @@ import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/strategy_view.dart';
 import 'package:flutter/material.dart';
 
-/// Round 16's tab reorder: `Strategy · Plan · Decisions · Details`,
-/// matching `asa-strategy-v3.html`'s own row for every tab that actually
-/// exists (Roadmap and the six-tab row's other gaps are not built).
-/// `strategy` and `plan` are each absent-not-empty; `decisions` and
-/// `details` never move and never disappear.
-enum _Tab { strategy, plan, decisions, details }
+/// Round 16 ordered this `Strategy · Plan · Decisions · Details`; round-36
+/// §2 a reorders it again, this time to `Plan · Strategy · Decisions ·
+/// Details`, and a project now opens on Plan — `asa-project-page-v1`,
+/// approved 2026-09-26. `strategy` and `plan` are each absent-not-empty;
+/// `decisions` and `details` never move and never disappear.
+enum _Tab { plan, strategy, decisions, details }
 
 /// ADR 0017's own six values, in the order the ADR states them. No code
 /// defined this list before this round — the picker needs it to exist
@@ -106,7 +106,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   Strategy? _strategy;
   RoundApprovals _approvals = const RoundApprovals({});
   bool _loading = true;
-  _Tab _activeTab = _Tab.strategy;
+  _Tab _activeTab = _Tab.plan;
   bool _provenanceExpanded = false;
 
   // Editing one of the five whitelisted fields — Round 20. Only one field
@@ -234,14 +234,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
     });
   }
 
-  /// `Strategy` first, per the sketch's own row order — `Decisions` and
+  /// `Plan` first, per round-36 §2 a's own row order — `Decisions` and
   /// `Details` never move and never disappear.
   List<_Tab> _visibleTabs() {
     final strategy = _strategy;
     final plan = _plan;
     return [
-      if (strategy != null && !strategy.isEmpty) _Tab.strategy,
       if (plan != null && !plan.isEmpty) _Tab.plan,
+      if (strategy != null && !strategy.isEmpty) _Tab.strategy,
       _Tab.decisions,
       _Tab.details,
     ];
@@ -345,8 +345,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// absent-not-empty rule every conditional tab here already follows.
   Widget _tabRow() {
     final labels = {
-      _Tab.strategy: 'Strategy',
       _Tab.plan: 'Plan',
+      _Tab.strategy: 'Strategy',
       _Tab.decisions: 'Decisions',
       _Tab.details: 'Details',
     };
@@ -394,6 +394,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
           projectSourceFile: read.isSuccess
               ? read.project!.sourceFile
               : widget.folder,
+          typedNextStep: read.isSuccess ? read.project!.nextStep : '',
+          projectName: read.isSuccess ? read.project!.name : '',
+          projectFolder: widget.folder,
+          repoPath: read.isSuccess ? read.project!.repoPath : '',
         );
       case _Tab.decisions:
         return _decisionsTab(read);
