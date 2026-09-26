@@ -69,6 +69,9 @@ class ProjectScreen extends StatefulWidget {
     required this.folder,
     this.writeLogPath,
     this.onOpenTasks,
+    this.initialAreaToOpen,
+    this.initialOpenHome = false,
+    this.initialHighlightRawLine,
     super.key,
   });
 
@@ -87,6 +90,20 @@ class ProjectScreen extends StatefulWidget {
   /// than assumed.
   final void Function(String projectName)? onOpenTasks;
 
+  /// Round-36 §3, L2/L6 — a caller (the overview, the Tasks view) that
+  /// wants this one area open the moment this screen's Plan tab first
+  /// shows, from `ProjectOpenTarget.areaSourceFile`. Null for a plain
+  /// open, landing wherever Plan already opens by default.
+  final String? initialAreaToOpen;
+
+  /// Round-36 §3, L3 — same as [initialAreaToOpen], for "Not in an area"
+  /// instead, from `ProjectOpenTarget.openHome`.
+  final bool initialOpenHome;
+
+  /// Round-36 §3, L3/L9 — the exact task row to briefly highlight once
+  /// the Plan tab first shows, from `ProjectOpenTarget.highlightRawLine`.
+  final String? initialHighlightRawLine;
+
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
 }
@@ -103,6 +120,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// Sticky, same reasoning as `_pinnedProjectName`: nothing asks it to
   /// clear itself.
   String? _areaToOpen;
+
+  /// Round-36 §3, L12 — an area's Objective chip on the Plan tab sets
+  /// this, then switches to the Strategy tab; `StrategyView` opens that
+  /// one objective on the next build. Sticky, same reasoning as
+  /// `_areaToOpen`.
+  String? _objectiveToOpen;
   Strategy? _strategy;
   RoundApprovals _approvals = const RoundApprovals({});
   bool _loading = true;
@@ -121,6 +144,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   @override
   void initState() {
     super.initState();
+    _areaToOpen = widget.initialAreaToOpen;
     _load();
   }
 
@@ -378,6 +402,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           projectSourceFile: read.isSuccess
               ? read.project!.sourceFile
               : widget.folder,
+          objectiveToOpen: _objectiveToOpen,
         );
       case _Tab.plan:
         final plan = _plan;
@@ -389,8 +414,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
           homeTasks: read.isSuccess ? read.project!.tasks : const [],
           strategy: _strategy,
           onOpenStrategy: () => setState(() => _activeTab = _Tab.strategy),
+          onOpenObjective: (number) => setState(() {
+            _activeTab = _Tab.strategy;
+            _objectiveToOpen = number;
+          }),
           onToggleTask: _toggleAreaOrHomeTask,
           areaToOpen: _areaToOpen,
+          openHomeOnStart: widget.initialOpenHome,
+          highlightTaskRawLine: widget.initialHighlightRawLine,
           projectSourceFile: read.isSuccess
               ? read.project!.sourceFile
               : widget.folder,

@@ -3,8 +3,10 @@
 // screen does with data it is handed.
 
 import 'package:asa/core/charter.dart';
+import 'package:asa/core/decision.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
+import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/strategy_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +24,8 @@ Future<void> _pump(
   required Strategy strategy,
   List<Milestone> roadmap = const [],
   RoundApprovals approvals = const RoundApprovals({}),
+  List<DecisionReadResult> decisions = const [],
+  String? objectiveToOpen,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -30,10 +34,11 @@ Future<void> _pump(
           strategy: strategy,
           roadmap: roadmap,
           approvals: approvals,
-          decisions: const [],
+          decisions: decisions,
           charterSourceFile: 'CHARTER.md',
           personaSourceFile: 'PERSONA.md',
           projectSourceFile: 'demo.md',
+          objectiveToOpen: objectiveToOpen,
         ),
       ),
     ),
@@ -256,6 +261,108 @@ void main() {
       );
 
       expect(find.text('1 round serves no objective yet'), findsOneWidget);
+    });
+  });
+
+  group('round-36 §3, L12 — objectiveToOpen expands one objective on '
+      'arrival', () {
+    const strategy = Strategy(
+      origin: 'o',
+      whoItsFor: 'Nico',
+      painPoints: '1. a pain',
+      objectives: [
+        Objective(
+          title: 'First objective',
+          evidence: 'e1',
+          sentence: 'First objective. Served by Round 1.',
+        ),
+        Objective(
+          title: 'Second objective',
+          evidence: 'e2',
+          sentence: 'Second objective. Served by Round 2.',
+        ),
+      ],
+    );
+
+    testWidgets('"2" expands the second objective, not the first', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        strategy: strategy,
+        roadmap: [_round('1', done: true), _round('2', done: true)],
+        objectiveToOpen: '2',
+      );
+
+      expect(find.text('Round 1 — a real round'), findsNothing);
+      expect(find.text('Round 2 — a real round'), findsOneWidget);
+    });
+
+    testWidgets('a number past the end of the list expands nothing, '
+        'rather than throwing', (tester) async {
+      await _pump(
+        tester,
+        strategy: strategy,
+        roadmap: [_round('1', done: true), _round('2', done: true)],
+        objectiveToOpen: '9',
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Round 1 — a real round'), findsNothing);
+      expect(find.text('Round 2 — a real round'), findsNothing);
+    });
+  });
+
+  group("round-36 §3, L15 — an objective's ADR chip opens decision detail; "
+      'Round stays as built today', () {
+    const decision = Decision(
+      title: 'A real decision',
+      why: 'w',
+      decision: 'd',
+      whatWouldChangeThis: 'c',
+      sourceFile: 'decisions/0009.md',
+      number: '0009',
+    );
+
+    const strategy = Strategy(
+      origin: 'o',
+      whoItsFor: 'Nico',
+      painPoints: '1. a pain',
+      objectives: [
+        Objective(
+          title: 'Ship the thing',
+          evidence: 'it ships',
+          sentence: 'Ship the thing. Served by Round 1, ADR 0009.',
+        ),
+      ],
+    );
+
+    testWidgets('a loaded decision opens the real in-app detail screen, '
+        'back returns here with the objective still expanded', (tester) async {
+      await _pump(
+        tester,
+        strategy: strategy,
+        roadmap: [_round('1', done: true)],
+        decisions: const [
+          DecisionReadResult(
+            sourceFile: 'decisions/0009.md',
+            decision: decision,
+          ),
+        ],
+      );
+
+      await tester.tap(find.byIcon(Icons.chevron_right));
+      await tester.pump();
+      await tester.tap(find.text('ADR 0009'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DecisionDetailScreen), findsOneWidget);
+      expect(find.text('A real decision'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(DecisionDetailScreen), findsNothing);
+      expect(find.text('Round 1 — a real round'), findsOneWidget);
     });
   });
 }

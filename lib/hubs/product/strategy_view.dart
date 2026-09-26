@@ -20,6 +20,7 @@ import 'package:asa/core/plan.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_state.dart';
+import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:flutter/material.dart';
 
 class StrategyView extends StatefulWidget {
@@ -31,6 +32,7 @@ class StrategyView extends StatefulWidget {
     required this.charterSourceFile,
     required this.personaSourceFile,
     required this.projectSourceFile,
+    this.objectiveToOpen,
     super.key,
   });
 
@@ -42,6 +44,13 @@ class StrategyView extends StatefulWidget {
   final String personaSourceFile;
   final String projectSourceFile;
 
+  /// Round-36 §3, L12 — an area's "Objective N" chip on the Plan tab sets
+  /// this to `"N"` (1-based, matching `CHARTER.md`'s own numbered list)
+  /// and switches to this tab; that one objective opens on the next build.
+  /// Read once, on the change that sets it — see `_StrategyViewState`'s
+  /// own `didUpdateWidget`, same pattern `PlanView.areaToOpen` uses.
+  final String? objectiveToOpen;
+
   @override
   State<StrategyView> createState() => _StrategyViewState();
 }
@@ -50,12 +59,50 @@ class _StrategyViewState extends State<StrategyView> {
   // Every objective starts collapsed, same as the Plan tab — persona-check
   // ran on this exact screen shape twice this week (v2, v4) and both
   // failed on density; nothing here is expanded until asked for.
+  //
+  // Keyed by the objective's own 0-based position in `strategy.objectives`
+  // — not `identityHashCode`, per round-36 §3 L12: a fresh `Strategy` is
+  // read on every `ProjectScreen._load()`, and identity would not survive
+  // that reload, the exact bug `PlanView._expandedAreas` already found and
+  // fixed the same way for areas.
   final Set<int> _expanded = {};
 
   final RegExp _roundNumberInTitle = RegExp(
     r'^Round\s*(\d+)\b',
     caseSensitive: false,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    final index = _objectiveIndex(widget.objectiveToOpen);
+    if (index != null) _expanded.add(index);
+  }
+
+  @override
+  void didUpdateWidget(StrategyView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only react to a genuinely new request — see `PlanView`'s own
+    // `didUpdateWidget` for why this guard matters.
+    if (widget.objectiveToOpen != null &&
+        widget.objectiveToOpen != oldWidget.objectiveToOpen) {
+      final index = _objectiveIndex(widget.objectiveToOpen);
+      if (index != null) _expanded.add(index);
+    }
+  }
+
+  /// `"1"` → `0` — an objective's own 1-based number, as `CHARTER.md`'s
+  /// numbered list and `area.dart`'s `objectiveNumbers` both write it,
+  /// converted to this list's 0-based position. Null for anything that
+  /// does not parse, or that names an objective past the end of the list.
+  int? _objectiveIndex(String? number) {
+    if (number == null) return null;
+    final n = int.tryParse(number);
+    if (n == null || n < 1 || n > widget.strategy.objectives.length) {
+      return null;
+    }
+    return n - 1;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +117,8 @@ class _StrategyViewState extends State<StrategyView> {
         Text(_plain(strategy.painPoints!)),
         const SizedBox(height: 20),
         _label('Objectives'),
-        for (final objective in strategy.objectives) _objectiveTile(objective),
+        for (var i = 0; i < strategy.objectives.length; i++)
+          _objectiveTile(strategy.objectives[i], i),
         const SizedBox(height: 12),
         _legend(),
       ],
@@ -124,9 +172,8 @@ class _StrategyViewState extends State<StrategyView> {
     return byNumber;
   }
 
-  Widget _objectiveTile(Objective objective) {
-    final id = identityHashCode(objective);
-    final expanded = _expanded.contains(id);
+  Widget _objectiveTile(Objective objective, int index) {
+    final expanded = _expanded.contains(index);
     final byNumber = _roadmapByNumber();
 
     final roundLinks = _dedupeByTarget(
@@ -167,9 +214,9 @@ class _StrategyViewState extends State<StrategyView> {
           InkWell(
             onTap: () => setState(() {
               if (expanded) {
-                _expanded.remove(id);
+                _expanded.remove(index);
               } else {
-                _expanded.add(id);
+                _expanded.add(index);
               }
             }),
             child: Row(
@@ -454,7 +501,7 @@ class _StrategyViewState extends State<StrategyView> {
     return Tooltip(
       message: link.sentence,
       child: InkWell(
-        onTap: () => openUrl(_adrTarget(link)),
+        onTap: () => _openAdr(link),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -475,13 +522,23 @@ class _StrategyViewState extends State<StrategyView> {
     );
   }
 
-  String _adrTarget(PlanLink link) {
+  /// Round-36 §3, L15 — a loaded decision opens the real in-app detail
+  /// screen, same as `PlanView`'s own area ADR chip; popping back returns
+  /// to this same Strategy tab with this same objective still expanded,
+  /// since neither is touched by the push. The Round link stays on
+  /// `openUrl` unchanged — "as built today", per L15's own wording.
+  void _openAdr(PlanLink link) {
     for (final result in widget.decisions) {
       if (result.decision?.number == link.target) {
-        return result.decision!.sourceFile;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => DecisionDetailScreen(decision: result.decision!),
+          ),
+        );
+        return;
       }
     }
-    return widget.charterSourceFile;
+    openUrl(widget.charterSourceFile);
   }
 
   // --- Legend --------------------------------------------------------
