@@ -97,6 +97,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
   List<DecisionReadResult>? _decisions;
   Plan? _plan;
   List<Area> _areas = const [];
+
+  /// Round 34/D — an area chip on a decision row sets this, then switches
+  /// to the Plan tab; `PlanView` opens that one area on the next build.
+  /// Sticky, same reasoning as `_pinnedProjectName`: nothing asks it to
+  /// clear itself.
+  String? _areaToOpen;
   Strategy? _strategy;
   RoundApprovals _approvals = const RoundApprovals({});
   bool _loading = true;
@@ -384,6 +390,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           strategy: _strategy,
           onOpenStrategy: () => setState(() => _activeTab = _Tab.strategy),
           onToggleTask: _toggleAreaOrHomeTask,
+          areaToOpen: _areaToOpen,
           projectSourceFile: read.isSuccess
               ? read.project!.sourceFile
               : widget.folder,
@@ -522,6 +529,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   if (decision.status != null) _statusPill(decision),
+                  // Round 34/D — the areas that name this ADR (ADR number
+                  // match, same as an area's own decisionNumbers). Tapping
+                  // one opens the Plan tab with that area already open.
+                  for (final area in _areasNaming(decision.number))
+                    _areaChip(area),
                   // The pill alone would drop "names what replaced it" —
                   // still required (HANDOVER.md §5b), so it stays as a
                   // small note next to the pill rather than inside it.
@@ -543,6 +555,42 @@ class _ProjectScreenState extends State<ProjectScreen> {
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Round 34/D — every area whose own `decisionNumbers` names [number].
+  /// A decision can be named by more than one area; every one gets its own
+  /// chip, never merged into one.
+  List<Area> _areasNaming(String? number) {
+    if (number == null) return const [];
+    return [
+      for (final area in _areas)
+        if (area.decisionNumbers.contains(number)) area,
+    ];
+  }
+
+  Widget _areaChip(Area area) {
+    return InkWell(
+      onTap: () => setState(() {
+        _activeTab = _Tab.plan;
+        _areaToOpen = area.sourceFile;
+      }),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEDE7F6),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          area.name,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF5E35B1),
+          ),
         ),
       ),
     );

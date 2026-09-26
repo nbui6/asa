@@ -38,6 +38,7 @@ class PlanView extends StatefulWidget {
     this.strategy,
     this.onOpenStrategy,
     this.onToggleTask,
+    this.areaToOpen,
     super.key,
   });
 
@@ -77,6 +78,12 @@ class PlanView extends StatefulWidget {
   /// here read-only, for a caller not ready to wire the write path yet.
   final Future<void> Function(String sourceFile, Task task)? onToggleTask;
 
+  /// Round 34/D, L13/L17 — an area's own `sourceFile`, set by a caller
+  /// (an ADR chip elsewhere) that wants this one area open the next time
+  /// this tab is shown. Read once, on the change that sets it — see
+  /// `_PlanViewState.didUpdateWidget`.
+  final String? areaToOpen;
+
   @override
   State<PlanView> createState() => _PlanViewState();
 }
@@ -109,6 +116,25 @@ class _PlanViewState extends State<PlanView> {
   // fold — a bounded number, picked and named, same discipline this
   // project already asks of any other bounded list.
   static const _topLevelGroupCap = 6;
+
+  @override
+  void initState() {
+    super.initState();
+    final target = widget.areaToOpen;
+    if (target != null) _expandedAreas.add(target);
+  }
+
+  @override
+  void didUpdateWidget(PlanView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only react to a genuinely new request — the same sourceFile arriving
+    // again (e.g. a reload after a tick) must not reopen a row the person
+    // already collapsed by hand.
+    final target = widget.areaToOpen;
+    if (target != null && target != oldWidget.areaToOpen) {
+      _expandedAreas.add(target);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
