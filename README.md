@@ -13,22 +13,33 @@ and shows them back to you. It does not ask you to fill anything in.
 
 ## Where it is right now
 
-*The app described here is the state committed on 9 September 2026, `b4ed8d3`. This section names
-a commit on purpose: a status line that names nothing is quietly wrong, and one that names a hash
-is visibly out of date.*
+*The app described here is the state committed on 26 September 2026, `6eda01f` (Round 32). This
+section names a commit on purpose: a status line that names nothing is quietly wrong, and one that
+names a hash is visibly out of date.*
 
 **The app is worth trying now.** The projects folder is chosen once, on first run — paste a path
 into the box — and Asa remembers it in your own Windows app-data folder, never in this repository.
 
 | | |
 |---|---|
-| **Built and committed** | A Windows window · the folder picker (paste-a-path, persisted) · every project on one screen, sorted by how long since anything moved · a Tasks view alongside it (real project tasks, cross-project references, a filter for tasks that aren't yours) · a project's Decisions tab — every decision, *why*, *what would change this*, and, for a proposed one, an Accept/Reject that appends the verdict to the file itself, never overwriting anything · a project's Milestone field, derived from its own `## Roadmap` once it has one |
-| **Written, not yet shown to the owner or committed** | A redesigned front page — status and priority pills, a Jira chip, work/personal projects grouped — matching the approved sketch. The current flat list ships until this is confirmed. |
-| **Planned, in order** | a segmented progress bar per project, derived from real milestone history, once one exists · the rest of the five UI changes still open · quick capture · how projects relate to each other · an HR tab for skills and agents · packaging for a second person to install without a Flutter toolchain |
+| **Built and committed** | A Windows window · the folder picker (paste-a-path, persisted) · every project on one row — name, Jira chip, status and priority pills, a freshness value (a deadline, or how long since anything actually moved, derived from git or the folder itself, never a typed field), a next step derived from the first open task, a segmented progress bar once a project has real milestone phases · work and personal projects grouped, matching the approved sketch · a small "Start" menu on every row — copy an opener for Claude, open the folder, open the code · a Tasks view alongside it (real project tasks, cross-project references, quick capture, drag an unfiled task onto a project) · a project's Strategy, Plan, Decisions and Details tabs — a project's own charter and plan pages when it has them, every decision with *why* and *what would change this*, an Accept/Reject that appends the verdict to the file itself, never overwriting anything |
+| **Planned, in order** | areas — a project's own goal → plan → tasks → results → decisions, one page per area (Round 34) · how areas show on the Projects overview · an HR tab for skills and agents |
 
 **`kit/` is a different matter: it is usable today and needs none of the app.** It is at v1.24, it
 has been through one outside test, and everything that test produced is in it. The three questions
 under [For testers](#for-testers) apply to it just as well as to the app.
+
+## On a new machine
+
+1. `git clone` this repository.
+2. **Moved or cloned this folder to a new location? Run `flutter clean` first** — see
+   [FOR-YOUR-FORK.md](FOR-YOUR-FORK.md) for why.
+3. `flutter build windows --release`, or `flutter run -d windows` — see
+   [Running it](#running-it) below for what your machine needs first.
+4. First run asks for your projects folder — paste a path. Asa remembers it from then on.
+5. Run `onboard-projects.ps1` once against that folder. It never overwrites anything, and it
+   never writes a project's home note for you — see the script's own header for exactly what it
+   does and why.
 
 ---
 
