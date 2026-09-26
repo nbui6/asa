@@ -57,6 +57,7 @@ class Decision {
     this.supersedes,
     this.supersededBy,
     this.verdict,
+    this.verdictUnreadable = false,
   });
 
   final String? number;
@@ -95,25 +96,39 @@ class Decision {
   /// the effective answer, read from the end of the file, not the top.
   final Verdict? verdict;
 
+  /// Round 35/E — a `## Your call` section exists (Asa found the heading),
+  /// but nothing inside it matched any recognized `**Accepted**`/
+  /// `**Rejected**` shape. Distinct from "no verdict yet": that silent
+  /// gap is exactly how six of seven real "Needs a look" rows turned out
+  /// to already be decided — the parser stayed quiet instead of saying it
+  /// couldn't read the file.
+  final bool verdictUnreadable;
+
   /// Whether this decision still wants something from you: the header
-  /// says `proposed`, **and** nothing has been recorded yet. A verdict
-  /// overrides the header rather than the other way round — ADR 0011 is
-  /// explicit that the header is never corrected. The other half of "wants
-  /// something from you" — an accepted decision with a fired condition —
-  /// has no data source yet: [whatWouldChangeThis] is raw prose, and
-  /// nothing records whether one of its conditions has actually happened.
-  /// See `asa-v01b-NOT-IN-V0.1.md`. The one canonical place this check is
-  /// made — `project_screen.dart`'s status pill uses it too, rather than
-  /// re-deriving its own.
+  /// says `proposed`, **and** nothing has been recorded yet — or a
+  /// `## Your call` section exists that Asa still can't read, which is
+  /// exactly as unresolved as no verdict at all, just for a different
+  /// reason. A verdict overrides the header rather than the other way
+  /// round — ADR 0011 is explicit that the header is never corrected. The
+  /// other half of "wants something from you" — an accepted decision with
+  /// a fired condition — has no data source yet: [whatWouldChangeThis] is
+  /// raw prose, and nothing records whether one of its conditions has
+  /// actually happened. See `asa-v01b-NOT-IN-V0.1.md`. The one canonical
+  /// place this check is made — `project_screen.dart`'s status pill uses
+  /// it too, rather than re-deriving its own.
   bool get isProposed =>
-      (status ?? '').toLowerCase().contains('proposed') && verdict == null;
+      verdictUnreadable ||
+      ((status ?? '').toLowerCase().contains('proposed') && verdict == null);
 
   /// What to show as the status, accounting for a recorded verdict — never
   /// the raw [status] directly. Falls back to [status] (or `''`) when
   /// there is no verdict, so callers do not need to null-check twice.
+  /// Round 35/E: a `## Your call` section Asa can't parse says so plainly
+  /// rather than silently trusting the header's own possibly-stale word.
   String get displayStatus {
     final recorded = verdict;
     if (recorded != null) return recorded.accepted ? 'accepted' : 'rejected';
+    if (verdictUnreadable) return 'verdict unreadable';
     return status ?? '';
   }
 }
@@ -193,8 +208,20 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
       title;
   final whatWouldChangeThis =
       _section(afterHeading, 'What would change this') ?? '';
-  final yourCall = _section(afterHeading, 'Your call');
-  final verdict = yourCall == null ? null : _parseVerdict(yourCall);
+  // Round 35/E — real files write "## Your call — 2026-09-14", the date
+  // sharing the heading line. An exact-match heading (_section) never
+  // finds that line at all; _sectionByPrefix does, and _yourCallHeadingDate
+  // recovers the date the heading itself carries, for when the body below
+  // it doesn't repeat one.
+  final yourCall = _sectionByPrefix(afterHeading, 'Your call');
+  final headingDate = _yourCallHeadingDate(afterHeading);
+  final verdict = yourCall == null
+      ? null
+      : _parseVerdict(yourCall, headingDate: headingDate);
+  // A "## Your call" section that exists but still can't be read must not
+  // read as "proposed" — that is exactly how six of seven already-decided
+  // rows went unnoticed. Distinct from "no verdict yet" (yourCall == null).
+  final verdictUnreadable = yourCall != null && verdict == null;
 
   return DecisionReadResult(
     decision: Decision(
@@ -209,27 +236,66 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
       whatWouldChangeThis: whatWouldChangeThis,
       sourceFile: sourceFile,
       verdict: verdict,
+      verdictUnreadable: verdictUnreadable,
     ),
     rawText: text,
     sourceFile: sourceFile,
   );
 }
 
-/// Reads `**Accepted** — 2026-09-07` (or `**Rejected**`) as the first line
-/// of a `## Your call` section, and everything after it as the reason —
-/// ADR 0011's exact appended shape. Null when the section does not start
-/// with that line, rather than guessing at a malformed one.
-Verdict? _parseVerdict(String sectionText) {
+/// Round 35/E — the date `## Your call — 2026-09-14` carries on its own
+/// heading line, for a body below that doesn't repeat one (`**Accepted**,`
+/// with nothing else date-shaped in it). Fence-aware, same as every other
+/// heading search in this file, even though no real file has hidden one
+/// inside a fence yet — a search that only works until the first exception
+/// is not a search this codebase trusts (see the fenced-example test).
+String? _yourCallHeadingDate(String text) {
+  final heading = firstUnfencedMatch(
+    RegExp(r'^#{2,3}\s*Your call\b.*$', multiLine: true, caseSensitive: false),
+    text,
+  );
+  if (heading == null) return null;
+  return RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(heading[0]!)?.group(0);
+}
+
+/// Reads a `## Your call` section's own verdict — ADR 0011's appended
+/// shape, but real files have never agreed on exactly one punctuation
+/// pattern. Accepts: `**Accepted** — 2026-09-07` (the original); the date
+/// living *inside* the bold, with or without a reason continuing in the
+/// same sentence (`**Accepted — 2026-09-14, with one amendment: ...**`);
+/// a bare `**Accepted.**` or `**Accepted**,` with no date in the body at
+/// all, relying on [headingDate]. Null only when the text does not start
+/// with `**Accepted**`/`**Rejected**` in any of these shapes — a real
+/// "can't read this" rather than a guess.
+Verdict? _parseVerdict(String sectionText, {String? headingDate}) {
+  final trimmedSection = sectionText.trim();
   final match = RegExp(
-    r'^\*\*(Accepted|Rejected)\*\*\s*[—-]\s*(\S+)',
+    r'^\*\*(Accepted|Rejected)\b(.*?)\*\*',
     caseSensitive: false,
-  ).firstMatch(sectionText);
+    dotAll: true,
+  ).firstMatch(trimmedSection);
   if (match == null) return null;
+
+  final inner = match.group(2) ?? '';
+  final rest = trimmedSection.substring(match.end);
+  final combined = '$inner$rest'.trim();
+
+  final date =
+      RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(combined)?.group(0) ??
+      headingDate ??
+      'undated';
+
+  var reason = combined
+      .replaceFirst(RegExp(r'^[—-]?\s*\d{4}-\d{2}-\d{2}\s*'), '')
+      .trim()
+      .replaceFirst(RegExp(r'^[.,]\s*'), '')
+      .trim();
+  if (reason.isEmpty) reason = 'No reason given.';
 
   return Verdict(
     accepted: match.group(1)!.toLowerCase() == 'accepted',
-    date: match.group(2)!,
-    reason: sectionText.substring(match.end).trim(),
+    date: date,
+    reason: reason,
   );
 }
 

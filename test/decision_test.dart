@@ -422,4 +422,107 @@ void main() {
       expect(result.decision!.displayStatus, 'accepted');
     });
   });
+
+  group(
+    'Round 35/E — real "## Your call" shapes, exact first lines of '
+    "asa's own ADRs 0008, 0021, 0024, 0025 and 0026 (product decisions, "
+    'no work content)',
+    () {
+      test('0008 — the date and the whole reason live inside the bold, '
+          'heading carries no date of its own', () {
+        final result = parseDecision(
+          '# ADR 0008 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+              'accepted\n\n## Your call\n\n**Accepted — 2026-09-14, with one '
+              'amendment: typed links are the exception, not the default.**'
+              '\n\nMore prose below.\n',
+          '0008.md',
+        );
+        final verdict = result.decision!.verdict!;
+        expect(verdict.accepted, isTrue);
+        expect(verdict.date, '2026-09-14');
+        expect(result.decision!.isProposed, isFalse);
+        expect(result.decision!.verdictUnreadable, isFalse);
+      });
+
+      test('0021 — date inside the bold, a period closing it, the real '
+          'reason in the paragraph after', () {
+        final result = parseDecision(
+          '# ADR 0021 - Title\n\n**Date:** 2026-09-14 · **Status:** '
+              'accepted\n\n## Your call\n\n**Accepted — 2026-09-14.** Nico '
+              'said so.\n',
+          '0021.md',
+        );
+        final verdict = result.decision!.verdict!;
+        expect(verdict.accepted, isTrue);
+        expect(verdict.date, '2026-09-14');
+      });
+
+      test('0024 — heading carries the date, body is a bare **Accepted**,', (
+      ) {
+        final result = parseDecision(
+          '# ADR 0024 - Title\n\n**Date:** 2026-09-14 · **Status:** '
+              'accepted\n\n## Your call — 2026-09-26\n\n**Accepted**, with '
+              'the revision.\n',
+          '0024.md',
+        );
+        final verdict = result.decision!.verdict!;
+        expect(verdict.accepted, isTrue);
+        expect(verdict.date, '2026-09-26');
+      });
+
+      test('0025 — heading carries the date, body is **Accepted.** with '
+          'the period inside the bold', () {
+        final result = parseDecision(
+          '# ADR 0025 - Title\n\n**Date:** 2026-09-14 · **Status:** '
+              'accepted\n\n## Your call — 2026-09-14\n\n**Accepted.** '
+              'Substantial confirmation was already on the record.\n',
+          '0025.md',
+        );
+        final verdict = result.decision!.verdict!;
+        expect(verdict.accepted, isTrue);
+        expect(verdict.date, '2026-09-14');
+      });
+
+      test('0026 — heading carries the date, body is a bare **Accepted**, '
+          'comma straight after', () {
+        final result = parseDecision(
+          '# ADR 0026 - Title\n\n**Date:** 2026-09-14 · **Status:** '
+              'accepted\n\n## Your call — 2026-09-14\n\n**Accepted**, '
+              'including the one thing left open above.\n',
+          '0026.md',
+        );
+        final verdict = result.decision!.verdict!;
+        expect(verdict.accepted, isTrue);
+        expect(verdict.date, '2026-09-14');
+      });
+
+      test('no date anywhere at all reads as "undated", never a crash', () {
+        final result = parseDecision(
+          '# ADR 0099 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+              'accepted\n\n## Your call\n\n**Accepted**, no date anywhere.\n',
+          '0099.md',
+        );
+        expect(result.decision!.verdict!.date, 'undated');
+      });
+
+      test('a "## Your call" section that exists but matches none of the '
+          'known shapes reads as "verdict unreadable", never silently '
+          '"proposed"', () {
+        final result = parseDecision(
+          '# ADR 0100 - Title\n\n**Date:** 2026-09-01 · **Status:** '
+              'proposed\n\n## Your call\n\nSomeone typed a decision here '
+              'without ever writing Accepted or Rejected.\n',
+          '0100.md',
+        );
+        expect(result.decision!.verdict, isNull);
+        expect(result.decision!.verdictUnreadable, isTrue);
+        expect(result.decision!.displayStatus, 'verdict unreadable');
+        expect(
+          result.decision!.isProposed,
+          isTrue,
+          reason: 'still needs a look, just not for the header-word reason',
+        );
+      });
+    },
+  );
 }
