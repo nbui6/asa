@@ -2,11 +2,13 @@
 // note had a whole paragraph as its status; this proves the pill clips
 // instead of widening or wrapping the card.
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
+import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -203,5 +205,71 @@ void main() {
     // dropped: N projects, split work vs. not-work, counting a subtree
     // (child + grandchild) as part of its own root's side of the split.
     expect(find.text('5 projects · 2 work · 3 not work'), findsOneWidget);
+  });
+
+  group('round-36 §2 f — the overview reads areas too', () {
+    testWidgets('one bar segment per area, in place of the phase bar', (
+      tester,
+    ) async {
+      final node = ProjectNode(
+        project: _project(status: 'building'),
+        folder: 'demo',
+        areas: const [
+          Area(
+            name: 'Sales',
+            sourceFile: 'plan/sales.md',
+            tasks: [
+              Task(rawLine: '- [x] a', text: 'a', done: true),
+              Task(rawLine: '- [ ] b', text: 'b', done: false),
+            ],
+            results: [],
+            decisionNumbers: [],
+            objectiveNumbers: [],
+          ),
+          Area(
+            name: 'Finance',
+            sourceFile: 'plan/finance.md',
+            tasks: [],
+            results: [],
+            decisionNumbers: [],
+            objectiveNumbers: [],
+          ),
+        ],
+      );
+
+      await _pump(tester, [node]);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Sales'), findsOneWidget);
+      expect(find.text('Finance'), findsOneWidget);
+    });
+
+    testWidgets("the row's own next step falls further to an area's open task, "
+        'same chain the Plan tab already uses', (tester) async {
+      final node = ProjectNode(
+        project: _project(status: 'building'),
+        folder: 'demo',
+        areas: const [
+          Area(
+            name: 'Sales',
+            sourceFile: 'plan/sales.md',
+            tasks: [
+              Task(
+                rawLine: '- [ ] Sales next task',
+                text: 'Sales next task',
+                done: false,
+              ),
+            ],
+            results: [],
+            decisionNumbers: [],
+            objectiveNumbers: [],
+          ),
+        ],
+      );
+
+      await _pump(tester, [node]);
+
+      expect(find.text('Sales next task'), findsOneWidget);
+    });
   });
 }

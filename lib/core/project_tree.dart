@@ -5,6 +5,7 @@
 /// Spec: `HANDOVER.md`, 2026-09-07 entries for both rounds.
 library;
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/projects_scan.dart';
 
@@ -22,6 +23,7 @@ class ProjectNode {
     required this.folder,
     this.children = const [],
     this.lastTouched,
+    this.areas = const [],
   });
 
   final Project project;
@@ -32,6 +34,10 @@ class ProjectNode {
   /// Round 32/A. Not recomputed here; the forest is a regrouping of
   /// already-scanned data, never a second read of disk.
   final DateTime? lastTouched;
+
+  /// Carried straight from `ProjectSummary.areas` — Round 36 §2 f. Empty
+  /// for a project with no `plan\` folder.
+  final List<Area> areas;
 }
 
 /// The full parent-chain forest of every scanned project. A project
@@ -65,6 +71,7 @@ List<ProjectNode> buildProjectForest(List<ProjectSummary> projects) {
       folder: summary.folder,
       children: (childSlugsOf[slug] ?? const <String>[]).map(build).toList(),
       lastTouched: summary.lastTouched,
+      areas: summary.areas,
     );
   }
 

@@ -1,8 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-26 (Round 36 cp2 — Round 34: areas, `plan\<area>.md`,
-one page per area, and the amendment letting Asa tick a checkbox inside one).
+Last checked against the folder tree: 2026-09-26 (Round 36 cp3 — round-36 §2 a-c, f: tab order and
+opening on Plan, the Next line, next-task area rows, and the overview reading areas too).
 
 ---
 
@@ -49,7 +49,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change what the projects list shows, the home screen, or the folder picker | `lib/hubs/product/projects_screen.dart` |
 | change what one project's detail screen shows, or its tabs | `lib/hubs/product/project_screen.dart` |
 | change what a single decision's detail screen shows, or the accept/reject "Your call" UI | `lib/hubs/product/decision_detail_screen.dart` |
-| change which folders count as projects, the staleness sort and labels, or a project's derived `lastTouched` (git's last commit, else the newest file mtime in its folder) | `lib/core/projects_scan.dart` |
+| change which folders count as projects, the staleness sort and labels, a project's derived `lastTouched` (git's last commit, else the newest file mtime in its folder), or how its areas are read at scan time | `lib/core/projects_scan.dart` |
 | change the right-hand freshness value a row shows (a deadline, or `today`/`1 day`/`N days` since the project was last actually touched) | `lib/core/freshness.dart` |
 | change how a project's next step is derived — the home note's first open, unparked task; else the first open task of the first area with one (Round 34/E); else the typed field; else "no next step" (ADR 0020) — or how the status pill's colour bucket is chosen | `lib/core/project_row.dart` |
 | change the exact text the "Start → Copy opener" action puts on the clipboard | `lib/core/opener.dart` |
@@ -80,7 +80,9 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how a project's strategy (`CHARTER.md`'s Origin / Who it's for / Pain points / Objectives) is read | `lib/core/charter.dart` |
 | change how a Round's state (planned / in progress / waiting for approval / completed / no approval needed) is derived, or how `rounds\APPROVED.md` is read | `lib/core/round_state.dart`, `lib/core/round_approvals.dart` |
 | change what the Strategy tab shows — who it's for, pain points, objectives, the segmented bar, the legend | `lib/hubs/product/strategy_view.dart` |
-| change the order or presence of `project_screen.dart`'s tabs (`Strategy · Plan · Decisions · Details`) | `lib/hubs/product/project_screen.dart`'s `_Tab`/`_visibleTabs` |
+| change the order or presence of `project_screen.dart`'s tabs (`Plan · Strategy · Decisions · Details`, a project opens on Plan — round-36 §2 a) | `lib/hubs/product/project_screen.dart`'s `_Tab`/`_visibleTabs` |
+| change the overview's "Next" line's own text, or the closed-area-row "next <task>" label | `lib/hubs/product/plan_view.dart`'s `_nextLineRow`/`_areaNextTaskLabel`; the underlying (text, area) chain is `lib/core/project_row.dart`'s `effectiveNextStepWithArea` |
+| change the overview row's own per-area bar segment | `lib/hubs/product/projects_view.dart`'s `_AreaBar` |
 | change how a project's `## Roadmap` milestone exposes the prose under its own checkbox | `lib/core/roadmap.dart`'s `Milestone.body`/`bodyLines` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
@@ -129,12 +131,14 @@ the `###` was read as ending the roadmap section, not as part of it. Fixed to st
 heading of the same level or shallower; checked every existing test fixture across the repo first
 and confirmed none relied on the old, incorrect boundary.
 
-**Found 2026-09-26, Round 36 cp2, deliberately deferred:** `effectiveNextStep`'s new area fallback
-(Round 34/E) is wired into `project_screen.dart`'s Details tab, not yet into `projects_view.dart`'s
-own overview row — the overview's `ProjectSummary`/`ProjectNode` carry no area data yet, and
-plumbing it in is a bigger, cross-cutting change that Round 36 cp3 already owns (the overview's own
-next-step and per-area bar segments, part of the "one source for every count" test). Not a gap in
-this checkpoint's own scope; named here so it reads as planned, not missed.
+**Resolved 2026-09-26, Round 36 cp3.** The row above named a deliberate gap after cp2: the
+overview's own `ProjectSummary`/`ProjectNode` carried no area data, so `effectiveNextStep`'s area
+fallback and a per-area bar segment only reached `project_screen.dart`, not the overview row. Both
+now exist: `projects_scan.dart`'s `scanProjects` reads each project's areas via `readAreas` at scan
+time (`ProjectSummary.areas`), carried through `buildProjectForest` onto `ProjectNode.areas`;
+`projects_view.dart`'s `_card` reads its own next step with `areas: node.areas` and draws one bar
+segment per area (`_AreaBar`) in place of `PhaseBar` once any exist, `PhaseBar` staying the
+unchanged fallback for a project with none.
 
 **Found 2026-09-25, Round 32, left alone on purpose:** `projects_scan.dart`'s `daysStale` /
 `sortByStaleness` / `stalenessLabel` are fully unit-tested but called from no screen — `repo-path`

@@ -7,6 +7,7 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/freshness.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
@@ -19,6 +20,7 @@ class ProjectSummary {
     required this.git,
     required this.folder,
     this.lastTouched,
+    this.areas = const [],
   });
 
   final Project project;
@@ -26,6 +28,12 @@ class ProjectSummary {
 
   /// The folder this project was read from.
   final String folder;
+
+  /// Round 36 §2 f — every `plan\<area>.md` page, read once at scan time
+  /// so the overview's own bar segments and next-step text can read areas
+  /// too, the same chain `ProjectScreen` already uses. Empty for a project
+  /// with no `plan\` folder, same as everywhere else areas are read.
+  final List<Area> areas;
 
   /// Round 32/A — git's last commit when readable, otherwise the newest
   /// file modification time inside [folder]. See `freshness.dart`'s
@@ -89,12 +97,14 @@ Future<ScanResult> scanProjects(String projectsRoot) async {
 
     final git = await readGitState(read.project!.repoPath);
     final touched = await lastTouchedOf(entry.path, git);
+    final areas = await readAreas(entry.path);
     found.add(
       ProjectSummary(
         project: read.project!,
         git: git,
         folder: entry.path,
         lastTouched: touched,
+        areas: areas,
       ),
     );
   }

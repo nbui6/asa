@@ -44,6 +44,7 @@
 /// new pill, no new icon, no new line.
 library;
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/freshness.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/project_row.dart';
@@ -196,7 +197,11 @@ class _ProjectsViewState extends State<ProjectsView> {
       lastTouched: node.lastTouched,
       now: DateTime.now(),
     );
-    final nextStep = effectiveNextStep(project.tasks, project.nextStep);
+    final nextStep = effectiveNextStep(
+      project.tasks,
+      project.nextStep,
+      areas: node.areas,
+    );
 
     return Padding(
       padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
@@ -275,7 +280,10 @@ class _ProjectsViewState extends State<ProjectsView> {
                         ),
                       ],
                     ),
-                    if (phases.isNotEmpty) ...[
+                    if (node.areas.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      _AreaBar(areas: node.areas),
+                    ] else if (phases.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       PhaseBar(phases: phases),
                     ],
@@ -397,6 +405,79 @@ class _ProjectsViewState extends State<ProjectsView> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: color, fontSize: 12),
+        ),
+      ),
+    );
+  }
+}
+
+/// Round 36 §2 f, `asa-areas-everywhere-v1` §1 — one bar segment per
+/// area, in place of [PhaseBar]'s per-phase segments once a project has
+/// any `plan\*.md` page. Same shape as [PhaseBar] (a labelled, filled
+/// segment per entry) but keyed to [Area.doneCount]/[Area.totalCount]
+/// rather than a roadmap [Phase] — duplicated rather than shared, since
+/// the two segment kinds mean different things (ADR 0024) and
+/// [PhaseBar] stays the unchanged fallback for a project with no areas.
+class _AreaBar extends StatelessWidget {
+  const _AreaBar({required this.areas});
+
+  final List<Area> areas;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (var i = 0; i < areas.length; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              Expanded(child: _segment(areas[i], colors)),
+            ],
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            for (var i = 0; i < areas.length; i++) ...[
+              if (i > 0) const SizedBox(width: 3),
+              Expanded(
+                child: Text(
+                  areas[i].name,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 9.5, color: colors.outline),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _segment(Area area, ColorScheme colors) {
+    final total = area.totalCount;
+    final fraction = total == 0 ? 0.0 : area.doneCount / total;
+
+    return Tooltip(
+      message: '${area.name}: ${area.doneCount} of $total tasks done',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: SizedBox(
+          height: 8,
+          child: Stack(
+            children: [
+              Container(color: colors.surfaceContainerHighest),
+              FractionallySizedBox(
+                widthFactor: fraction,
+                child: Container(color: colors.primary),
+              ),
+            ],
+          ),
         ),
       ),
     );
