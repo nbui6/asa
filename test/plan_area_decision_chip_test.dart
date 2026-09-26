@@ -25,6 +25,15 @@ const _areaPage = '''
 ADR 0003 — deals go through the partner portal.
 ''';
 
+// Round 34's own self-test list names this exact case: "one decision
+// named by two areas."
+const _secondAreaPage = '''
+# Finance
+
+## Decisions
+Also governed by ADR 0003, for the revenue recognition side.
+''';
+
 const _decisionFile = '''
 # ADR 0003 - Deals go through the partner portal
 
@@ -55,6 +64,9 @@ void main() {
     File(
       '${planDir.path}${Platform.pathSeparator}sales.md',
     ).writeAsStringSync(_areaPage);
+    File(
+      '${planDir.path}${Platform.pathSeparator}finance.md',
+    ).writeAsStringSync(_secondAreaPage);
 
     final decisionsDir = Directory(
       '${tempDir.path}${Platform.pathSeparator}decisions',
@@ -90,6 +102,26 @@ void main() {
       expect(find.text('Sales'), findsOneWidget);
       expect(find.text('DECISIONS'), findsOneWidget);
       expect(find.text('ADR 0003'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'one decision named by two areas gets two chips, one per area, '
+    'neither merged nor dropped',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(home: ProjectScreen(folder: folder)),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Decisions'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sales'), findsOneWidget);
+      expect(find.text('Finance'), findsOneWidget);
     },
   );
 }
