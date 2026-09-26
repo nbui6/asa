@@ -3055,3 +3055,75 @@ including three real-disk ones (byte-level file verification, real widget intera
 **Next:** cp3 — §2 a–c and f of `round-36.md`: tab order, opening on Plan, the Next line, next task
 on closed rows, overview segments, decision area chips (already built in cp2 — cp3 re-confirms them
 against the sketch rows).
+
+### Round 36 cp3 — round-36 §2 a–c and f. Tab order, the Next line, the overview reads areas too.
+
+**Built:**
+- **§2 a** — tab order is now `Plan · Strategy · Decisions · Details`, and a project opens on Plan,
+  with or without areas. `project_screen.dart`'s `_Tab` enum, `_activeTab`'s default, `_visibleTabs`
+  and `_tabRow`'s label map all reordered together.
+- **§2 b** — a "Next" line above the area list: the project's next step (home task → first area's
+  open task → typed `next-step:` → "No next step", the same chain the overview already used), the
+  area it came from as a small chip, and the real Start menu on the right. Built on a new
+  `effectiveNextStepWithArea` in `project_row.dart` — the same chain as `effectiveNextStep`, plus
+  which `Area` (if any) actually supplied the text, which the chip needs and the plain function
+  never could return. Tapping the line opens the area holding that task (or "Not in an area" for a
+  home task); highlighting the task itself is cp4's own job, alongside `links_test.dart`.
+- **§2 c** — a closed area row now reads "next `<first open task>`" instead of its goal or summary;
+  every task done, or none at all, reads "nothing open — all done". The goal itself still only
+  shows once the row is expanded.
+- **§2 f** — the piece cp2's own entry and `ARCHITECTURE.md` named as deliberately deferred: the
+  overview now reads areas too. `projects_scan.dart`'s `scanProjects` reads each project's areas via
+  `readAreas` at scan time (`ProjectSummary.areas`), carried through `buildProjectForest` onto
+  `ProjectNode.areas`. `projects_view.dart`'s row reads its own next step with `areas: node.areas`
+  and draws one bar segment per area (a new `_AreaBar`, same shape as `PhaseBar` but keyed to
+  `Area.doneCount`/`totalCount`) in place of the phase bar once any areas exist — `PhaseBar` stays
+  the unchanged fallback for a project with none. Decision area chips and Tasks view area grouping
+  were already built in cp2 and were re-confirmed unchanged, not rebuilt.
+
+**Tests (count):** 423 (was 419 at cp2's own close) — `check.ps1`'s full run, all green:
+`dart format`, `flutter analyze --fatal-infos`, `flutter test` (423), `flutter test integration_test
+-d windows` (1). New: `test/project_row_test.dart` (+3, `effectiveNextStepWithArea`),
+`test/plan_view_test.dart` (+4, the Next line's own group; several existing Round 34/B fixtures
+adjusted where an area's own open task would otherwise make its name ambiguous with the Next line's
+own area chip), `test/plan_area_ticking_test.dart` (its home note gained a `## Tasks` entry so its
+own tap-by-name assertions stay unambiguous too), `test/projects_view_test.dart` (+2, one bar
+segment per area; the row's next step falling to an area's open task), `test/projects_scan_areas_test.dart`
+(new file, +2, real disk: `scanProjects` actually reaches into a project's own `plan\` folder).
+
+**Commits (hashes, one line each):**
+- `1578e2d` — Round 36 cp3 (round-36 §2 b prep): effectiveNextStepWithArea
+- `c78b9d3` — Round 36 cp3 (round-36 §2 b/c): the Next line, next-task area rows
+- `a3d6fc2` — Round 36 cp3 (round-36 §2 a): tab order, project opens on Plan
+- `d7f1761` — Round 36 cp3 (round-36 §2 f): the overview reads areas too
+
+**Screenshots:** none this checkpoint, same reasoning as cp2's own entry — round-36.md §5's
+match-the-sketch loop (real screenshots side by side with the sketches) is cp5's job. Every piece
+here is proven by an automated test instead, including two real-disk ones.
+
+**Calls I made:**
+1. **Found, not just re-confirmed: §2 f's "overview segments" piece was not actually built in cp2**,
+   despite cp2's own "Next" line in this file saying it was "already built in cp2 — cp3 re-confirms
+   them." Cp2's own "Calls I made" section 1, two paragraphs above that line in the same entry,
+   already said the opposite correctly — `projects_view.dart` had no area data at all. Checked the
+   real file (hard rule 14) rather than trust the summary line; built it for real this checkpoint,
+   the way round-36.md's own checkpoint table (row 3) already scoped it.
+2. **`_AreaBar` duplicates `PhaseBar`'s own segment/label layout** rather than generalizing one
+   widget to draw both. `Phase` and `Area` happen to share the same `name`/`doneCount`/`totalCount`
+   shape, but they are different concepts by design (ADR 0024) and `PhaseBar` is the tested,
+   unchanged fallback for a project with no areas — reshaping it to serve two call sites felt like
+   the wrong trade against ~40 duplicated lines.
+3. **The Next line's own tap only opens the area/section that holds the task** — it does not yet
+   highlight the task itself for ~2 s (§3 L9's own wording). Round-36.md sequences the click-tested
+   links into cp4 (`links_test.dart`); building the highlight now, ahead of that test, risked
+   guessing its exact shape twice.
+4. **Which takes priority when a project has both areas and roadmap phases:** areas, unconditionally
+   — `_card` checks `node.areas.isNotEmpty` first, falling to `phases.isNotEmpty` only when there are
+   none. No real project has both today, so this is unverified against real data; named here as a
+   judgement call rather than left silent.
+
+**Open questions for Nico:** none.
+
+**Next:** cp4 — `test/links_test.dart`, one test per row of round-36.md §3 (18 rows) plus the
+"one source for every count" test, 19 in total. This is also where L9's highlight and every other
+click-driven landing get built for real, not just the visual shape cp3 covered.
