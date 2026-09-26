@@ -485,8 +485,16 @@ List<_ChangeEntry> _changeEntries(Plan plan) {
           date: date,
           text: match.group(2)!.replaceFirst(RegExp(r'^[\s—-]+'), '').trim(),
           sourceFile: page.sourceFile,
+          // Round 34/A added PlanLinkKind.objective — "What changed" only
+          // ever showed Round/ADR chips, and _linkChip below has no shape
+          // for a third kind (it would mislabel one "Round N"), so this
+          // panel keeps excluding it, same as it already excludes wikilink.
           links: deriveLinks(section.body)
-              .where((l) => l.kind != PlanLinkKind.wikilink)
+              .where(
+                (l) =>
+                    l.kind != PlanLinkKind.wikilink &&
+                    l.kind != PlanLinkKind.objective,
+              )
               .toList(),
           sequence: sequence++,
         ),

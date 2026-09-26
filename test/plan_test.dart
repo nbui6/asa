@@ -114,6 +114,17 @@ if you want to open it.
       expect(wikilink.sentence, 'It links to [[budget]] too.');
     });
 
+    test('Round 34/A — an Objective N mention derives an objective link', () {
+      const text = 'Serves Objective 1 — would show: 3 deals this quarter.';
+      final links = deriveLinks(text);
+
+      final objective = links.firstWhere(
+        (l) => l.kind == PlanLinkKind.objective,
+      );
+      expect(objective.target, '1');
+      expect(objective.sentence, text);
+    });
+
     test('a reference inside a fenced code example is not derived', () {
       const text = '''
 Some real text mentions ADR 0007.

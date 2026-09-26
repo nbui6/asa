@@ -61,10 +61,10 @@ class PlanPage {
 }
 
 /// What a [PlanLink] points at. Only [wikilink] targets another page in
-/// this same plan — an [adr] or [round] link points outside the plan
-/// entirely, at `decisions\` or a Round, so it never participates in
-/// [pagesLinkingTo].
-enum PlanLinkKind { wikilink, adr, round }
+/// this same plan — an [adr], [round] or [objective] link points outside
+/// the plan entirely, at `decisions\`, a Round, or `CHARTER.md`'s own
+/// `## Objectives`, so none of them participate in [pagesLinkingTo].
+enum PlanLinkKind { wikilink, adr, round, objective }
 
 /// One reference a plan page makes, derived from its own text — never
 /// typed, never maintained (ADR 0008's 2026-09-14 amendment: "derived by
@@ -154,6 +154,7 @@ final RegExp _adrFile = RegExp(
   caseSensitive: false,
 );
 final RegExp _round = RegExp(r'Round\s*(\d+)', caseSensitive: false);
+final RegExp _objective = RegExp(r'Objective\s*(\d+)', caseSensitive: false);
 
 /// Every reference [pageText] makes — a `[[wikilink]]`, an ADR (matched by
 /// number, however it is written), or a Round — each with the sentence it
@@ -195,6 +196,15 @@ List<PlanLink> deriveLinks(String pageText) {
       links.add(
         PlanLink(
           kind: PlanLinkKind.round,
+          target: match.group(1)!,
+          sentence: sentence,
+        ),
+      );
+    }
+    for (final match in _objective.allMatches(sentence)) {
+      links.add(
+        PlanLink(
+          kind: PlanLinkKind.objective,
           target: match.group(1)!,
           sentence: sentence,
         ),
