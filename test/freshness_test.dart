@@ -32,6 +32,23 @@ void main() {
       expect(touched, gitDate);
     });
 
+    test('Round 33/C — git itself missing (not just no repo-path) still falls '
+        'back to mtime, never "unknown"', () async {
+      File('${tempDir.path}${Platform.pathSeparator}note.md')
+          .writeAsStringSync('x');
+      // The exact shape readGitState returns when Process.run throws
+      // ProcessException — the executable itself could not be found,
+      // distinct from "no repo-path was set" (_noGit above).
+      const gitMissing = GitState(
+        error: 'Could not run git: not found',
+        command: r'git -C C:\some\repo log -1 --format=%cI',
+        rawOutput: '',
+      );
+
+      final touched = await lastTouchedOf(tempDir.path, gitMissing);
+      expect(touched, isNotNull);
+    });
+
     test(
       'falls back to the newest file mtime when git has no answer',
       () async {
