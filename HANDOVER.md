@@ -2898,3 +2898,79 @@ again if it's not just a stale display.
 **Open questions for Nico:** none.
 
 **Next:** cp1 — Round 35 A–G.
+
+### Round 36 cp1 — Round 35, A–G, all seven pieces
+
+**Built:**
+- **A** — `lastTouchedOf` skips `HOW-ASA-WORKS.md` by name, so a folder the onboarding process just
+  touched doesn't read as "1 day" when nothing real moved.
+- **B** — the folder field/explanation/button collapse to one line, `Projects: <path>  ·  change`,
+  once a folder is saved; first run is unchanged; "change" (or the line itself) reopens it, and
+  loading again collapses it back.
+- **C** — `_changeRow`'s chip `Wrap` capped at 3 chips, then `+N` (tooltip carries the rest) — the
+  actual fix for the vertical-single-letters bug found in screenshots, at its root cause.
+- **D** — decision titles now run through `stripEmphasisMarkers`/`stripCodeSpanMarkers`, same as
+  every other markdown-sourced text in the app.
+- **E** — the real cause of six "Needs a look" rows reading as still-open: the heading search
+  never matched `## Your call — 2026-09-14` (real files put the date on the heading line; the old
+  regex demanded nothing after "Your call"), and `_parseVerdict` only recognized one exact
+  punctuation shape. Now prefix-matched, a heading-carried date recovered as a fallback, and four
+  real body shapes accepted (date inside the bold; a bare period; a bare comma; no date anywhere,
+  falling back to the heading, then "undated"). A `## Your call` section that still can't be read
+  now says **verdict unreadable** rather than silently showing the stale header word.
+- **F** — the Start rocket's tooltip is now "Start working on this project" (it already had one,
+  just the bare word "Start").
+- **G** — Projects view and Strategy tab brought back to their approved sketches. Projects view:
+  a summary line (`N projects · N work · N not work`), content centred at a 900px readable width
+  instead of stretched edge to edge, card padding tightened. Strategy tab: the evidence chip and
+  "Would show: …" sentence moved back under the title, visible while collapsed — reversing an
+  earlier persona-check's own overwhelm call, which round-35.md is explicit is Nico's to make once
+  he'd seen the sketch, not the builder's to guess; the segment bar capped at 480px instead of the
+  full window width.
+
+**Tests (count):** 369 (354 → 369 across this checkpoint's own commits — the exact per-piece
+counts are in each commit's own message). `check.ps1` green, all four steps. Release exe rebuilt
+and confirmed starting outside the IDE.
+
+**Commits:**
+- `fd1a9a5` — Round 36 cp1 (Round 35/A): freshness ignores HOW-ASA-WORKS.md
+- `924346d` — Round 36 cp1 (Round 35/B): the folder box collapses once it's set
+- `b0db476` — Round 36 cp1 (Round 35/C): "What changed" can't collapse its own text
+- `8bbf7b1` — Round 36 cp1 (Round 35/D): decision titles strip markdown
+- `7641af5` — Round 36 cp1 (Round 35/E): a verdict the reader can't parse now says so
+- `a32f339` — Round 36 cp1 (Round 35/F): the Start rocket gets a real tooltip
+- `d23e45f` — Round 36 cp1 (Round 35/G, 1 of 2): Projects view back to asa-front2
+- `848271d` — Round 36 cp1 (Round 35/G, 2 of 2): Strategy tab back to asa-strategy-v3
+- `7542dec` — Round 36 cp1: dart format
+
+**Screenshots:** none new, this checkpoint — the machine's actual display returned an all-black
+frame from `CopyFromScreen` on every attempt (the same capture method that worked earlier today),
+and `PrintWindow` with `PW_RENDERFULLCONTENT` rendered the window's own OS chrome (the title bar)
+but not Flutter's own GPU-composited content area, which that API cannot reach. `query session`
+shows the console session as `Active`, not formally locked, so the honest read is an idle/blanked
+display, not a rendering defect in the app — but that's inference, not proof. Every fix above is
+proven by an automated widget test instead (each new test named in its own commit); the real
+visual confirmation this checkpoint would have added is deferred to cp5's own match-the-sketch
+loop, which the plan already treats as the real screenshot pass, not this one.
+
+**Calls I made:**
+1. **The bar's own max-width (480px) and the panel's (900px) are both a judgment call, not a
+   pixel measured off the sketch image** — I do not have a way to open the sketch's own image
+   pixel-precisely in this pass. Named here so a real side-by-side comparison (cp5) can correct
+   the number if it's off, rather than treat it as settled.
+2. **`_evidenceRow`'s call stayed inside the `if (expanded)` block for the round list below it,
+   but the evidence sentence itself moved to always-visible** — read `round-35.md` again to check
+   this wasn't ambiguous: the sketch shows the sentence under the title unconditionally, and the
+   round list (with each Round's own state pill) only once opened. That split is preserved exactly.
+3. **Kept `_yourCallHeadingDate` fence-aware** (`firstUnfencedMatch`) even though no real file has
+   hidden a second one inside a code fence yet — the existing fenced-example test only covers the
+   heading *search* for the section itself, not this new date-recovery helper, and a search that
+   only works until the first exception isn't one this codebase has trusted anywhere else.
+4. **Reason-string construction in `_parseVerdict` is a heuristic, not a re-derivation of a formal
+   contract** — no existing test pinned an exact reason string for the multi-shape real files, so
+   I traced all five ADRs' real text by hand against the new regex before trusting it, rather than
+   writing the assertions first and reverse-engineering a regex to satisfy them.
+
+**Open questions for Nico:** none.
+
+**Next:** cp2 — Round 34 A–G, including F (ticking inside area pages, now approved).
