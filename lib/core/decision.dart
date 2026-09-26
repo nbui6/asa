@@ -166,7 +166,12 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
     );
   }
 
-  final title = (headingMatch.group(2) ?? '').trim();
+  // Round 35/D — every other markdown-sourced text in the app (task text,
+  // next-step) already strips these before display; the title was missed
+  // when decisions got a place users actually read them (Round 26).
+  final title = stripCodeSpanMarkers(
+    stripEmphasisMarkers((headingMatch.group(2) ?? '').trim()),
+  );
   if (title.isEmpty) {
     return DecisionReadResult(
       error: 'Heading has no title',

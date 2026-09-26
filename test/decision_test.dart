@@ -59,6 +59,22 @@ void main() {
       expect(result.decision!.title, 'Just a title, no ADR number');
     });
 
+    test(
+      'Round 35/D — a title with real markdown emphasis strips it, same '
+      'as every other markdown-sourced text in the app',
+      () {
+        final result = parseDecision(
+          '## 0001 - **The Plan tab as the areas of a project** — goal '
+          'from `plan\\*.md`\n\n**Date:** 2026-09-26 - **Status:** accepted\n',
+          'decisions.md',
+        );
+        expect(
+          result.decision!.title,
+          r'The Plan tab as the areas of a project — goal from plan\*.md',
+        );
+      },
+    );
+
     test('an unheaded file is unreadable, not silently skipped', () {
       final result = parseDecision('Just some prose, no heading.', 'bad.md');
       expect(result.isSuccess, isFalse);
