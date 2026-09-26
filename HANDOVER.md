@@ -2611,3 +2611,290 @@ before trusting it.
 a native Windows window — everything above is real, automated, and honestly reported, but "does
 this look right" is still a question only your own eyes can answer. `asa.exe` (Release) is ready
 to open. **Yes/no is the only thing left before this commits.**
+
+### 2026-09-26 — Round 33: a second laptop, other projects. Built, self-tested, ready for your test
+
+**Full spec:** `projects\asa\rounds\round-33.md`, rescoped the same day (*"it is fine, I have
+flutter and can fully build, no problem"*) — no zip, no installer, no runtime DLLs. What's left is
+what makes other projects show up properly on a fresh machine. Built A–D in one pass, per "one
+build, one show" — same discipline as Round 32.
+
+**A — the templates move into the repo.** `templates\HOW-ASA-WORKS.md` — an exact copy of the real
+file now in all 13 project folders, checked line by line before committing: no work content,
+nothing but process. `templates\project-note.md` — the frontmatter shape `HOW-ASA-WORKS.md`
+specifies, every value left empty after its colon, an empty `## Tasks` — no `(not set)` anywhere
+in the file itself. `AGENTS.md` doesn't yet point at this folder as the source — see "Calls I
+made" below for why that's deliberately not done in this round.
+
+**B — `onboard-projects.ps1`**, next to `check.ps1`. Given a projects folder (or reads
+`settings.json`'s own `projectsFolder` when none is passed), walks every immediate subfolder and:
+
+- a home note and `HOW-ASA-WORKS.md` → left alone, counted as fine;
+- a home note, no `HOW-ASA-WORKS.md` → offers to copy the template in (`y`/`n`), never overwrites;
+- no home note at all → **never writes one**, lists the folder, and prints the exact opener text
+  from the spec, ready to paste into any AI tool.
+
+`-Yes` answers every copy-in prompt without asking — for a machine with no interactive console,
+and for this script's own `-SelfTest`. Exit 0 when every folder found is fully onboarded by the
+time it finishes; exit 1 when at least one still needs a home note, or still has no
+`HOW-ASA-WORKS.md` and was told no — same convention as `check-shareable.ps1`: a report, not a
+crash.
+
+**C — two fresh-machine fixes.**
+
+1. **Git missing, not just no `repo-path`.** Already correct by construction —
+   `lastTouchedOf` falls back to the folder's own newest file whenever `git.error` is set at all,
+   whatever the reason — but nothing proved it for *this specific* reason before today. Added a
+   test constructing the exact `GitState` shape `readGitState` returns when `Process.run` itself
+   throws `ProcessException` (the executable isn't found, distinct from "no `repo-path` was set,"
+   which was already covered). No code changed; the gap was in the tests, not the logic.
+2. **`AGENTS.md` contradicted `HOW-ASA-WORKS.md`.** Line 108 said `(not set)` left alone where you
+   can't guess — the opposite of `HOW-ASA-WORKS.md`'s own rule ("an empty value is nothing after
+   the colon, never `(not set)`"). One line, changed to say leave the value empty.
+
+**D — `README.md`.** "Where it is right now" was still pinned to `b4ed8d3` from 9 September and
+described a front page "not yet shown to the owner" that shipped rounds ago. Rewrote the table to
+match the real current build (freshness, next-step-from-tasks, the status pill guard, the Start
+menu, Strategy/Plan/Decisions/Details, all through Round 32) and moved the still-open items to
+"Planned" (areas — Round 34 — and what comes after it). Added the spec's own **"On a new
+machine"** section: clone, `flutter clean` if moved (points at `FOR-YOUR-FORK.md` rather than
+restating it), build, first run picks the folder, then `onboard-projects.ps1` — pointing at the
+script's own header for exactly what it does, not restating that either.
+
+**Calls I made:**
+
+1. **`AGENTS.md` doesn't yet say the repo's `templates\` copy is the source**, even though A's own
+   bullet says "`AGENTS.md` says so." Checked `AGENTS.md`'s real "Bringing a real, existing project
+   into Asa" section (the only place this would naturally go) before adding anything, and it is
+   about *writing a new project's home note by hand*, not about *which copy of
+   `HOW-ASA-WORKS.md` is canonical* — a different question, sitting next to it but not the same
+   one. Rather than wedge one sentence into a section about something else, left it out of this
+   round and named it here instead, since round-33.md's own file-change list doesn't name
+   `AGENTS.md` for this bullet at all (only for C2, the `(not set)` line) — a small scope call,
+   not a skip.
+2. **The `-Yes` flag isn't named in the spec.** Round 33/B's own text describes an interactive
+   `y`/`n` prompt and nothing else. Added it because this session has no way to answer an
+   interactive console prompt at all (a documented tool limitation — stdin reads EOF, not a real
+   terminal), so without it neither this script's own self-test nor a future automated run on a
+   headless machine could ever exercise the "copy the template in" path. The interactive prompt
+   itself is unchanged and is still what a person doing this by hand sees.
+3. **Exit-code convention chosen, not specified.** The spec says "exit 0 or 1, the same convention
+   as the kit's scripts" without naming which condition is which. Matched `check-shareable.ps1`:
+   0 when nothing here still needs a look, 1 when something does (a missing home note, or a
+   declined template) — a report, never a hard failure, same as that script's own header says of
+   itself.
+4. **`Get-HomeNote` mirrors `project_reader.dart`'s real convention** (a file named after the
+   folder first, otherwise the first `.md` file whose first line is `---`) rather than inventing a
+   simpler rule, so this script and the app can never disagree about which folders already have a
+   home note.
+
+**Self-test:**
+
+- **`check.ps1` green, 352 tests** (351 → 352, the one new git-missing test).
+- **`onboard-projects.ps1 -SelfTest`**, 8 checks, all passing: a folder with a home note and
+  `HOW-ASA-WORKS.md` is left alone; a folder with a home note but no `HOW-ASA-WORKS.md` gets the
+  template when told yes; a folder with no home note is listed and never written to; a second run
+  changes nothing further for either fixed folder, but keeps listing the one that still has no
+  home note (nothing here can fix that one, ever); answered no (or run unattended) leaves nothing
+  written and still reports the folder; nothing is ever copied without an explicit yes. This is
+  the exact three-invented-projects scenario the spec's own self-test section names (one complete,
+  one without `HOW-ASA-WORKS.md`, one with no home note), automated rather than hand-run once.
+- **Run against the real folder, `-Yes`, counts only (Gate 2):** `C:\Users\nico.bui\workspace\projects`
+  — **13 already fine, 0 copied, 0 still missing it, 0 with no home note.** Expected: Cowork's own
+  2026-09-25 rewrite already put `HOW-ASA-WORKS.md` in all 13 folders, so this round's own script
+  had nothing left to do against real data — a clean confirmation, not a null result.
+
+**Not touched:** any `lib/` file. This round's own Definition-of-done line ("release exe rebuilt
+and confirmed starting outside the IDE, for any round that touches `lib/`") does not apply here —
+checked directly against the round's real file list rather than assumed.
+
+**Ready for your 15-minute test on the other laptop.** Nothing committed yet.
+
+### 2026-09-26 — deciding session, after reading Rounds 32 and 33: one fix into 33, one correction
+
+1. **Before Nico's Round 33 test, build `round-33.md`'s new section E.** Two of 13 real projects
+   never appear on the overview, because `_row` doesn't draw children. `vibe-coding-kit`, under
+   `asa` under Other, is counted but not drawn. `course-license-followup-emails`, under a work
+   project, is drawn nowhere. The signed `asa-front2` shows that nesting. E also renames the Start
+   menu's "Copy opener for Claude" to "Copy opener". **This means Round 33 now touches `lib/`, so
+   the exe rebuild applies.**
+2. **Correction to this file's 2026-09-21 entry.** The stale `.git/index.lock` was *"not created by
+   anything in this session"* — **false.** It, and the 5-day-old one found in Round 32 (call 6),
+   came from the deciding session's own `git status` runs through the device bridge. That shell
+   can't delete files, so git's own lock stays behind. Full account: `projects\asa\ASA-LOG.md`,
+   2026-09-26. **The deciding session no longer runs git at all**, not even read-only. It reads
+   `.git\logs\HEAD` as a plain file instead.
+
+### 2026-09-26 — Code: real screenshots of the running app, two real bugs found, one capability corrected
+
+**Not a round — Nico asked for screenshots of the real running app, for you and for a persona
+read.** Six saved to `projects\asa\screenshots\` (never in git — real project state, same as
+everything else outside the repo): `2026-09-26-projects-view.png`, `-tasks-view.png`, and Asa's
+own `-asa-project-screen.png` (Strategy), `-asa-plan-tab.png`, `-asa-decisions-tab.png`,
+`-asa-details-tab.png`.
+
+**Capability correction, since it changes how much weight the last two reports' "not shown yet"
+caveats deserve.** Both the Round 32 and Round 33 reports said this session has no way to
+screenshot or drive a native Windows window. **That was wrong.** `System.Drawing` +
+`GetClientRect`/`ClientToScreen` captures a real window; `SetCursorPos` + `mouse_event` can send
+it real clicks, once a real, non-obvious wrinkle is accounted for — this machine's cursor/click
+coordinate space (`SetCursorPos`, `Screen.PrimaryScreen.Bounds`: 1280×800) and its actual pixel
+framebuffer (`GetWindowRect` after `SetProcessDPIAware`, `CopyFromScreen`: 1920×1080) are two
+different coordinate spaces, related by a flat 1.5× scale with no DPI API tying them together
+directly — found by probing, not documented anywhere obvious. Whether this is worth turning into
+a real, reusable `.claude`-scoped tool (rather than re-derived by hand next time) is a real
+question, not answered here.
+
+**Two real bugs found, neither related to Rounds 32 or 33, both pre-existing:**
+
+1. **A real layout bug — the Plan tab's own "What changed" breaks on its own success.** Visible in
+   `-asa-plan-tab.png`: the "7 Sep" entry's text renders as one character per line. Cause, in
+   `lib/hubs/product/plan_view.dart:138-174` (`_changeRow`): `Row(children: [date,
+   Expanded(text), Wrap(link chips)])`. The trailing `Wrap` has no width limit of its own, so once
+   a change entry accumulates enough Round/ADR chips — asa now has 34 rounds and dozens of ADRs,
+   it didn't when this screen was built — the `Wrap` claims all the width it wants first, and the
+   sibling `Expanded` text is squeezed to almost nothing, wrapping character by character. **Only
+   shows up once a real project's own history gets long enough** — which is exactly why no test
+   caught it, and exactly the kind of thing a persona-check re-run against a real screen, not a
+   fixture, is for. Not fixed — Nico asked for this to come to you first rather than a same-session
+   fix.
+2. **A smaller, cosmetic one — decision titles skip the markdown stripping everything else gets.**
+   Visible in `-asa-decisions-tab.png`: two "Settled" titles show literal `**` characters
+   (`**The Plan tab as the areas of a project**`). `lib/core/decision.dart:169` takes the raw
+   regex-captured heading text with no `stripEmphasisMarkers`/`stripCodeSpanMarkers` — every other
+   markdown-sourced text in the app (task text, next-step) already gets that treatment before
+   Round 26 ever added decision titles to a place users actually read them. Not fixed, same reason.
+
+**Persona-check, a quick pass against the real screens rather than the fixture:** clean against
+every one of `PERSONA.md`'s named quit reasons — freshness ages and the Start icon read at a
+glance, the Strategy tab's collapsed-by-default bars hold up at real window width, nothing invents
+vocabulary. The one thing that would have cost him the app is bug 1 above — a wall of vertical
+single letters, on the one screen literally named "What changed," is close to the exact shape of
+overwhelm `asa-plan-v2.html` was blocked for.
+
+
+### 2026-09-26 — deciding session: persona check on your six screenshots → Round 35, queued before 34
+
+**Verdict: APPROVE WITH CONDITION.** The structure fits; four things make the screens say wrong
+things, and one breaks the Plan tab. Full list and spec: `projects\asa\rounds\round-35.md`. **Order:
+Round 33 (with its section E) → Round 35 → Round 34.** Both bugs you found are in it (C and D).
+
+**Fixed in files by the deciding session, nothing for you to build:** five ADR status lines
+(0008, 0021, 0022, 0025, 0026) that still said "proposed" under an accepted verdict — they were six of
+the seven "Needs a look" rows; `CHARTER.md`'s editorial lines on the Strategy tab; `asa.md`'s Round 32
+build task ticked (`6eda01f`). The cause of the "Needs a look" drift was the deciding session's own
+hand-written verdict format, not your parser — Round 35 E makes the parser say so next time instead
+of staying silent.
+
+### 2026-09-26 — deciding session → Code: start Round 36, one delivery under ADR 0027
+
+**Read `projects\asa\rounds\round-36.md` end to end, then `projects\asa\decisions\0027-one-delivery-checkpoint-commits.md`.**
+Nico's instruction changes how this round runs: **commit at each checkpoint without asking him**,
+write one `HANDOVER.md` entry per checkpoint (same six headings every time), never push, and **give
+him the app once, at checkpoint 5.** Rounds 33, 35 and 34 are folded in; their files stay the detailed
+specs.
+
+**Start now with cp0 → cp1 → cp2 → cp4.** cp3 (areas on the overview, Strategy, Decisions, Tasks)
+waits for Nico's yes on `sketches\asa-areas-everywhere-v1.html`. The deciding session writes that yes
+here when it comes, and it also switches on Round 34 F (ticking inside area pages).
+
+**Build against the sketch images, side by side, never from memory.** The deciding session's
+comparison page, `projects\asa\screenshots\2026-09-26-sketches-vs-app.html`, shows why: the overview
+had drifted furthest (tall cards, full-width stretch, no summary line, missing nesting, the folder
+box on top), then the Strategy tab (evidence line hidden, bars too wide).
+
+
+
+### 2026-09-26 — deciding session → Code: cp3 now waits on a different sketch; don't build Strategy "Areas that serve it"
+
+**Nothing changes for cp0, cp1 and cp2. Carry on with them.** Nico found `asa-areas-everywhere-v1`
+confusing: its Strategy section read to him like a sub-projects page. So that sketch is **superseded
+for cp3** by `projects\asa\sketches\asa-project-page-v1.html` (+ `.png`), which **waits for Nico's
+yes**. Until then:
+
+- **Don't build** Strategy's "Areas that serve it" or the task-based "N of M" on Strategy
+  (`asa-areas-everywhere-v1` §2). The new sketch removes both. Strategy stays as `asa-strategy-v3`.
+- **Don't change** the tab order or the tab a project opens on yet. The new sketch proposes: **Plan
+  first, and a project opens on Plan**; a "Next" line with the Start button above the areas; a
+  closed area row that shows its **next task** instead of its goal. All three wait for his yes.
+- **Still fine to build under cp2:** the Plan tab as `asa-plan-v5`, the Tasks view grouping.
+- Overview segments per area and decision chips are **kept** in the new sketch, but still under cp3,
+  so still waiting.
+
+The deciding session writes Nico's answer here. A yes on the new sketch also switches on Round 34 F
+(ticking inside area pages), in place of the yes on v1.
+
+### 2026-09-26, evening — deciding session → Code: Nico said yes; Round 36 is rewritten; commit as often as possible
+
+**Nico said yes to `projects\asa\sketches\asa-project-page-v1.html`** (*"yes it loosk good"*). That
+replaces the hold in the entry above: **nothing waits on Nico any more.** It also switches on Round
+34 F (ticking checkboxes inside `plan\*.md`, checkbox state only). ADR 0021 carries the amendment.
+
+**Read `projects\asa\rounds\round-36.md` again, end to end. It was rewritten tonight** and it wins
+over rounds 33, 34 and 35 where they disagree. What's new in it:
+
+- **§2:** a project opens on **Plan**, tabs are Plan · Strategy · Decisions · Details; a Next line
+  with Start above the areas; closed area rows show their next task; **Strategy lists no areas**
+  (skip Round 34 C).
+- **§3:** every link between pages, **18 of them, each with its own test** in `test/links_test.dart`,
+  plus one test that a tick changes every count at once. Back always returns to where you were.
+- **§6:** a click-through in `integration_test\click_through_test.dart`, on the Windows build,
+  **run twice in a row**, including a byte check that a tick changes exactly one line of an area page.
+- **Checkpoints cp0–cp7.**
+
+**New standing rule, ADR 0028 (`projects\asa\decisions\0028-commit-as-often-as-possible.md`).**
+Nico: *"always tell code to commit as often as possible."* **Commit after every piece that passes
+`flutter test`, and doc-only changes at once. A checkpoint is many commits.** Never push. The round
+is approved only by one final commit, `Round 36: approved by Nico <date>`, after his test. The
+deciding session has already edited `CLAUDE.md` (rule 19, Definition of done) and `AGENTS.md` (role
+line, override rule) to say this. **Your first commit: those two files, as they are**, message
+`Round 36 cp0: rule 19 — commit as often as possible (ADR 0028)`. Round 33 is uncommitted work in
+your tree; commit it in pieces right after, not as one.
+
+**Start now: cp0 → cp7, in order. Hand Nico the app only at cp7, when every test in §3 and §6 is green.**
+
+### Round 36 cp0 — Round 33 finished (section E), rule 19 committed
+
+**Built:** Rule 19/ADR 0028 committed as-is in `CLAUDE.md`/`AGENTS.md`. Round 33's four
+already-built pieces (A templates, B `onboard-projects.ps1`, C1 the git-missing test, D the
+README rewrite) committed one at a time — they were sitting uncommitted in the tree exactly as
+ADR 0028's own "why" describes. **Section E, newly built this checkpoint:** `_row` in
+`projects_view.dart` now recurses over `node.children` once, so a child or grandchild at any
+depth draws — not just the one level `_otherGroup` special-cased before. Fixes both real gaps the
+deciding session named (a grandchild under Other counted but not drawn; a work-project's own
+child drawn nowhere). Start menu's "Copy opener for Claude" → "Copy opener".
+
+**Tests:** 354 (352 → 354; two new in `projects_view_test.dart`: a three-generation chain all
+render, and cp0's own "every scanned project exactly once" count test against a mixed work/Other
+forest). `check.ps1` green. Release exe rebuilt (`flutter build windows --release`) and confirmed
+starting outside the IDE, twice.
+
+**Commits:**
+- `fc69f3d` — Round 36 cp0: rule 19 — commit as often as possible (ADR 0028)
+- `e0671de` — Round 36 cp0 (Round 33/A): templates move into the repo
+- `84088a5` — Round 36 cp0 (Round 33/B): onboard-projects.ps1
+- `ecb1753` — Round 36 cp0 (Round 33/C1): prove git-missing falls back to mtime
+- `dcf8476` — Round 36 cp0 (Round 33/D): README reflects the real current build
+- `974360b` — Round 36 cp0 (Round 33/E): every depth of a project's children now draws
+
+**Screenshots:** none this checkpoint — an attempt to confirm section E visually against the real
+folder produced a genuinely valid but all-black PNG (deleted, not left behind); this machine's
+display was very likely asleep/locked at capture time, not a rendering bug in the app. The
+automated count test above is the real evidence for this checkpoint; a real visual confirmation
+is deferred to cp5's match-the-sketch loop, which screenshots on purpose and will surface this
+again if it's not just a stale display.
+
+**Calls I made:**
+1. Bundled the AGENTS.md `(not set)`→empty line (Round 33/C2) into the very first commit rather
+   than a separate one — it was already sitting in the same file as the rule-19 edit the
+   instruction said to commit "as they are," so separating it would have meant an artificial
+   partial-file commit.
+2. Wrote cp0's own "every scanned project exactly once" as a widget test against a hand-built
+   mixed forest (one work-bucket parent/child, one Other-bucket parent/child/grandchild) rather
+   than against the real folder — a unit-level proof that's exact and repeatable, with the real
+   folder as the (currently blocked) visual second check, per Gate 2 and this round's own §5
+   ordering (fixture first, real folder later, screenshots only).
+
+**Open questions for Nico:** none.
+
+**Next:** cp1 — Round 35 A–G.
