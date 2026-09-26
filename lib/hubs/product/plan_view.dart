@@ -25,7 +25,9 @@ import 'package:asa/core/decision.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
+import 'package:asa/core/project_row.dart' show effectiveNextStepWithArea;
 import 'package:asa/core/task.dart';
+import 'package:asa/hubs/product/start_menu.dart';
 import 'package:flutter/material.dart';
 
 class PlanView extends StatefulWidget {
@@ -39,6 +41,10 @@ class PlanView extends StatefulWidget {
     this.onOpenStrategy,
     this.onToggleTask,
     this.areaToOpen,
+    this.typedNextStep = '',
+    this.projectName = '',
+    this.projectFolder = '',
+    this.repoPath = '',
     super.key,
   });
 
@@ -83,6 +89,21 @@ class PlanView extends StatefulWidget {
   /// this tab is shown. Read once, on the change that sets it — see
   /// `_PlanViewState.didUpdateWidget`.
   final String? areaToOpen;
+
+  /// The project's own typed `next-step:` field — round-36 §2 b's "Next"
+  /// line falls back to this only when no home or area task is open,
+  /// same chain [effectiveNextStepWithArea] already implements. Empty
+  /// keeps that chain's own honest-absence behaviour.
+  final String typedNextStep;
+
+  /// Round-36 §2 b's Next line needs these three, unchanged, to draw its
+  /// own [StartMenu] — the same Start button already on every project row
+  /// and the header, now repeated here so starting work never requires
+  /// leaving the Plan tab. Empty defaults keep every existing test, which
+  /// does not exercise Start from this widget, working unchanged.
+  final String projectName;
+  final String projectFolder;
+  final String repoPath;
 
   @override
   State<PlanView> createState() => _PlanViewState();
@@ -147,6 +168,8 @@ class _PlanViewState extends State<PlanView> {
           _whatThisProjectIsFor(widget.strategy!),
           const SizedBox(height: 4),
         ],
+        _nextLineRow(),
+        const SizedBox(height: 4),
         for (final area in widget.areas) _areaRow(area),
         _notInAnAreaRow(),
         const SizedBox(height: 16),
@@ -214,6 +237,105 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
+  // --- The Next line — round-36 §2 b ------------------------------------
+
+  /// The project's single next step, wherever it actually comes from —
+  /// same chain [effectiveNextStepWithArea] already implements for the
+  /// overview — with the area it belongs to as a small chip, and the real
+  /// Start menu on the right so starting work never needs a second tab.
+  Widget _nextLineRow() {
+    final result = effectiveNextStepWithArea(
+      widget.homeTasks,
+      widget.typedNextStep,
+      areas: widget.areas,
+    );
+    final text = result.text;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: text == null ? null : () => _openNextTask(result.area),
+              child: Row(
+                children: [
+                  Text(
+                    'NEXT',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      text ?? 'No next step',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: text == null
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                        color: text == null
+                            ? Colors.grey.shade500
+                            : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  if (result.area != null) ...[
+                    const SizedBox(width: 8),
+                    _areaNameChip(result.area!.name),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          StartMenu(
+            projectName: widget.projectName,
+            projectFolder: widget.projectFolder,
+            repoPath: widget.repoPath,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// L9 — tapping the Next line's task opens the area holding it (or
+  /// "Not in an area" for a home task). Highlighting the task itself is
+  /// cp4's own job, alongside the rest of `test/links_test.dart`.
+  void _openNextTask(Area? area) {
+    if (area == null) {
+      setState(() => _notInAnAreaExpanded = true);
+    } else {
+      setState(() => _expandedAreas.add(area.sourceFile));
+    }
+  }
+
+  Widget _areaNameChip(String name) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDEEF1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade700,
+        ),
+      ),
+    );
+  }
+
   // --- One area's row ---------------------------------------------------
 
   Widget _areaRow(Area area) {
@@ -269,18 +391,19 @@ class _PlanViewState extends State<PlanView> {
                           ),
                         ],
                       ),
-                      if (area.summary != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          stripCodeSpanMarkers(
-                            stripEmphasisMarkers(area.summary!),
-                          ),
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 12.5,
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _areaNextTaskLabel(area),
+                        style: TextStyle(
+                          color: _areaHasOpenTask(area)
+                              ? Colors.grey.shade700
+                              : Colors.grey.shade500,
+                          fontSize: 12.5,
+                          fontStyle: _areaHasOpenTask(area)
+                              ? FontStyle.normal
+                              : FontStyle.italic,
                         ),
-                      ],
+                      ),
                       const SizedBox(height: 5),
                       Row(
                         children: [
@@ -333,6 +456,22 @@ class _PlanViewState extends State<PlanView> {
     }
     return 'no result yet';
   }
+
+  /// Round-36 §2 c — a closed area row shows its next open task instead
+  /// of its goal or summary; the goal itself only shows once expanded, in
+  /// [_areaDetail]. Zero tasks and every-task-done both read as "all
+  /// done" — there is nothing open either way.
+  String _areaNextTaskLabel(Area area) {
+    for (final task in area.tasks) {
+      if (!task.done && !task.parked) {
+        return 'next ${stripCodeSpanMarkers(stripEmphasisMarkers(task.text))}';
+      }
+    }
+    return 'nothing open — all done';
+  }
+
+  bool _areaHasOpenTask(Area area) =>
+      area.tasks.any((t) => !t.done && !t.parked);
 
   Widget _areaDetail(Area area) {
     return Column(

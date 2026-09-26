@@ -305,7 +305,7 @@ void main() {
       );
     }
 
-    testWidgets('an area row is collapsed by default: name, summary, '
+    testWidgets('an area row is collapsed by default: name, next task, '
         'done/total and a result label, no Goal/Plan/Tasks text yet', (
       tester,
     ) async {
@@ -319,13 +319,16 @@ void main() {
             ],
           ),
         ],
+        // A home task diverts the Next line's own area chip elsewhere, so
+        // this area's name is not also duplicated by that chip — the
+        // Next line is round-36 §2 b's concern, not this test's.
+        homeTasks: [
+          const Task(rawLine: '- [ ] home', text: 'Home task', done: false),
+        ],
       );
 
       expect(find.text('Sales'), findsOneWidget);
-      expect(
-        find.text('The partner registers and closes its own deals.'),
-        findsOneWidget,
-      );
+      expect(find.text('next b'), findsOneWidget);
       expect(find.text('1 of 2'), findsOneWidget);
       expect(find.text('no result yet'), findsOneWidget);
       expect(find.text('Serves Objective 1.'), findsNothing);
@@ -343,6 +346,9 @@ void main() {
             ],
             decisionNumbers: ['0003'],
           ),
+        ],
+        homeTasks: [
+          const Task(rawLine: '- [ ] home', text: 'Home task', done: false),
         ],
       );
 
@@ -393,6 +399,9 @@ void main() {
         areas: [
           area(tasks: [task]),
         ],
+        homeTasks: [
+          const Task(rawLine: '- [ ] home', text: 'Home task', done: false),
+        ],
         onToggleTask: (sourceFile, t) async {
           calledWith = sourceFile;
           calledTask = t;
@@ -422,11 +431,14 @@ void main() {
 
         expect(find.text('Not in an area'), findsOneWidget);
         expect(find.text('1 open'), findsOneWidget);
-        expect(find.text('c'), findsNothing);
+        // The Next line already surfaces this same open task at the top
+        // of the tab (round-36 §2 b), so one copy is expected even before
+        // "Not in an area" itself is opened.
+        expect(find.text('c'), findsOneWidget);
 
         await tester.tap(find.text('Not in an area'));
         await tester.pump();
-        expect(find.text('c'), findsOneWidget);
+        expect(find.text('c'), findsNWidgets(2));
         expect(find.text('d'), findsOneWidget);
       },
     );
@@ -502,6 +514,140 @@ void main() {
     testWidgets('no PLAN.md at all — no Overview row', (tester) async {
       await pumpAreas(tester, areas: [area()]);
       expect(find.text('Overview'), findsNothing);
+    });
+  });
+
+  group('round-36 §2 b — the Next line', () {
+    Area area({
+      String name = 'Sales',
+      String sourceFile = 'plan/sales.md',
+      List<Task> tasks = const [],
+      String? goal,
+    }) {
+      return Area(
+        name: name,
+        sourceFile: sourceFile,
+        goal: goal,
+        tasks: tasks,
+        results: const [],
+        decisionNumbers: const [],
+        objectiveNumbers: const [],
+      );
+    }
+
+    testWidgets('a home task names no area chip', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [area()],
+              decisions: const [],
+              homeTasks: const [
+                Task(rawLine: '- [ ] home', text: 'Home task', done: false),
+              ],
+              projectSourceFile: 'demo.md',
+              projectName: 'Demo',
+              projectFolder: 'C:/demo',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Home task'), findsOneWidget);
+      // The area's own row heading still shows "Sales" — just not a
+      // second copy from the Next line's own area chip.
+      expect(find.text('Sales'), findsOneWidget);
+    });
+
+    testWidgets('an open area task names its area as a small chip', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [
+                area(
+                  tasks: [
+                    const Task(
+                      rawLine: '- [ ] sales task',
+                      text: 'Sales task',
+                      done: false,
+                    ),
+                  ],
+                ),
+              ],
+              decisions: const [],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sales task'), findsOneWidget);
+      // One "Sales" from the area's own row heading, one from the Next
+      // line's own area chip naming the same area.
+      expect(find.text('Sales'), findsNWidgets(2));
+    });
+
+    testWidgets('no task and no typed field — honest "No next step"', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [area()],
+              decisions: const [],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('No next step'), findsOneWidget);
+    });
+
+    testWidgets('tapping the Next line opens the area holding that task', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlanView(
+              plan: const Plan(pages: []),
+              areas: [
+                area(
+                  goal: 'Serves Objective 1.',
+                  tasks: [
+                    const Task(
+                      rawLine: '- [ ] sales task',
+                      text: 'Sales task',
+                      done: false,
+                    ),
+                  ],
+                ),
+              ],
+              decisions: const [],
+              homeTasks: const [],
+              projectSourceFile: 'demo.md',
+            ),
+          ),
+        ),
+      );
+
+      // Collapsed: the area's own goal is not shown yet.
+      expect(find.text('Serves Objective 1.'), findsNothing);
+
+      await tester.tap(find.text('Sales task').first);
+      await tester.pump();
+
+      expect(find.text('Serves Objective 1.'), findsOneWidget);
     });
   });
 }

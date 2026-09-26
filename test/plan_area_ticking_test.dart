@@ -18,6 +18,9 @@ updated: 2026-09-26
 ---
 
 # Demo
+
+## Tasks
+- [ ] Home task
 ''';
 
 const _areaPage = '''
