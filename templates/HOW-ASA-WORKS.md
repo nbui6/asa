@@ -88,6 +88,48 @@ a comment. Asa reads `(not set)` as a real value.
 
 Anything else in the note is yours to shape however the project needs. Asa just doesn't read it.
 
+## Areas — a project's own goal → plan → tasks → results → decisions
+
+**Round 34, ADR 0024.** When a project has more going on than one flat task list, split it into
+areas: one page per area, `plan\<area>.md`, lowercase with dashes (`plan\sales.md`,
+`plan\customer-success.md`). An optional number prefix sets the order it shows in and is never
+displayed — `plan\1-sales.md` shows as "Sales".
+
+**Exactly this shape:**
+
+```markdown
+# Sales
+
+The partner registers and closes its own deals.        ← first line: the one-line summary
+
+## Goal
+Serves Objective 1 — would show: 3 deals registered by the partner this quarter.
+
+## Plan
+Two joint pitches a month from one shared account list, then the partner pitches alone.
+
+## Tasks
+- [x] Agree the shared account list
+- [ ] Second demo for the account from the first pitch
+
+## Results
+- 2026-09-20 — First joint pitch. The account asked for a second demo.
+- 2026-09-08 — Account list agreed: 40 accounts, 12 of them warm.
+
+## Decisions
+ADR 0003 — deals go through the partner portal. ADR 0006 — no discount beyond the standard margin.
+```
+
+| Rule | |
+|---|---|
+| **Naming an objective** | Write **`Objective N`**, with the word, in the Goal section — that exact form is what Asa matches. Naming one elsewhere on the page is not this area's own claim on it. |
+| **Naming a decision** | Write **`ADR NNNN`**, with the word — anywhere on the page. |
+| **A result** | One dated line each, **`- YYYY-MM-DD — what came out`**, newest first. **Never edited later** — a correction is a new line, not a rewrite of an old one; the log is the record of what was actually said, when. |
+| **Any part can be missing** | Asa shows honest absence ("No goal yet," "Nothing yet"), never a guess. |
+
+Every part but the file name and the `## Tasks` checkboxes is prose — write it the way you'd
+explain it out loud, not a status field.
+
 ## Before you finish — every session, not only big ones
 
 **This is what keeps the overview true without Nico maintaining it.** Before the session ends, or
@@ -98,6 +140,8 @@ before a long pause in the same conversation:
 2. **`status:`** — still true? If not, change it.
 3. **`next-step:`** — make it the first open task, in one sentence.
 4. **`updated:`** — today's date.
+5. **If the project has areas:** add a Results line to any area something actually came out of;
+   tick that area's own tasks.
 
 That's all. **Don't rewrite the rest of the note to tidy it.** Changing someone's text in passing is
 how a decision silently disappears.
