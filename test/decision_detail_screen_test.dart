@@ -19,7 +19,25 @@ void main() {
     path = '${tempDir.path}${Platform.pathSeparator}0001-example.md';
   });
 
-  tearDown(() => tempDir.deleteSync(recursive: true));
+  // Retried, not a bare `deleteSync` — found while touching this file:
+  // `appendVerdict`'s own write is read → concatenate → write a temp file
+  // → rename over the original, and Windows can still hold that rename's
+  // handle open for a few milliseconds after the polling loop above
+  // already sees the new content on disk. A `deleteSync` that lands in
+  // that window throws `PathAccessException`, "used by another process" —
+  // never a real assertion failure, just this race, so a short retry
+  // clears it rather than papering over a real regression.
+  tearDown(() async {
+    for (var attempt = 0; attempt < 20; attempt++) {
+      try {
+        tempDir.deleteSync(recursive: true);
+        return;
+      } on PathAccessException {
+        if (attempt == 19) rethrow;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+    }
+  });
 
   testWidgets('two Accept taps recognised before the first rebuild write the '
       'verdict once, not twice — the real bug found on ADR 0012: five '
@@ -56,8 +74,22 @@ void main() {
 
       final deadline = DateTime.now().add(const Duration(seconds: 5));
       while (DateTime.now().isBefore(deadline)) {
-        final contents = File(path).readAsStringSync();
-        if (RegExp('## Your call').hasMatch(contents)) break;
+        // `appendVerdict`'s own write is read → concatenate → write a
+        // temp file → rename over the original — Windows can briefly
+        // deny even a read of the target path while that rename lands.
+        // Found the hard way: an uncaught `PathAccessException` here
+        // crashed the whole test instead of just meaning "not yet, poll
+        // again", the exact same race this loop already exists to ride
+        // out for a slow write, not only a missing one.
+        String? contents;
+        try {
+          contents = File(path).readAsStringSync();
+        } on PathAccessException {
+          // Not yet — try again next tick.
+        }
+        if (contents != null && RegExp('## Your call').hasMatch(contents)) {
+          break;
+        }
         await Future<void>.delayed(const Duration(milliseconds: 25));
       }
     });
