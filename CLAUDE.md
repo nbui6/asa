@@ -15,6 +15,20 @@ same commit as the part it describes.
 
 ## Where we are
 
+**Pick up here — 2026-09-27. Round 36 is ready for Nico's own test.** Full spec and its own finish
+line: `projects\asa\rounds\round-36.md`. Every checkpoint (cp0–cp7) built, self-tested and committed
+under ADR 0027/0028 (no per-checkpoint yes needed) — `HANDOVER.md`'s own cp0 through cp7 entries have
+the real detail, including three real bugs found and fixed along the way (a reload no longer
+discards a screen's own open area or expanded group; accepting or rejecting a decision now tells its
+caller to reload) and two honest, named-not-fixed gaps (a Plan↔Strategy tab switch, and the
+overview's own Bars↔Tasks toggle, still reset whatever area was open — a bigger change than this
+round's own scope). `check.ps1` is green, the release exe rebuilt and confirmed starting outside the
+IDE. **Not yet done: Nico's own 30-minute test, round-36.md §8, written out in `HANDOVER.md`'s cp7
+entry.** Nothing here waits on more code — only on his yes, recorded as `Round 36: approved by Nico
+<date>` once he gives it.
+
+**Superseded 2026-09-27 by the line above; kept for history:**
+
 **Pick up here — 2026-09-25. The goal narrowed to one thing: a working overview of all 13 projects, kept current by Claude.** Seven steps, who does each and what to expect: `projects\asa\PLAN.md`, "2026-09-25 — the goal narrowed". Research behind it: `projects\asa\RESEARCH-SIMILAR-TOOLS-2026-09-25.md`. **Revised the same day: steps 1, 5 and 6 are now one round, Round 32** (`projects\asa\rounds\round-32.md`). One build, self-tested, then one 20-minute test by Nico. Code: read that file end to end and build it. Round 28 and the rest are parked until after step 7, not cancelled.
 
 **Superseded 2026-09-25 by the line above; kept for history:**
