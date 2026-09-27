@@ -17,6 +17,7 @@ import 'dart:io';
 
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/projects_screen.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,6 +89,30 @@ void main() {
 
   Future<void> flushHighlightTimer(WidgetTester tester) =>
       tester.pump(const Duration(seconds: 2));
+
+  /// Round-37 §D4 — "Objective N" is now an inline link inside the Goal
+  /// sentence's own `Text.rich`, not a separate tappable widget a plain
+  /// `tester.tap(find.text(...))` can land on. Invokes the matching
+  /// span's own `TapGestureRecognizer` directly instead of simulating a
+  /// pixel-precise tap — the standard way to exercise an inline text link
+  /// in a widget test.
+  Future<void> tapObjectiveLink(WidgetTester tester, String label) async {
+    void searchSpan(InlineSpan span) {
+      if (span is TextSpan) {
+        if (span.text == label && span.recognizer is TapGestureRecognizer) {
+          (span.recognizer! as TapGestureRecognizer).onTap!();
+          return;
+        }
+        span.children?.forEach(searchSpan);
+      }
+    }
+
+    final richTexts = tester.widgetList<RichText>(find.byType(RichText));
+    for (final richText in richTexts) {
+      searchSpan(richText.text);
+    }
+    await tester.pumpAndSettle();
+  }
 
   testWidgets(
     "L1 — Overview, a project row, lands on that project's Plan tab",
@@ -279,7 +304,9 @@ void main() {
     // (Sales also holds the effective next step).
     await tapAndSettle(tester, find.text('Sales').last);
 
-    await tapAndSettle(tester, find.text('Objective 1 →'));
+    // Round-37 §D4 — "Objective 1" is now the inline link inside the
+    // Goal sentence itself, not a separate chip.
+    await tapObjectiveLink(tester, 'Objective 1');
 
     // The ADR chip only renders once the objective is expanded — proof
     // this landed already open, not merely on the right tab. Round 37

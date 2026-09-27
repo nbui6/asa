@@ -10,6 +10,7 @@ import 'package:asa/core/plan.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -670,8 +671,30 @@ void main() {
       );
     }
 
-    testWidgets('shows one chip per objective number the Goal names, tap '
-        'switches to Strategy with that objective', (tester) async {
+    /// Round-37 §D4 — "Objective N" is now an inline link inside the
+    /// Goal sentence's own `Text.rich`, not a separate widget a plain
+    /// `tester.tap(find.text(...))` can land on. Invokes the matching
+    /// span's own `TapGestureRecognizer` directly.
+    void tapObjectiveLink(WidgetTester tester, String label) {
+      void searchSpan(InlineSpan span) {
+        if (span is TextSpan) {
+          if (span.text == label && span.recognizer is TapGestureRecognizer) {
+            (span.recognizer! as TapGestureRecognizer).onTap!();
+            return;
+          }
+          span.children?.forEach(searchSpan);
+        }
+      }
+
+      for (final richText in tester.widgetList<RichText>(
+        find.byType(RichText),
+      )) {
+        searchSpan(richText.text);
+      }
+    }
+
+    testWidgets('the Goal sentence\'s own "Objective N" mention is the '
+        'link, tap switches to Strategy with that objective', (tester) async {
       String? opened;
       await tester.pumpWidget(
         MaterialApp(
@@ -693,12 +716,14 @@ void main() {
       await tester.tap(find.text('Sales'));
       await tester.pump();
 
-      expect(find.text('Objective 1 →'), findsOneWidget);
-      await tester.tap(find.text('Objective 1 →'));
+      expect(find.text('Serves Objective 1.'), findsOneWidget);
+      tapObjectiveLink(tester, 'Objective 1');
       expect(opened, '1');
     });
 
-    testWidgets('no objective named at all shows no chip', (tester) async {
+    testWidgets('no objective named at all leaves "Objective 1" as plain text, '
+        'not a link', (tester) async {
+      String? opened;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -708,6 +733,7 @@ void main() {
               decisions: const [],
               homeTasks: const [],
               projectSourceFile: 'demo.md',
+              onOpenObjective: (n) => opened = n,
             ),
           ),
         ),
@@ -716,7 +742,9 @@ void main() {
       await tester.tap(find.text('Sales'));
       await tester.pump();
 
-      expect(find.text('Objective 1 →'), findsNothing);
+      expect(find.text('Serves Objective 1.'), findsOneWidget);
+      tapObjectiveLink(tester, 'Objective 1');
+      expect(opened, isNull);
     });
   });
 

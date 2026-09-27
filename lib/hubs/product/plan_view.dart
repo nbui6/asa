@@ -39,6 +39,7 @@ import 'package:asa/hubs/product/ui/progress_bar.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/task_row.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class PlanView extends StatefulWidget {
@@ -599,18 +600,16 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  /// Round-36 §3, L12 — same shape as [_textField], plus one link per
-  /// number in [Area.objectiveNumbers] (only ever parsed from this same
-  /// Goal section — `area.dart`'s own scoping rule). Tapping one switches
-  /// to Strategy with that objective expanded.
+  /// Round-36 §3, L12 — same shape as [_textField]; tapping the objective
+  /// switches to Strategy with that objective expanded.
   ///
-  /// Round-37 §D4 asks for the objective to show once, as the chip, not
-  /// as both text and chip — flagged under "Open questions for Nico"
-  /// rather than built: the real fixture's own goal text is nothing but
-  /// "Serves Objective 1.", so mechanically stripping the mention leaves
-  /// "Serves ." — worse than the duplication it was meant to fix. Fixing
-  /// this without inventing prose needs a real judgment call on what the
-  /// goal line should say instead, not a parts move.
+  /// Round-37 §D4, answered by the deciding session 2026-09-27 19:36 (the
+  /// question this file itself had flagged): the objective shows once —
+  /// the words "Objective N" inside the Goal sentence become the link
+  /// itself (blue text, ADR 0029's "you can click it"), never a separate
+  /// chip repeating the same words below it. "Serves Objective 1." reads
+  /// as one sentence with one link; nothing is removed and nothing shows
+  /// twice.
   Widget _goalField(Area area) {
     final goal = area.goal;
     final displayGoal = goal == null || goal.isEmpty
@@ -626,24 +625,53 @@ class _PlanViewState extends State<PlanView> {
           if (displayGoal == null || displayGoal.isEmpty)
             const EmptyLine('No goal yet')
           else
-            Text(displayGoal, style: AsaText.body),
-          if (area.objectiveNumbers.isNotEmpty) ...[
-            const SizedBox(height: AsaSpace.xs),
-            Wrap(
-              spacing: AsaSpace.sm,
-              runSpacing: AsaSpace.xs,
-              children: [
-                for (final number in area.objectiveNumbers)
-                  LinkChip(
-                    'Objective $number →',
-                    onTap: () => widget.onOpenObjective?.call(number),
-                  ),
-              ],
-            ),
-          ],
+            _goalText(displayGoal, area.objectiveNumbers),
         ],
       ),
     );
+  }
+
+  static final RegExp _objectiveMention = RegExp(
+    r'Objective\s*(\d+)',
+    caseSensitive: false,
+  );
+
+  /// The Goal sentence, with every "Objective N" mention inside it turned
+  /// into the link itself — round-37 §D4 — but only when [objectiveNumbers]
+  /// (parsed by `area.dart`'s own scoping rule) actually names that number;
+  /// a textual coincidence that isn't a real, recognised objective mention
+  /// stays plain text, same as before this round. Plain text throughout
+  /// when nothing matches.
+  Widget _goalText(String text, List<String> objectiveNumbers) {
+    final matches = _objectiveMention.allMatches(text).toList();
+    if (matches.isEmpty) return Text(text, style: AsaText.body);
+
+    final spans = <InlineSpan>[];
+    var cursor = 0;
+    for (final match in matches) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, match.start)));
+      }
+      final number = match.group(1)!;
+      if (objectiveNumbers.contains(number)) {
+        spans.add(
+          TextSpan(
+            text: match.group(0),
+            style: const TextStyle(color: AsaColors.blue),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => widget.onOpenObjective?.call(number),
+          ),
+        );
+      } else {
+        spans.add(TextSpan(text: match.group(0)));
+      }
+      cursor = match.end;
+    }
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor)));
+    }
+
+    return Text.rich(TextSpan(style: AsaText.body, children: spans));
   }
 
   Widget _tasksField(List<Task> tasks, {required String sourceFile}) {
