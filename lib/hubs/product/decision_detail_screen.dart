@@ -4,13 +4,22 @@
 /// v0.1's whole reason to exist: title, date, status, the decision, why,
 /// what would change this, and the file it came from. 2026-09-07 (ADR
 /// 0011): a proposed decision can also be decided here — Asa's first
-/// write to a decision file, ever, and append-only.
+/// write to a decision file, ever, and append-only. Round 37 (ADR 0029)
+/// moves this screen onto `AsaPage` — the same header every page uses,
+/// where this one used its own small `AppBar` title next to the arrow —
+/// and shows its number with its title (§D3: "both show both"), never
+/// just one.
 library;
 
 import 'package:asa/core/area.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decision_writer.dart';
 import 'package:asa/core/markdown.dart';
+import 'package:asa/hubs/product/ui/area_chip.dart';
+import 'package:asa/hubs/product/ui/asa_page.dart';
+import 'package:asa/hubs/product/ui/section_label.dart';
+import 'package:asa/hubs/product/ui/source_line.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 class DecisionDetailScreen extends StatefulWidget {
@@ -125,130 +134,99 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   Widget build(BuildContext context) {
     final decision = _decision;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(decision.title),
-        leading: BackButton(
-          onPressed: () => Navigator.of(context).pop(_verdictJustRecorded),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _statusLine(decision),
-            if (widget.areasNaming.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
-                  for (final area in widget.areasNaming) _areaChip(area),
-                ],
-              ),
-            ],
-            const SizedBox(height: 24),
-            _block('Decision', decision.decision),
-            if (decision.why.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              _block('Why', decision.why),
-            ],
-            if (decision.whatWouldChangeThis.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              _block('What would change this', decision.whatWouldChangeThis),
-            ],
-            const SizedBox(height: 24),
-            const Divider(height: 1),
-            const SizedBox(height: 24),
-            if (decision.verdict != null)
-              _recordedVerdict(decision.verdict!)
-            else if (decision.isProposed &&
-                canAppendVerdict(decision.sourceFile))
-              _yourCall()
-            else if (decision.isProposed)
-              // A proposed decision from a shared decisions.md log — see
-              // canAppendVerdict's own reasoning. Read-only here; deciding
-              // it stays a hand edit, same as before this round.
-              const Text(
-                'Proposed. This project keeps its decisions in a shared '
-                'log, so recording a call here is not supported yet — '
-                'edit the file directly.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ],
-            const SizedBox(height: 32),
-            Text(
-              'Read from: ${decision.sourceFile}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+    return AsaPage(
+      name: _titleWithNumber(decision),
+      onBack: () => Navigator.of(context).pop(_verdictJustRecorded),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _statusLine(decision),
+          if (widget.areasNaming.isNotEmpty) ...[
+            const SizedBox(height: AsaSpace.sm),
+            Wrap(
+              spacing: AsaSpace.xs,
+              runSpacing: AsaSpace.xs,
+              children: [
+                for (final area in widget.areasNaming)
+                  AreaChip(area.name, onTap: () => _openArea(area)),
+              ],
             ),
           ],
-        ),
+          const SizedBox(height: AsaSpace.xl),
+          _block('Decision', decision.decision),
+          if (decision.why.isNotEmpty) ...[
+            const SizedBox(height: AsaSpace.xl),
+            _block('Why', decision.why),
+          ],
+          if (decision.whatWouldChangeThis.isNotEmpty) ...[
+            const SizedBox(height: AsaSpace.xl),
+            _block('What would change this', decision.whatWouldChangeThis),
+          ],
+          const SizedBox(height: AsaSpace.xl),
+          const Divider(height: 1),
+          const SizedBox(height: AsaSpace.xl),
+          if (decision.verdict != null)
+            _recordedVerdict(decision.verdict!)
+          else if (decision.isProposed && canAppendVerdict(decision.sourceFile))
+            _yourCall()
+          else if (decision.isProposed)
+            // A proposed decision from a shared decisions.md log — see
+            // canAppendVerdict's own reasoning. Read-only here; deciding
+            // it stays a hand edit, same as before this round.
+            const Text(
+              'Proposed. This project keeps its decisions in a shared '
+              'log, so recording a call here is not supported yet — '
+              'edit the file directly.',
+              style: TextStyle(color: AsaColors.ink3),
+            ),
+          if (_error != null) ...[
+            const SizedBox(height: AsaSpace.md),
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+          ],
+          const SizedBox(height: AsaSpace.xl),
+          SourceLine(decision.sourceFile),
+        ],
       ),
     );
   }
 
+  /// Round-37 §D3 — "both show both": the header names the decision's own
+  /// number alongside its title, same as the Decisions tab row and the
+  /// Plan tab's own ADR chip already do.
+  String _titleWithNumber(Decision decision) {
+    return decision.number == null
+        ? decision.title
+        : '${decision.number} · ${decision.title}';
+  }
+
+  void _openArea(Area area) {
+    final onOpenArea = widget.onOpenArea;
+    if (onOpenArea == null) return;
+    Navigator.of(context).pop(_verdictJustRecorded);
+    onOpenArea(area);
+  }
+
   Widget _statusLine(Decision decision) {
     final parts = <String>[
-      if (decision.number != null) 'ADR ${decision.number}',
       if (decision.date != null) decision.date!,
       if (decision.displayStatus.isNotEmpty) decision.displayStatus,
     ];
 
     return Wrap(
-      spacing: 12,
+      spacing: AsaSpace.md,
       children: [
-        for (final part in parts)
-          Text(part, style: const TextStyle(color: Colors.grey)),
+        for (final part in parts) Text(part, style: AsaText.meta),
         if (decision.supersededBy != null)
           Text(
             'Superseded by ${decision.supersededBy}',
             style: const TextStyle(
-              color: Colors.orange,
+              color: AsaColors.amber,
               fontWeight: FontWeight.bold,
             ),
           ),
         if (decision.supersedes != null)
-          Text(
-            'Supersedes ${decision.supersedes}',
-            style: const TextStyle(color: Colors.grey),
-          ),
+          Text('Supersedes ${decision.supersedes}', style: AsaText.meta),
       ],
-    );
-  }
-
-  /// Round-36 §3, L17 — pops back to wherever this screen was pushed
-  /// from, then asks the caller to open this one area on its own Plan
-  /// tab. Inert (no `onTap`) when [DecisionDetailScreen.onOpenArea] is
-  /// null, for a caller not wired for it yet.
-  Widget _areaChip(Area area) {
-    final onOpenArea = widget.onOpenArea;
-    return InkWell(
-      onTap: onOpenArea == null
-          ? null
-          : () {
-              Navigator.of(context).pop(_verdictJustRecorded);
-              onOpenArea(area);
-            },
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEDE7F6),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          area.name,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF5E35B1),
-          ),
-        ),
-      ),
     );
   }
 
@@ -258,16 +236,8 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'YOUR CALL',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 8),
+        const SectionLabel('Your call'),
+        const SizedBox(height: AsaSpace.sm),
         TextField(
           controller: _reasonController,
           maxLines: 3,
@@ -279,18 +249,16 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
                 'next session reads)',
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AsaSpace.md),
         Row(
           children: [
             OutlinedButton(
               onPressed: _saving ? null : () => _recordVerdict(false),
               child: const Text('Reject'),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AsaSpace.md),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-              ),
+              style: FilledButton.styleFrom(backgroundColor: AsaColors.green),
               onPressed: _saving ? null : () => _recordVerdict(true),
               child: Text(_saving ? 'Saving…' : 'Accept'),
             ),
@@ -319,11 +287,11 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AsaSpace.xs),
         Text(
           'Recorded ${verdict.date}, in this file. This is what next '
           'session reads.',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          style: AsaText.meta,
         ),
       ],
     );
@@ -333,14 +301,14 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+        SectionLabel(label),
+        const SizedBox(height: AsaSpace.sm),
         // stripEmphasisMarkers: found on ADR 0012's real content — this
         // screen shows prose as plain text, so a literal `**` on screen
         // is a defect, not raw data worth preserving. The parsed
         // Decision fields themselves stay verbatim; only the display
         // strips markers.
-        SelectableText(stripEmphasisMarkers(body)),
+        SelectableText(stripEmphasisMarkers(body), style: AsaText.body),
       ],
     );
   }

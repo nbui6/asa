@@ -770,7 +770,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DecisionDetailScreen), findsOneWidget);
-      expect(find.text('Deals go through the partner portal'), findsOneWidget);
+      // Round 37 §D3 — both show both: the header names the number with
+      // the title now, same as the Decisions tab row and the ADR chip.
+      expect(
+        find.text('0003 · Deals go through the partner portal'),
+        findsOneWidget,
+      );
 
       // Back returns to Plan, this same area still open.
       await tester.pageBack();

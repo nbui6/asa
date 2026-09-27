@@ -357,7 +357,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DecisionDetailScreen), findsOneWidget);
-      expect(find.text('A real decision'), findsOneWidget);
+      // Round 37 §D3 — both show both: the header names the number with
+      // the title now.
+      expect(find.text('0009 · A real decision'), findsOneWidget);
 
       await tester.pageBack();
       await tester.pumpAndSettle();
