@@ -15,17 +15,22 @@ same commit as the part it describes.
 
 ## Where we are
 
-**Pick up here — 2026-09-27. Round 36 is ready for Nico's own test.** Full spec and its own finish
-line: `projects\asa\rounds\round-36.md`. Every checkpoint (cp0–cp7) built, self-tested and committed
-under ADR 0027/0028 (no per-checkpoint yes needed) — `HANDOVER.md`'s own cp0 through cp7 entries have
-the real detail, including three real bugs found and fixed along the way (a reload no longer
-discards a screen's own open area or expanded group; accepting or rejecting a decision now tells its
-caller to reload) and two honest, named-not-fixed gaps (a Plan↔Strategy tab switch, and the
-overview's own Bars↔Tasks toggle, still reset whatever area was open — a bigger change than this
-round's own scope). `check.ps1` is green, the release exe rebuilt and confirmed starting outside the
-IDE. **Not yet done: Nico's own 30-minute test, round-36.md §8, written out in `HANDOVER.md`'s cp7
-entry.** Nothing here waits on more code — only on his yes, recorded as `Round 36: approved by Nico
-<date>` once he gives it.
+**Pick up here — 2026-09-27. Round 36 is ready for Nico's own test, again — cp8 closed the gap the
+deciding session found against the real folder.** Full spec and its own finish line:
+`projects\asa\rounds\round-36.md`. Every checkpoint (cp0–cp8) built, self-tested and committed under
+ADR 0027/0028 (no per-checkpoint yes needed) — `HANDOVER.md`'s own cp0 through cp8 entries have the
+real detail. **cp8's own real find:** 12 of the 13 real projects have neither `PLAN.md` nor `plan\`,
+and used to skip the Plan tab entirely, landing on Decisions — silently failing Nico's own step 2 on
+almost every real project. Fixed: every project opens on Plan now, with a real body for the no-plan
+case; confirmed 13 of 13 against the real folder. Two other cp8 pieces: `templates\HOW-ASA-WORKS.md`
+is generic again (the doorman block and the `PROCESS.md` line were asa-only), and the overview's rows
+now share one bordered panel with hairlines, not a `Card` each, matching `asa-front2` closer.
+**Two honest, named-not-fixed gaps carried since cp6:** a Plan↔Strategy tab switch, and the
+overview's own Bars↔Tasks toggle, still reset whatever area or group was open — a bigger change
+(mounting every tab at once) than any checkpoint's own scope so far. `check.ps1` is green, the
+release exe rebuilt and confirmed starting outside the IDE. **Not yet done: Nico's own 30-minute
+test, round-36.md §8, written out in `HANDOVER.md`'s cp7 entry.** Nothing here waits on more code —
+only on his yes, recorded as `Round 36: approved by Nico <date>` once he gives it.
 
 **Superseded 2026-09-27 by the line above; kept for history:**
 
