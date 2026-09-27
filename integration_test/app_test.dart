@@ -88,6 +88,12 @@ The second, better approach.
       await tester.tap(find.text('Sample project'));
       await tester.pumpAndSettle();
 
+      // Round 36 cp8 — every project opens on Plan now, with or without
+      // plan pages of its own; this fixture has neither, so Decisions
+      // needs an explicit tap to see what this test is actually about.
+      await tester.tap(find.text('Decisions'));
+      await tester.pumpAndSettle();
+
       expect(find.text('The first decision'), findsOneWidget);
       expect(find.text('The second decision'), findsOneWidget);
       expect(find.textContaining('replaced by 0002'), findsOneWidget);

@@ -343,7 +343,10 @@ void main() {
     // honest body for a project with no plan pages — its own home tasks
     // under "Not in an area", open by default since it's the only row.
     _expectPlanIsActiveTab(tester);
-    expect(find.text('Decide whether this restarts this quarter'), findsWidgets);
+    expect(
+      find.text('Decide whether this restarts this quarter'),
+      findsWidgets,
+    );
     expect(find.textContaining('No areas yet'), findsOneWidget);
     for (final tabName in ['Details', 'Decisions']) {
       await tap(tester, find.text(tabName));

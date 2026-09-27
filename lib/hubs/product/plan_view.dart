@@ -237,11 +237,7 @@ class _PlanViewState extends State<PlanView> {
       if (widget.plan.isEmpty) return _noPlanBody();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _nextLineRow(),
-          const SizedBox(height: 4),
-          _legacyBody(),
-        ],
+        children: [_nextLineRow(), const SizedBox(height: 4), _legacyBody()],
       );
     }
 
