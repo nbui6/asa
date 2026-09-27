@@ -12,6 +12,8 @@
 /// note otherwise. Nothing here writes a byte anywhere.
 library;
 
+import 'dart:async';
+
 import 'package:asa/core/area.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
@@ -36,6 +38,7 @@ class StrategyView extends StatefulWidget {
     this.objectiveToOpen,
     this.areas = const [],
     this.onOpenArea,
+    this.onDataChanged,
     super.key,
   });
 
@@ -64,6 +67,12 @@ class StrategyView extends StatefulWidget {
   /// pushes, so an area chip shown there lands on the Plan tab with that
   /// area open. Null keeps that chip inert.
   final void Function(Area area)? onOpenArea;
+
+  /// Round 36 cp6 — same as `PlanView.onDataChanged`: called when an ADR
+  /// chip's own pushed `DecisionDetailScreen` reports a verdict was
+  /// actually recorded, so the caller can reload its own cached
+  /// `decisions` rather than show what was true before that Accept/Reject.
+  final VoidCallback? onDataChanged;
 
   @override
   State<StrategyView> createState() => _StrategyViewState();
@@ -541,11 +550,11 @@ class _StrategyViewState extends State<StrategyView> {
   /// to this same Strategy tab with this same objective still expanded,
   /// since neither is touched by the push. The Round link stays on
   /// `openUrl` unchanged — "as built today", per L15's own wording.
-  void _openAdr(PlanLink link) {
+  Future<void> _openAdr(PlanLink link) async {
     for (final result in widget.decisions) {
       if (result.decision?.number == link.target) {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
+        final changed = await Navigator.of(context).push<bool>(
+          MaterialPageRoute<bool>(
             builder: (_) => DecisionDetailScreen(
               decision: result.decision!,
               areasNaming: _areasNaming(link.target),
@@ -553,10 +562,11 @@ class _StrategyViewState extends State<StrategyView> {
             ),
           ),
         );
+        if (changed ?? false) widget.onDataChanged?.call();
         return;
       }
     }
-    openUrl(widget.charterSourceFile);
+    unawaited(openUrl(widget.charterSourceFile));
   }
 
   /// Round-36 §3, L17 — every area whose own `decisionNumbers` names

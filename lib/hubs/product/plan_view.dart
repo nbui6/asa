@@ -19,6 +19,8 @@
 /// `open_url.dart` instead of writing anything.
 library;
 
+import 'dart:async';
+
 import 'package:asa/core/area.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
@@ -43,6 +45,7 @@ class PlanView extends StatefulWidget {
     this.onOpenObjective,
     this.onOpenArea,
     this.onToggleTask,
+    this.onDataChanged,
     this.areaToOpen,
     this.openHomeOnStart = false,
     this.highlightTaskRawLine,
@@ -100,6 +103,13 @@ class PlanView extends StatefulWidget {
   /// [projectSourceFile] (for "Not in an area"). Null keeps every checkbox
   /// here read-only, for a caller not ready to wire the write path yet.
   final Future<void> Function(String sourceFile, Task task)? onToggleTask;
+
+  /// Round 36 cp6 — called after an ADR chip's own pushed
+  /// `DecisionDetailScreen` reports a verdict was actually recorded there,
+  /// so the caller can reload its own cached `decisions`/`areas` rather
+  /// than show what was true before that Accept/Reject. Null in a test
+  /// that never records a verdict from here.
+  final VoidCallback? onDataChanged;
 
   /// Round 34/D, L13/L17 — an area's own `sourceFile`, set by a caller
   /// (an ADR chip elsewhere) that wants this one area open the next time
@@ -831,11 +841,11 @@ class _PlanViewState extends State<PlanView> {
   /// this same Plan tab with this same area still open); the raw file
   /// otherwise, same fallback as before this round, for a number this
   /// screen never loaded a decision for.
-  void _openDecision(String number) {
+  Future<void> _openDecision(String number) async {
     final decision = _decisionFor(number);
     if (decision != null) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
+      final changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
           builder: (_) => DecisionDetailScreen(
             decision: decision,
             areasNaming: _areasNaming(number),
@@ -843,9 +853,10 @@ class _PlanViewState extends State<PlanView> {
           ),
         ),
       );
+      if (changed ?? false) widget.onDataChanged?.call();
       return;
     }
-    openUrl(_decisionSourceFor(number));
+    unawaited(openUrl(_decisionSourceFor(number)));
   }
 
   Decision? _decisionFor(String number) {

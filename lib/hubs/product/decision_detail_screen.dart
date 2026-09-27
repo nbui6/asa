@@ -43,6 +43,17 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   bool _saving = false;
   String? _error;
 
+  /// Round 36 cp6 — found by the click-through test: recording a verdict
+  /// only ever updated this screen's own local `_decision`. A caller that
+  /// pushed this screen (the Decisions tab row, an area's own ADR chip, an
+  /// objective's own ADR chip) kept its own, now-stale cached decisions
+  /// list, so accepting or rejecting here and then coming back — by the
+  /// plain back button or by this screen's own area chip — showed the
+  /// *old* status until an unrelated reload happened to run. Popping with
+  /// this flag lets every caller reload only when something actually
+  /// changed, not on every visit.
+  bool _verdictJustRecorded = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,6 +110,7 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
       setState(() {
         _decision = reread.decision!;
         _saving = false;
+        _verdictJustRecorded = true;
       });
     } on Object catch (e) {
       if (!mounted) return;
@@ -114,7 +126,12 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
     final decision = _decision;
 
     return Scaffold(
-      appBar: AppBar(title: Text(decision.title)),
+      appBar: AppBar(
+        title: Text(decision.title),
+        leading: BackButton(
+          onPressed: () => Navigator.of(context).pop(_verdictJustRecorded),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -213,7 +230,7 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
       onTap: onOpenArea == null
           ? null
           : () {
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(_verdictJustRecorded);
               onOpenArea(area);
             },
       borderRadius: BorderRadius.circular(10),

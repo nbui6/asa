@@ -248,12 +248,14 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _scan = null;
-      _taskGroups = null;
-      _inboxTasks = null;
-    });
+    // Round 36 cp6 — found by the click-through test, same shape as
+    // project_screen.dart's own "Round 36 cp6" comment: nulling `_scan`
+    // up front unmounted `ProjectsView` for the length of every reload,
+    // including a plain refresh tap, discarding its own local UI state
+    // (the "other" group's expand/collapse) every time. Keeping the old
+    // scan on screen until the new one actually lands fixes that, the
+    // same way.
+    setState(() => _loading = true);
 
     final scan = await scanProjects(_rootField.text.trim());
     final taskGroups = scan.error == null

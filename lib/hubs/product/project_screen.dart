@@ -283,8 +283,22 @@ class _ProjectScreenState extends State<ProjectScreen> {
           children: [
             _headerRow(),
             const SizedBox(height: 16),
-            if (_loading) const Text('Loading…'),
-            if (!_loading && read != null) ...[
+            // Round 36 cp6 — found by the click-through test: gating this
+            // whole block on `!_loading` unmounted PlanView (and every
+            // other tab body) on *every* reload, including the one
+            // `_toggleAreaOrHomeTask` triggers after a plain checkbox
+            // tick — undoing, at this level, the exact thing `_areaRow`'s
+            // own sourceFile-keying was built to prevent (its own comment:
+            // "identityHashCode would change on every reload and silently
+            // collapse the row that was just ticked open"). Keying by a
+            // stable string cannot help if the widget holding that state
+            // gets torn down and rebuilt from scratch regardless. `read`
+            // alone is the right gate: it holds the previous read until
+            // the new one lands, so the whole screen stays mounted and in
+            // place through a reload; only the very first load, before
+            // any `read` exists yet, shows "Loading…".
+            if (_loading && read == null) const Text('Loading…'),
+            if (read != null) ...[
               Text(
                 read.isSuccess ? read.project!.name : 'Project',
                 style: const TextStyle(
@@ -405,6 +419,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           objectiveToOpen: _objectiveToOpen,
           areas: _areas,
           onOpenArea: _openArea,
+          onDataChanged: _load,
         );
       case _Tab.plan:
         final plan = _plan;
@@ -421,6 +436,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             _objectiveToOpen = number;
           }),
           onOpenArea: _openArea,
+          onDataChanged: _load,
           onToggleTask: _toggleAreaOrHomeTask,
           areaToOpen: _areaToOpen,
           openHomeOnStart: widget.initialOpenHome,
@@ -546,15 +562,22 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final decision = result.decision!;
 
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => DecisionDetailScreen(
-            decision: decision,
-            areasNaming: _areasNaming(decision.number),
-            onOpenArea: _openArea,
+      onTap: () async {
+        final changed = await Navigator.of(context).push<bool>(
+          MaterialPageRoute<bool>(
+            builder: (_) => DecisionDetailScreen(
+              decision: decision,
+              areasNaming: _areasNaming(decision.number),
+              onOpenArea: _openArea,
+            ),
           ),
-        ),
-      ),
+        );
+        // Round 36 cp6 — a verdict recorded on that screen changed the
+        // file this tab's own cached `_decisions` list was built from;
+        // without this, coming back showed the decision exactly as it was
+        // before Accept/Reject, until something unrelated reloaded.
+        if (changed ?? false) await _load();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: _hairline,
