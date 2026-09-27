@@ -1,8 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-27 (Round 36 cp4 — round-36.md §3's own link table,
-every row wired for real and proven by `test/links_test.dart`).
+Last checked against the folder tree: 2026-09-27 (Round 36 cp6 — a reload no longer discards a
+screen's own local UI state, and accepting or rejecting a decision now tells its caller to reload).
 
 ---
 
@@ -89,6 +89,8 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change which objective expands when `StrategyView` is asked to open one (round-36 §3, L12) | `lib/hubs/product/strategy_view.dart`'s `objectiveToOpen`/`_objectiveIndex` — keyed by the objective's own list position, not `identityHashCode` |
 | change whether an ADR chip (`PlanView`'s area chip, `StrategyView`'s objective chip) opens the real decision detail screen or just the raw file | same file's own `_openDecision`/`_openAdr` — in-app when the decision is already loaded, `openUrl` fallback otherwise |
 | change the area chip shown on the decision detail screen itself (round-36 §3, L17) | `lib/hubs/product/decision_detail_screen.dart`'s `areasNaming`/`onOpenArea` |
+| change whether a screen's own tab body stays mounted through a reload (a checkbox tick, a manual refresh) | `project_screen.dart`/`projects_screen.dart` gate their body on `read`/`scan` being non-null, never on `_loading` too — the previous read/scan stays on screen until the new one lands, so local UI state (an open area, an expanded group) survives (round 36 cp6) |
+| change whether recording a decision's verdict reloads the caller that pushed the detail screen | `decision_detail_screen.dart`'s `_verdictJustRecorded`, popped as the route's own result (`Navigator.pop(_verdictJustRecorded)`, both the back button and the area chip); each of the three pushers (`project_screen.dart`'s decision row, `plan_view.dart`'s `_openDecision`, `strategy_view.dart`'s `_openAdr`) reloads only when it comes back `true` (round 36 cp6) |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
