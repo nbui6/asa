@@ -76,9 +76,23 @@ flutter test --coverage
 if ($LASTEXITCODE) { Stop-Here 3 'unit tests' }
 
 Write-Host ''
-Write-Host '[4/4] flutter test integration_test -d windows'
-flutter test integration_test -d windows
-if ($LASTEXITCODE) { Stop-Here 4 'the feature test. If this is a CMake error about a different CMakeCache.txt directory, run `flutter clean` - the build cache is from the folder this repository used to live in.' }
+Write-Host '[4/4] flutter test integration_test -d windows, one file at a time'
+# Round 36 cp7 - found the day click_through_test.dart joined app_test.dart
+# as a second file in this folder: `flutter test integration_test -d windows`
+# launches each file's own app in the SAME process, back to back, and on
+# this machine the second launch reliably fails - "Error waiting for a
+# debug connection: The log reader stopped unexpectedly, or never started."
+# Reproduced both orders (app_test then click_through_test, and reversed):
+# whichever ran second failed, every time - a real harness limit, not a
+# flake and not a bug in either test. Each file passes on its own, so this
+# runs each one in its own `flutter test` process instead of one shared
+# invocation - same coverage, no shared device session to break.
+$integrationTestFiles = Get-ChildItem -Path 'integration_test' -Filter '*_test.dart'
+foreach ($file in $integrationTestFiles) {
+    Write-Host "  - $($file.Name)"
+    flutter test $file.FullName -d windows
+    if ($LASTEXITCODE) { Stop-Here 4 "the feature test ($($file.Name)). If this is a CMake error about a different CMakeCache.txt directory, run ``flutter clean`` - the build cache is from the folder this repository used to live in." }
+}
 
 Write-Host ''
 Write-Host 'PASS - all four.'
