@@ -7,23 +7,6 @@ do not need access to any other folder.
 real work that the overview never showed. The two new sections, "What Asa shows" and "Before you
 finish", are the reason for the rewrite.
 
-> **Before anything else, whenever project work resumes — a new conversation, or this one after
-> a gap:** open `asa\kit\skills\doorman\SKILL.md` and do its job against whatever project you're
-> about to work on — read its own note, its next-step, any open decision, any fired backlog
-> trigger, and the freshness check against evidence sitting next to the claim.
->
-> **Corrected 2026-09-09.** "Every conversation" was the wrong unit — Nico stays in one continuous
-> conversation and does not start new ones, so a rule that only fires at conversation start would
-> never fire again after the first time. **A cloud/Cowork session has no hook and no automatic
-> skill loading** (checked 2026-09-08; see `ASA-LOG.md`) — still true, still no fix for that
-> specific gap. **What does work, proven the same day it was doubted:** a `send_later` reminder,
-> which wakes this exact session — not a new one — and delivers as a normal message. Used as a
-> self-perpetuating check-in: each time it fires, actually run the doorman's job, report what it
-> found, then schedule the next one. This is the real mechanism now, not a placeholder — see
-> `ASA-LOG.md`, 2026-09-09.
-
----
-
 ## Asa is not an agent. It is a program that reads these folders.
 
 There is **no session to message, no schedule, no daemon, no API.** Asa is a small Windows desktop
@@ -31,10 +14,6 @@ app. When someone opens it, it reads the project folders on disk and shows what 
 all it does.
 
 **So "telling Asa" means one thing: writing a file in this folder.** Nothing else reaches it.
-
-**For Asa's own project, how those files connect into one loop — a Round opening, running, and
-closing, and when to re-rank — is written down in `PROCESS.md`, not left implicit.** Read it
-after this file if the work is on Asa itself.
 
 **Sessions cannot message each other either.** Two assistants working on the same project at the
 same time are invisible to one another. **The folder is the only shared channel.**
