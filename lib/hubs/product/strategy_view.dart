@@ -334,15 +334,7 @@ class _StrategyViewState extends State<StrategyView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Text(
-            'Would show: ${_plain(evidence)}',
-            style: AsaText.meta,
-            // Round 37 §D5 — the sketch's own sentence wraps at about
-            // 300 px on a 1920 px screen; the row above already
-            // constrains its own bar to 480 px, so matching that here
-            // keeps the two aligned and readable at any window width.
-            softWrap: true,
-          ),
+          child: Text('Would show: ${_plain(evidence)}', style: AsaText.meta),
         ),
       ],
     );

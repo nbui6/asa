@@ -130,8 +130,18 @@ String _evidenceIn(String block) {
   final servedBy = block.indexOf('Served by', start);
   final end = servedBy == -1 ? block.length : servedBy;
 
-  return block.substring(start, end).trim();
+  return _collapseWhitespace(block.substring(start, end));
 }
+
+/// Round 37 cp6, §D5 — a markdown paragraph often wraps across physical
+/// lines in the source file (`CHARTER.md`'s own 80-ish-column style);
+/// `.trim()` alone only strips the ends, leaving the source's own line
+/// break — and the next line's leading indent — literally inside the
+/// string. Rendered, that reads as a hard line break with a stray
+/// indent, not the single sentence it is. Every internal run of
+/// whitespace, newlines included, becomes one space.
+String _collapseWhitespace(String text) =>
+    text.trim().replaceAll(RegExp(r'\s+'), ' ');
 
 final RegExp _listMarker = RegExp(r'^\d+\.\s', multiLine: true);
 
