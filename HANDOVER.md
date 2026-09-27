@@ -3720,3 +3720,75 @@ its only content is the objective reference — not a parts move. Flagging rathe
 
 **Next:** cp3 — start menu, inbox panel onto the parts; delete every now-redundant private copy;
 write `test/one_look_test.dart` and add it to `check.ps1`.
+
+### 2026-09-27 19:36 — deciding session: check-in on Round 37 cp0–cp2, and an answer to your §D4 question
+
+**Logged** in `PLAN.md`. 9 small commits, 514 tests, and none of the page files outside `ui/` sets its
+own colour, size, card, shadow or capitals. Good.
+
+**§D4, your open question: answered here, no need to wait for Nico.** Don't strip the text and don't show
+a chip next to it. **Make the words "Objective N" inside the Goal sentence the link itself**, blue text
+per ADR 0029's "you can click it", going to Strategy with that objective open (L12). Then "Serves
+Objective 1." reads as one sentence with one link, and "Serves Objective 1 — would show: …" does the same.
+Nothing is removed and nothing shows twice. The L12 test clicks the inline link in place of the chip.
+
+**Your two colour calls** (failing → amber, superseded → green) are accepted.
+
+Carry on: cp3 → cp5.
+
+### Round 37 — §D4 built per the deciding session's answer above
+
+**Built:** the deciding session's own instruction, applied directly rather than re-asked: `_goalField`'s
+separate "Objective N →" chip is gone; the words "Objective N" inside the Goal sentence itself are now
+the link (blue text, `TapGestureRecognizer` on the matching span), switching to Strategy with that
+objective open. Linked only when the number is one `area.objectiveNumbers` actually recognised — a
+textual coincidence stays plain text, same as before this round.
+
+**Tests (count):** 525 total, all green. `links_test.dart` L12 and `plan_view_test.dart`'s own L12 group
+now invoke the matching span's `TapGestureRecognizer` directly instead of `tester.tap(find.text(...))` —
+the standard way to exercise one inline link inside a larger `Text.rich`, since a plain tap can no longer
+target a single span.
+
+**Commits:** `fc58720` — Round 37: build §D4 per the deciding session's answer, 2026-09-27 19:36
+
+**Screenshots:** none this checkpoint.
+
+**Calls I made:** none — this was a direct instruction, not a judgement call.
+
+**Open questions for Nico:** none.
+
+**Next:** cp3 — start menu, inbox panel onto the parts; delete every now-redundant private copy; write
+`test/one_look_test.dart`.
+
+### Round 37 cp3 — start menu, inbox panel onto the parts; PhaseBar consolidated; the mechanical gate written
+
+**Built:** `inbox_panel.dart`'s empty state onto `EmptyLine`, its remaining literal colours/spacing onto
+`AsaColors`/`AsaSpace`. `start_menu.dart` needed no change — already a plain `PopupMenuButton` with no
+private copy of anything. A handful of `fontSize:` literals that survived cp1's own move (found by
+re-running cp1's own grep) cleaned from `tasks_view.dart` and `projects_view.dart` — the area/"Not in an
+area" sub-heading text, the cross-project chip, the rule-of-two count badge, the freshness label, an
+area bar's name/fraction label. `PhaseBar` — one of the three progress-bar copies ADR 0029 names — moved
+into `lib/hubs/product/ui/` and its own segment drawing is now the shared `ProgressBar`; kept as its own
+public class (not inlined) since `test/phase_bar_test.dart` exercises it by type. `test/one_look_test.dart`
+written: reads every `.dart` file under `lib/hubs/product/` except `ui/` and fails on `Color(0x`,
+`fontSize:`, `Card(`, `.toUpperCase()` or `BoxShadow` — runs automatically as part of `flutter test` /
+`check.ps1`'s existing step 3, no separate wiring needed.
+
+**Tests (count):** 525 total, all green — `one_look_test.dart` itself found nothing left to fail on.
+
+**Commits (hashes, one line each):**
+- `56ede14` — Round 37 cp3 (1/3): last literal styles cleaned from Tasks view and Overview
+- `69541d3` — Round 37 cp3 (2/3): inbox panel onto the shared parts; PhaseBar consolidated onto ProgressBar
+- `a076a81` — Round 37 cp3 (3/3): one_look_test.dart — the gate ADR 0029 asks for
+
+**Screenshots:** none this checkpoint — next.
+
+**Calls I made:** kept `PhaseBar` a real, named, public class rather than folding it into
+`projects_view.dart` as a private widget (the shape every other consolidated "sub-heading" style piece
+took) — its own test file addresses it by type from outside, and it is real, if not yet reachable
+(regression: every real project's roadmap today has zero phases).
+
+**Open questions for Nico:** none.
+
+**Next:** cp4 — the screenshot loop into `projects\asa\screenshots\round-37\` plus
+`round-37-compare.html`; the real folder once, counts only; `persona-check` on the real screenshots.
