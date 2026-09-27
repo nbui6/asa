@@ -1,6 +1,8 @@
 // Tests for the parent-chain nesting rule — no disk touched, a fake
 // FileAccess stands in, same as decisions_reader_test.dart.
 
+import 'dart:io';
+
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
@@ -142,17 +144,18 @@ void main() {
   group('Round 34/E — area tasks group by area name, after the home '
       "note's own", () {
     test('an area with tasks gets its own group, in area order', () async {
+      final sep = Platform.pathSeparator;
       final project = _summary(folder: 'projects/demo', name: 'demo');
       final files = FakeFileAccess(
         {
           project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
-          'projects/demo/plan/1-sales.md':
+          'projects/demo${sep}plan${sep}1-sales.md':
               '# Sales\n\n## Tasks\n- [ ] Sales task\n',
-          'projects/demo/plan/finance.md':
+          'projects/demo${sep}plan${sep}finance.md':
               '# Finance\n\n## Tasks\n- [ ] Finance task\n',
         },
         {
-          'projects/demo/plan': ['1-sales.md', 'finance.md'],
+          'projects/demo${sep}plan': ['1-sales.md', 'finance.md'],
         },
       );
 
@@ -168,14 +171,15 @@ void main() {
 
     test('an area with no tasks at all gets no group — nothing to show, '
         'no row, same rule as a project with none', () async {
+      final sep = Platform.pathSeparator;
       final project = _summary(folder: 'projects/demo', name: 'demo');
       final files = FakeFileAccess(
         {
           project.project.sourceFile: '## Tasks\n\n- [ ] Home task\n',
-          'projects/demo/plan/empty.md': '# Empty\n\nNothing yet.\n',
+          'projects/demo${sep}plan${sep}empty.md': '# Empty\n\nNothing yet.\n',
         },
         {
-          'projects/demo/plan': ['empty.md'],
+          'projects/demo${sep}plan': ['empty.md'],
         },
       );
 
@@ -185,15 +189,16 @@ void main() {
 
     test('a project with no home tasks but a real area task still gets a '
         'row — it has real, actionable tasks, just under an area', () async {
+      final sep = Platform.pathSeparator;
       final project = _summary(folder: 'projects/demo', name: 'demo');
       final files = FakeFileAccess(
         {
           project.project.sourceFile: '# Demo\n\nNo ## Tasks at all.\n',
-          'projects/demo/plan/sales.md':
+          'projects/demo${sep}plan${sep}sales.md':
               '# Sales\n\n## Tasks\n- [ ] Sales task\n',
         },
         {
-          'projects/demo/plan': ['sales.md'],
+          'projects/demo${sep}plan': ['sales.md'],
         },
       );
 

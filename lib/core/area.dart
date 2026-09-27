@@ -217,7 +217,14 @@ Future<List<Area>> readAreas(String projectFolder) async {
 /// convention every other `FileAccess`-based reader in this codebase
 /// already uses, real and fake alike.
 Future<List<Area>> readAreasVia(String projectFolder, FileAccess files) async {
-  final planDir = '$projectFolder/plan';
+  // `Platform.pathSeparator`, not a literal `/` — found via a real-disk
+  // link test (round-36 §3, L6): `readAreas`' own `sourceFile` comes back
+  // from `dart:io`'s `Directory.list()`, which reports Windows paths with
+  // `\`, never `/`. A caller comparing this `sourceFile` against that one
+  // (`PlanView.areaToOpen`, matching by exact string) silently never
+  // matched on Windows, even though both named the same real file.
+  final sep = Platform.pathSeparator;
+  final planDir = '$projectFolder${sep}plan';
   final names =
       (await files.listFiles(planDir))
           .where((name) => name.toLowerCase().endsWith('.md'))
@@ -227,8 +234,8 @@ Future<List<Area>> readAreasVia(String projectFolder, FileAccess files) async {
   return [
     for (final name in names)
       parseArea(
-        await files.readFile('$planDir/$name'),
-        sourceFile: '$planDir/$name',
+        await files.readFile('$planDir$sep$name'),
+        sourceFile: '$planDir$sep$name',
         aspect: _stemOf(name),
       ),
   ];
