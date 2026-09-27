@@ -126,7 +126,8 @@ void main() {
 
       await editAndSave(tester, 'Deadline', '2027-01');
 
-      expect(find.text('2027-01'), findsOneWidget);
+      // Round 37 §D6 — humanised ("Jan 2027"), not the raw "2027-01".
+      expect(find.text('Jan 2027'), findsOneWidget);
     });
 
     testWidgets('Jira: edit, save, the new value shows', (tester) async {
@@ -138,10 +139,9 @@ void main() {
         'https://example.atlassian.net/browse/DEMO-9',
       );
 
-      expect(
-        find.text('https://example.atlassian.net/browse/DEMO-9'),
-        findsOneWidget,
-      );
+      // Round 37 §D6 — a chip naming the ticket ("DEMO-9 ↗"), not the
+      // raw full URL.
+      expect(find.text('DEMO-9 ↗'), findsOneWidget);
     });
 
     testWidgets('Status: a picker, not free text — selecting a value '
@@ -173,14 +173,15 @@ void main() {
       expect(File(projectFile).readAsStringSync(), contains('status: paused'));
     });
 
-    testWidgets('a value cleared by editing to nothing shows "(not set)"', (
+    testWidgets('a value cleared by editing to nothing shows "not set"', (
       tester,
     ) async {
       await pumpScreen(tester);
 
       await editAndSave(tester, 'Priority', '');
 
-      expect(find.text('(not set)'), findsOneWidget);
+      // Round 37 §D6 — "not set" in grey, not the literal "(not set)".
+      expect(find.text('not set'), findsOneWidget);
     });
 
     testWidgets('nothing else on the row changes shape — Milestone and '

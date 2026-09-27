@@ -20,6 +20,14 @@
 /// text field. Saving goes through `project_writer.dart`'s
 /// `setProjectField`, then re-reads the whole project from disk — the
 /// file is the source of truth, never the in-memory typed value.
+///
+/// **Round 37 (ADR 0029)** moves this screen onto `AsaPage` and the
+/// shared `ui/` parts. Two behaviour changes went with it, both named in
+/// the round's own §D2/§D6, not incidental: every project now always
+/// shows all four tabs (an empty one explains why and what to do,
+/// instead of hiding), and the Details tab's five fields display as the
+/// same chip/pill/formatted-date styles the rest of the app already uses
+/// for the same data, not their own raw text.
 library;
 
 import 'dart:io';
@@ -29,6 +37,7 @@ import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
+import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
@@ -42,13 +51,22 @@ import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/strategy_view.dart';
+import 'package:asa/hubs/product/ui/area_chip.dart';
+import 'package:asa/hubs/product/ui/asa_page.dart';
+import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/link_chip.dart';
+import 'package:asa/hubs/product/ui/pill.dart';
+import 'package:asa/hubs/product/ui/section_label.dart';
+import 'package:asa/hubs/product/ui/source_line.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 /// Round 16 ordered this `Strategy · Plan · Decisions · Details`; round-36
 /// §2 a reorders it again, this time to `Plan · Strategy · Decisions ·
 /// Details`, and a project now opens on Plan — `asa-project-page-v1`,
-/// approved 2026-09-26. `strategy` and `plan` are each absent-not-empty;
-/// `decisions` and `details` never move and never disappear.
+/// approved 2026-09-26. Round 37 §D2 — every one of these four always
+/// shows, in this order, on every project; an empty one says why and what
+/// to do instead of disappearing.
 enum _Tab { plan, strategy, decisions, details }
 
 /// ADR 0017's own six values, in the order the ADR states them. No code
@@ -250,155 +268,136 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _strategy = strategy;
       _approvals = approvals;
       _loading = false;
-      // A tab that just disappeared (a reload after its section turned
-      // empty) should not leave the screen on a body with no label above
-      // it — fall back to the first tab that is still actually there.
-      final visible = _visibleTabs();
-      if (!visible.contains(_activeTab)) _activeTab = visible.first;
     });
   }
 
-  /// `Plan` first, per round-36 §2 a's own row order — `Decisions` and
-  /// `Details` never move and never disappear.
-  List<_Tab> _visibleTabs() {
-    final strategy = _strategy;
-    return [
-      // Round 36 cp8, §9 point 1 — every project opens on Plan (§2 a),
-      // with or without a `PLAN.md`/`plan\` of its own; `PlanView` itself
-      // now has a real body for that empty case. Hiding this tab was the
-      // real gap: 12 of 13 real projects landed on Decisions instead.
-      _Tab.plan,
-      if (strategy != null && !strategy.isEmpty) _Tab.strategy,
-      _Tab.decisions,
-      _Tab.details,
-    ];
-  }
+  /// Round 37 §D2 — always all four, in this fixed order. A tab with
+  /// nothing to show yet still shows, explaining why and what to do,
+  /// rather than disappearing (`_tabBody`'s own empty-state bodies).
+  static const _tabs = [_Tab.plan, _Tab.strategy, _Tab.decisions, _Tab.details];
 
   @override
   Widget build(BuildContext context) {
     final read = _read;
 
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _headerRow(),
-            const SizedBox(height: 16),
-            // Round 36 cp6 — found by the click-through test: gating this
-            // whole block on `!_loading` unmounted PlanView (and every
-            // other tab body) on *every* reload, including the one
-            // `_toggleAreaOrHomeTask` triggers after a plain checkbox
-            // tick — undoing, at this level, the exact thing `_areaRow`'s
-            // own sourceFile-keying was built to prevent (its own comment:
-            // "identityHashCode would change on every reload and silently
-            // collapse the row that was just ticked open"). Keying by a
-            // stable string cannot help if the widget holding that state
-            // gets torn down and rebuilt from scratch regardless. `read`
-            // alone is the right gate: it holds the previous read until
-            // the new one lands, so the whole screen stays mounted and in
-            // place through a reload; only the very first load, before
-            // any `read` exists yet, shows "Loading…".
-            if (_loading && read == null) const Text('Loading…'),
-            if (read != null) ...[
-              Text(
-                read.isSuccess ? read.project!.name : 'Project',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (read.isSuccess && read.project!.description != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  read.project!.description!,
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                ),
-              ],
-              const SizedBox(height: 20),
-              _tabRow(),
-              const SizedBox(height: 4),
-              const Divider(height: 1),
-              const SizedBox(height: 4),
-              _tabBody(read),
-              const SizedBox(height: 24),
-              _provenanceSection(read),
-            ],
-          ],
-        ),
-      ),
+    return AsaPage(
+      name: read != null && read.isSuccess ? read.project!.name : 'Project',
+      onBack: () => Navigator.of(context).maybePop(),
+      actions: _pageActions(read),
+      // Round 36 cp6 — found by the click-through test: gating this whole
+      // block on `!_loading` unmounted PlanView (and every other tab
+      // body) on *every* reload, including the one
+      // `_toggleAreaOrHomeTask` triggers after a plain checkbox tick —
+      // undoing, at this level, the exact thing `_areaRow`'s own
+      // sourceFile-keying was built to prevent. `read` alone is the
+      // right gate: it holds the previous read until the new one lands,
+      // so the body stays mounted and in place through a reload; only
+      // the very first load, before any `read` exists yet, shows
+      // "Loading…".
+      body: read == null
+          ? const Text('Loading…', style: AsaText.body)
+          : _body(read),
     );
   }
 
-  Widget _headerRow() {
-    final read = _read;
+  List<Widget> _pageActions(ProjectReadResult? read) {
     final canOpenTasks =
         widget.onOpenTasks != null && read != null && read.isSuccess;
+    return [
+      if (read != null && read.isSuccess)
+        StartMenu(
+          projectName: read.project!.name,
+          projectFolder: widget.folder,
+          repoPath: read.project!.repoPath,
+        ),
+      // Round 27: "one button, not a fourth real tab" — styled distinctly
+      // (the sketch's small ↗ glyph) so it reads as leaving this screen,
+      // which it does: it pops back to the front page.
+      if (canOpenTasks)
+        TextButton.icon(
+          onPressed: () => widget.onOpenTasks!(read.project!.name),
+          icon: const Icon(Icons.north_east, size: 14),
+          label: const Text('Tasks'),
+          style: TextButton.styleFrom(
+            foregroundColor: AsaColors.ink2,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+      IconButton(
+        onPressed: _loading ? null : _load,
+        icon: const Icon(Icons.refresh, size: 20),
+        color: AsaColors.ink2,
+        visualDensity: VisualDensity.compact,
+        tooltip: 'Reload',
+      ),
+    ];
+  }
 
-    return Row(
+  Widget _body(ProjectReadResult read) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back, size: 20),
-          color: Colors.grey.shade700,
-          visualDensity: VisualDensity.compact,
-          tooltip: 'Back',
-        ),
-        const Spacer(),
-        // Round 32/D — Round 3's handoff, finally built.
-        if (read != null && read.isSuccess)
-          StartMenu(
-            projectName: read.project!.name,
-            projectFolder: widget.folder,
-            repoPath: read.project!.repoPath,
+        if (read.isSuccess && read.project!.description != null) ...[
+          Text(
+            read.project!.description!,
+            style: AsaText.body.copyWith(color: AsaColors.ink2),
           ),
-        // Round 27: "one button, not a fourth real tab" — styled
-        // distinctly (the sketch's small ↗ glyph) so it reads as leaving
-        // this screen, which it does: it pops back to the front page.
-        if (canOpenTasks)
-          TextButton.icon(
-            onPressed: () => widget.onOpenTasks!(read.project!.name),
-            icon: const Icon(Icons.north_east, size: 14),
-            label: const Text('Tasks'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.grey.shade700,
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-        IconButton(
-          onPressed: _loading ? null : _load,
-          icon: const Icon(Icons.refresh, size: 20),
-          color: Colors.grey.shade700,
-          visualDensity: VisualDensity.compact,
-          tooltip: 'Reload',
-        ),
+          const SizedBox(height: AsaSpace.md),
+        ],
+        _tabRow(),
+        const SizedBox(height: AsaSpace.xs),
+        const Divider(height: 1, color: AsaColors.soft),
+        const SizedBox(height: AsaSpace.sm),
+        _tabBody(read),
+        const SizedBox(height: AsaSpace.xl),
+        _provenanceSection(read),
       ],
     );
   }
 
-  /// Plain text, a 2px underline on the active one — row 3 of the drift
-  /// table. Not a Material `TabBar`: no uppercase, no full-width band.
-  ///
-  /// Round 16 reorders this to `Strategy · Plan · Decisions · Details`,
-  /// matching the sketch's own row for every tab that actually exists.
-  /// `Strategy` and `Plan` show only once there is one — the same
-  /// absent-not-empty rule every conditional tab here already follows.
+  /// Plain text, a 2 px underline on the active one — no uppercase, no
+  /// full-width band. Every label uses the same, always-bold weight
+  /// ([AsaText.rowName]) regardless of which is active, so becoming
+  /// active never widens a label and shifts its neighbours — round-37
+  /// §D2's "reserve width"; only the colour and the underline change.
   Widget _tabRow() {
-    final labels = {
+    const labels = {
       _Tab.plan: 'Plan',
       _Tab.strategy: 'Strategy',
       _Tab.decisions: 'Decisions',
       _Tab.details: 'Details',
     };
-    final visible = _visibleTabs();
     return Row(
       children: [
-        for (final tab in visible) ...[
-          if (tab != visible.first) const SizedBox(width: 24),
+        for (final tab in _tabs) ...[
+          if (tab != _tabs.first) const SizedBox(width: AsaSpace.xl),
           _tabLabel(labels[tab]!, tab),
         ],
       ],
+    );
+  }
+
+  Widget _tabLabel(String label, _Tab tab) {
+    final active = _activeTab == tab;
+    return InkWell(
+      onTap: () => setState(() => _activeTab = tab),
+      child: Container(
+        padding: const EdgeInsets.only(bottom: AsaSpace.sm),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? AsaColors.ink : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: AsaText.rowName.copyWith(
+            color: active ? AsaColors.ink : AsaColors.ink3,
+          ),
+        ),
+      ),
     );
   }
 
@@ -406,7 +405,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
     switch (_activeTab) {
       case _Tab.strategy:
         final strategy = _strategy;
-        if (strategy == null || strategy.isEmpty) return _decisionsTab(read);
+        // Round 37 §D2 — an empty tab explains why and what to do,
+        // rather than falling back to a different tab's own body.
+        if (strategy == null || strategy.isEmpty) {
+          return const EmptyLine(
+            'No strategy yet. Start → Copy opener, and ask the AI to '
+            'write CHARTER.md.',
+          );
+        }
         return StrategyView(
           strategy: strategy,
           roadmap: read.isSuccess ? read.project!.roadmap : const [],
@@ -460,31 +466,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
   }
 
-  Widget _tabLabel(String label, _Tab tab) {
-    final active = _activeTab == tab;
-    return GestureDetector(
-      onTap: () => setState(() => _activeTab = tab),
-      child: Container(
-        padding: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? Colors.black87 : Colors.transparent,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            color: active ? Colors.black87 : Colors.grey.shade600,
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 2026-09-07 trial (`asa-decisions-v2.png`): split into "Needs a look"
   /// and "Settled" when there is anything to put in the first group. A
   /// healthy project — nothing proposed — falls back to exactly the flat
@@ -493,10 +474,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final decisions = _decisions ?? [];
 
     if (decisions.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Text('Nothing decided yet.'),
-      );
+      return const EmptyLine('Nothing decided yet.');
     }
 
     final groups = groupForReview(decisions);
@@ -509,54 +487,36 @@ class _ProjectScreenState extends State<ProjectScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _groupLabel('Needs a look', groups.needsALook.length),
+        SectionLabel('Needs a look · ${groups.needsALook.length}'),
+        const SizedBox(height: AsaSpace.xs),
         for (final result in groups.needsALook) _decisionRow(result),
-        const SizedBox(height: 16),
-        _groupLabel('Settled', groups.settled.length),
+        const SizedBox(height: AsaSpace.lg),
+        SectionLabel('Settled · ${groups.settled.length}'),
+        const SizedBox(height: AsaSpace.xs),
         for (final result in groups.settled) _decisionRow(result),
       ],
     );
   }
 
-  Widget _groupLabel(String label, int count) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        '${label.toUpperCase()} · $count',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-          color: Colors.grey.shade600,
-        ),
-      ),
-    );
-  }
-
-  static const _hairline = BoxDecoration(
-    border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
-  );
-
-  /// A flat list, one row per decision, a hairline between — row 4 of the
-  /// drift table. Not a `Card`: no shadow, no per-row container.
+  /// A flat list, one row per decision, a hairline between — not a
+  /// `Card`: no shadow, no per-row container.
   Widget _decisionRow(DecisionReadResult result) {
     if (!result.isSuccess) {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: _hairline,
+        padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AsaColors.soft)),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Unreadable — ${result.sourceFile}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
+              style: AsaText.rowName.copyWith(color: AsaMeaning.needsYou.fg),
             ),
-            const SizedBox(height: 4),
-            Text(result.error ?? 'Unknown problem'),
-            const SizedBox(height: 8),
+            const SizedBox(height: AsaSpace.xs),
+            Text(result.error ?? 'Unknown problem', style: AsaText.body),
+            const SizedBox(height: AsaSpace.sm),
             _RawBlock(title: 'Raw text', body: result.rawText),
           ],
         ),
@@ -583,46 +543,38 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (changed ?? false) await _load();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: _hairline,
+        padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AsaColors.soft)),
+        ),
         child: Row(
           children: [
             Expanded(
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
+                spacing: AsaSpace.sm,
+                runSpacing: AsaSpace.xs,
                 children: [
-                  Text(
-                    decision.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  Text(decision.title, style: AsaText.rowName),
                   if (decision.status != null) _statusPill(decision),
                   // Round 34/D — the areas that name this ADR (ADR number
                   // match, same as an area's own decisionNumbers). Tapping
                   // one opens the Plan tab with that area already open.
                   for (final area in _areasNaming(decision.number))
-                    _areaChip(area),
+                    AreaChip(area.name, onTap: () => _openArea(area)),
                   // The pill alone would drop "names what replaced it" —
                   // still required (HANDOVER.md §5b), so it stays as a
                   // small note next to the pill rather than inside it.
                   if (decision.supersededBy != null)
                     Text(
                       '→ replaced by ${decision.supersededBy}',
-                      style: TextStyle(
-                        color: Colors.orange.shade800,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: AsaText.meta,
                     ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              _humanDate(decision.date),
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-            ),
+            const SizedBox(width: AsaSpace.md),
+            Text(asaListDate(decision.date) ?? '', style: AsaText.meta),
           ],
         ),
       ),
@@ -648,130 +600,44 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _areaToOpen = area.sourceFile;
   });
 
-  Widget _areaChip(Area area) {
-    return InkWell(
-      onTap: () => _openArea(area),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEDE7F6),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          area.name,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF5E35B1),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Row 5 of the drift table — green accepted, blue proposed, grey
-  /// superseded. The pill shows a short canonical word, not the raw parsed
-  /// status text (which can run to a whole sentence, e.g. asa/0007's
-  /// "proposed - needs Nico's decision") — the full text is one tap away,
-  /// on the detail screen. Uses `displayStatus`, not the raw header field —
-  /// ADR 0011: a recorded verdict overrides a stale `proposed` header.
+  /// A short canonical word, not the raw parsed status text (which can
+  /// run to a whole sentence, e.g. asa/0007's "proposed - needs Nico's
+  /// decision") — the full text is one tap away, on the detail screen.
+  /// Uses `displayStatus`, not the raw header field — ADR 0011: a
+  /// recorded verdict overrides a stale `proposed` header.
   Widget _statusPill(Decision decision) {
     final status = decision.displayStatus;
     final lower = status.toLowerCase();
-    final Color background;
-    final Color foreground;
     final String label;
-
     if (lower.contains('superseded')) {
-      background = const Color(0xFFEEEEEE);
-      foreground = const Color(0xFF616161);
       label = 'superseded';
     } else if (decision.isProposed) {
-      // The same check `groupForReview` uses for "Needs a look" — one
-      // canonical place this is decided, not two.
-      background = const Color(0xFFE3F2FD);
-      foreground = const Color(0xFF1565C0);
       label = 'proposed';
     } else if (lower.contains('accepted')) {
-      background = const Color(0xFFE8F5E9);
-      foreground = const Color(0xFF2E7D32);
       label = 'accepted';
     } else {
-      background = const Color(0xFFEEEEEE);
-      foreground = const Color(0xFF616161);
       label = status;
     }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  /// Row 6 of the drift table — `today`, `1 Sep`, `22 Aug`. Kept local to
-  /// this file rather than `lib/core/`, even though it is the kind of
-  /// logic-with-a-rule ARCHITECTURE.md says belongs in `core/` — this
-  /// round is scoped to `project_screen.dart` and nothing else. Worth
-  /// moving to `decisions_reader.dart` alongside `sortDecisionsNewestFirst`
-  /// in a round that is allowed to touch it.
-  String _humanDate(String? date) {
-    if (date == null) return '';
-    final parsed = DateTime.tryParse(date);
-    if (parsed == null) return date;
-
-    final now = DateTime.now();
-    if (parsed.year == now.year &&
-        parsed.month == now.month &&
-        parsed.day == now.day) {
-      return 'today';
-    }
-
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${parsed.day} ${months[parsed.month - 1]}';
+    return Pill(label, meaning: meaningForDecisionStatus(status));
   }
 
   Widget _detailsTab(ProjectReadResult read) {
     if (!read.isSuccess) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AsaSpace.lg),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.red),
-          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: AsaMeaning.needsYou.fg),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Could not read the project',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: AsaText.rowName.copyWith(color: AsaMeaning.needsYou.fg),
             ),
-            const SizedBox(height: 8),
-            Text(read.error ?? 'Unknown problem'),
+            const SizedBox(height: AsaSpace.sm),
+            Text(read.error ?? 'Unknown problem', style: AsaText.body),
           ],
         ),
       );
@@ -788,11 +654,27 @@ class _ProjectScreenState extends State<ProjectScreen> {
           'status',
           project.status,
           picker: _statusValues,
+          valueBuilder: (value) =>
+              Pill(value, meaning: meaningForStatus(value)),
         ),
         _editableField('Parent', 'parent', project.parent),
         _editableField('Priority', 'priority', project.priority),
-        _editableField('Deadline', 'deadline', project.deadline),
-        _editableField('Jira', 'jira', project.jira),
+        _editableField(
+          'Deadline',
+          'deadline',
+          project.deadline,
+          valueBuilder: (value) =>
+              Text(humanizeDeadline(value) ?? value, style: AsaText.body),
+        ),
+        _editableField(
+          'Jira',
+          'jira',
+          project.jira,
+          valueBuilder: (value) => LinkChip(
+            '${jiraLabel(value) ?? value} ↗',
+            onTap: () => openUrl(value),
+          ),
+        ),
         _Field(
           'Milestone',
           effectiveMilestone(project.roadmap, project.milestone),
@@ -814,20 +696,25 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   /// One of the five ADR 0007-whitelisted fields — `field` is the exact
   /// frontmatter key, matching `project_writer.dart`'s own whitelist.
-  /// `rawValue` is the real, possibly-null value (never the "(not set)"
-  /// placeholder) — the editor starts from an empty box for an unset
-  /// field, not from placeholder text someone would have to clear first.
+  /// `rawValue` is the real, possibly-null value (never a placeholder) —
+  /// the editor starts from an empty box for an unset field, not from
+  /// placeholder text someone would have to clear first.
+  ///
+  /// `valueBuilder`, when given, renders a non-empty value as the same
+  /// chip/pill/formatted style the rest of the app already uses for that
+  /// data (round-37 §D6) — never used for an unset value, which always
+  /// reads "not set" regardless.
   Widget _editableField(
     String label,
     String field,
     String? rawValue, {
     List<String>? picker,
+    Widget Function(String value)? valueBuilder,
   }) {
     return _EditableField(
       label: label,
-      displayValue: (rawValue == null || rawValue.isEmpty)
-          ? '(not set)'
-          : rawValue,
+      rawValue: rawValue,
+      valueBuilder: valueBuilder,
       editing: _editingField == field,
       controller: _editController,
       error: _editingField == field ? _editError : null,
@@ -840,9 +727,13 @@ class _ProjectScreenState extends State<ProjectScreen> {
     );
   }
 
+  /// Round 37 §D6 — drops the old "— see below" phrase: the provenance
+  /// section it pointed at is either right there once expanded, or the
+  /// person has not expanded it yet, and either way "— see below" told
+  /// them nothing that "unknown" alone doesn't.
   String _lastMovedText(GitState? git) {
     if (git == null) return '(not checked)';
-    if (git.error != null) return 'unknown — see below';
+    if (git.error != null) return 'unknown';
 
     final days = git.daysSinceLastCommit(DateTime.now());
     if (days == null) return 'unknown';
@@ -851,15 +742,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
     return '$days days ago';
   }
 
-  /// Row 8 of the drift table — collapsed behind one line that expands.
-  /// The sketch does not show this block at all, because the sketch is
-  /// about the list, not because the block should go: rule 5, and
-  /// HANDOVER.md is explicit that this stays.
+  /// Collapsed behind one line that expands. The sketch does not show
+  /// this block at all, because the sketch is about the list, not because
+  /// the block should go: rule 5, and HANDOVER.md is explicit that this
+  /// stays.
   Widget _provenanceSection(ProjectReadResult read) {
     if (!read.isSuccess) return const SizedBox.shrink();
 
     final sourceFile = read.project!.sourceFile;
-    final fileName = sourceFile.split(RegExp(r'[\\/]')).last;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,20 +763,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
               Icon(
                 _provenanceExpanded ? Icons.expand_less : Icons.expand_more,
                 size: 16,
-                color: Colors.grey.shade600,
+                color: AsaColors.ink3,
               ),
-              const SizedBox(width: 4),
-              Text(
-                'Read from: $fileName',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-              ),
+              const SizedBox(width: AsaSpace.xs),
+              SourceLine(sourceFile),
             ],
           ),
         ),
         if (_provenanceExpanded) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AsaSpace.sm),
           _RawBlock(title: 'Read from: $sourceFile', body: read.rawFrontmatter),
-          const SizedBox(height: 16),
+          const SizedBox(height: AsaSpace.lg),
           if (_git != null)
             _RawBlock(
               title: _git!.command,
@@ -909,15 +796,15 @@ class _Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AsaSpace.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 200,
-            child: Text(label, style: const TextStyle(color: Colors.grey)),
+            child: Text(label, style: const TextStyle(color: AsaColors.ink3)),
           ),
-          Expanded(child: SelectableText(value)),
+          Expanded(child: SelectableText(value, style: AsaText.body)),
         ],
       ),
     );
@@ -932,7 +819,7 @@ class _Field extends StatelessWidget {
 class _EditableField extends StatelessWidget {
   const _EditableField({
     required this.label,
-    required this.displayValue,
+    required this.rawValue,
     required this.editing,
     required this.controller,
     required this.error,
@@ -942,10 +829,11 @@ class _EditableField extends StatelessWidget {
     required this.onSave,
     required this.onCancel,
     this.picker,
+    this.valueBuilder,
   });
 
   final String label;
-  final String displayValue;
+  final String? rawValue;
   final bool editing;
   final TextEditingController controller;
   final String? error;
@@ -959,10 +847,15 @@ class _EditableField extends StatelessWidget {
   /// than free text, so a typo can't create a new, invisible status.
   final List<String>? picker;
 
+  /// Round 37 §D6 — renders a non-empty value the same way the rest of
+  /// the app already shows that same data (a status pill, a Jira chip, a
+  /// humanised deadline). Never called for an unset value.
+  final Widget Function(String value)? valueBuilder;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AsaSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -971,21 +864,23 @@ class _EditableField extends StatelessWidget {
             children: [
               SizedBox(
                 width: 200,
-                child: Text(label, style: const TextStyle(color: Colors.grey)),
+                child: Text(
+                  label,
+                  style: const TextStyle(color: AsaColors.ink3),
+                ),
               ),
-              Expanded(
-                child: editing ? _editor() : SelectableText(displayValue),
-              ),
-              const SizedBox(width: 8),
+              if (editing) Expanded(child: _editor()) else _valueDisplay(),
+              const SizedBox(width: AsaSpace.sm),
               _controls(),
+              if (!editing) const Spacer(),
             ],
           ),
           if (editing && error != null)
             Padding(
-              padding: const EdgeInsets.only(top: 4, left: 200),
+              padding: const EdgeInsets.only(top: AsaSpace.xs, left: 200),
               child: Text(
                 error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
+                style: AsaText.meta.copyWith(color: AsaMeaning.needsYou.fg),
               ),
             ),
         ],
@@ -993,12 +888,20 @@ class _EditableField extends StatelessWidget {
     );
   }
 
+  Widget _valueDisplay() {
+    final value = rawValue;
+    if (value == null || value.isEmpty) return const EmptyLine('not set');
+    final builder = valueBuilder;
+    if (builder != null) return builder(value);
+    return SelectableText(value, style: AsaText.body);
+  }
+
   Widget _editor() {
     if (picker != null) {
       final current = controller.text;
       return DropdownButton<String>(
         value: picker!.contains(current) ? current : null,
-        hint: Text(current.isEmpty ? '(not set)' : current),
+        hint: Text(current.isEmpty ? 'not set' : current),
         isExpanded: true,
         isDense: true,
         items: [
@@ -1033,7 +936,7 @@ class _EditableField extends StatelessWidget {
 
     if (saving) {
       return const Padding(
-        padding: EdgeInsets.all(8),
+        padding: EdgeInsets.all(AsaSpace.sm),
         child: SizedBox(
           width: 16,
           height: 16,
@@ -1073,15 +976,18 @@ class _RawBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 4),
+        Text(title, style: AsaText.meta),
+        const SizedBox(height: AsaSpace.xs),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          color: const Color(0xFFF2F2F2),
+          padding: const EdgeInsets.all(AsaSpace.md),
+          color: AsaColors.soft,
           child: SelectableText(
             body.isEmpty ? '(nothing)' : body,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            style: AsaText.meta.copyWith(
+              fontFamily: 'monospace',
+              color: AsaColors.ink,
+            ),
           ),
         ),
       ],
