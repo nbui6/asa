@@ -25,6 +25,9 @@ import 'package:asa/hubs/product/inbox_panel.dart';
 import 'package:asa/hubs/product/project_screen.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
+import 'package:asa/hubs/product/ui/asa_page.dart';
+import 'package:asa/hubs/product/ui/asa_panel.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 /// The front page has two views onto the same project scan — Projects and
@@ -220,13 +223,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Text.rich(
             TextSpan(
-              style: TextStyle(color: Colors.grey.shade700),
+              style: const TextStyle(color: AsaColors.ink2),
               children: [
                 TextSpan(text: 'Projects: ${_rootField.text}'),
-                TextSpan(
+                const TextSpan(
                   text: '  ·  change',
                   style: TextStyle(
-                    color: Colors.blue.shade700,
+                    color: AsaColors.blue,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -428,110 +431,105 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   Widget build(BuildContext context) {
     final scan = _scan;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Asa'),
-        actions: [
-          if (scan != null && scan.error == null) ...[
-            _viewToggle(),
-            const SizedBox(width: 8),
-          ],
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Reload',
-          ),
+    return AsaPage(
+      name: 'Asa',
+      actions: [
+        if (scan != null && scan.error == null) ...[
+          _viewToggle(),
+          const SizedBox(width: AsaSpace.sm),
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_folderChosen && !_folderRowExpanded)
-              _folderSummaryRow()
-            else ...[
-              const Text('Projects folder'),
-              Text(
-                'Where Asa reads project state from. Change it here any time '
-                "— it's remembered for next launch.",
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const Key('projectsFolderField'),
-                      controller: _rootField,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        hintText: _folderChosen ? null : r'C:\path\to\projects',
-                      ),
-                      onSubmitted: (_) => _submitFolderField(),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: _loading ? null : _submitFolderField,
-                    child: Text(_buttonLabel),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 32),
-            if (_folderChosen && _inboxTasks != null) ...[
-              InboxPanel(tasks: _inboxTasks!, onCapture: _captureInboxTask),
-              const SizedBox(height: 32),
-            ],
-            if (!_folderChosen)
-              _Panel(
-                title: 'No folder chosen yet',
-                child: Text(
-                  widget.pickFolder == null
-                      ? 'Paste the path to your projects folder above — in '
-                            'File Explorer, Shift+right-click the folder '
-                            'and choose "Copy as path" — then press Enter. '
-                            'Asa remembers it for next time.'
-                      : 'Press Choose folder to pick it, or paste the path '
-                            'above and press Enter. Asa remembers it for '
-                            'next time.',
-                ),
-              ),
-            if (scan?.error != null)
-              _Panel(
-                title: 'Could not read the projects folder',
-                isError: true,
-                child: Text(scan!.error!),
-              ),
-            if (scan != null && scan.error == null) ...[
-              if (_viewMode == _ViewMode.projects) ...[
-                ProjectsView(
-                  forest: buildProjectForest(scan.projects),
-                  onOpenProject: _openProject,
-                  onAssignTask: _assignInboxTask,
-                ),
-                if (scan.skipped.isNotEmpty) ...[
-                  const SizedBox(height: 32),
-                  _skippedTable(scan.skipped),
-                ],
-              ] else if (_taskGroups == null)
-                const Center(child: CircularProgressIndicator())
-              else
-                TasksView(
-                  groups: _taskGroups!,
-                  onToggleTask: _toggleTask,
-                  onMarkAllDone: _markAllDone,
-                  onToggleParked: _toggleParked,
-                  onToggleAreaTask: _toggleAreaTask,
-                  onOpenProject: _openProject,
-                  folderBySlug: _folderBySlug(scan.projects),
-                  pinnedProjectName: _pinnedProjectName,
-                ),
-            ],
-          ],
+        IconButton(
+          onPressed: _loading ? null : _load,
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Reload',
         ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_folderChosen && !_folderRowExpanded)
+            _folderSummaryRow()
+          else ...[
+            const Text('Projects folder'),
+            const Text(
+              'Where Asa reads project state from. Change it here any time '
+              "— it's remembered for next launch.",
+              style: AsaText.meta,
+            ),
+            const SizedBox(height: AsaSpace.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('projectsFolderField'),
+                    controller: _rootField,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      hintText: _folderChosen ? null : r'C:\path\to\projects',
+                    ),
+                    onSubmitted: (_) => _submitFolderField(),
+                  ),
+                ),
+                const SizedBox(width: AsaSpace.lg),
+                FilledButton(
+                  onPressed: _loading ? null : _submitFolderField,
+                  child: Text(_buttonLabel),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: AsaSpace.xl),
+          if (_folderChosen && _inboxTasks != null) ...[
+            InboxPanel(tasks: _inboxTasks!, onCapture: _captureInboxTask),
+            const SizedBox(height: AsaSpace.xl),
+          ],
+          if (!_folderChosen)
+            _Panel(
+              title: 'No folder chosen yet',
+              child: Text(
+                widget.pickFolder == null
+                    ? 'Paste the path to your projects folder above — in '
+                          'File Explorer, Shift+right-click the folder '
+                          'and choose "Copy as path" — then press Enter. '
+                          'Asa remembers it for next time.'
+                    : 'Press Choose folder to pick it, or paste the path '
+                          'above and press Enter. Asa remembers it for '
+                          'next time.',
+              ),
+            ),
+          if (scan?.error != null)
+            _Panel(
+              title: 'Could not read the projects folder',
+              isError: true,
+              child: Text(scan!.error!),
+            ),
+          if (scan != null && scan.error == null) ...[
+            if (_viewMode == _ViewMode.projects) ...[
+              ProjectsView(
+                forest: buildProjectForest(scan.projects),
+                onOpenProject: _openProject,
+                onAssignTask: _assignInboxTask,
+              ),
+              if (scan.skipped.isNotEmpty) ...[
+                const SizedBox(height: AsaSpace.xl),
+                _skippedTable(scan.skipped),
+              ],
+            ] else if (_taskGroups == null)
+              const Center(child: CircularProgressIndicator())
+            else
+              TasksView(
+                groups: _taskGroups!,
+                onToggleTask: _toggleTask,
+                onMarkAllDone: _markAllDone,
+                onToggleParked: _toggleParked,
+                onToggleAreaTask: _toggleAreaTask,
+                onOpenProject: _openProject,
+                folderBySlug: _folderBySlug(scan.projects),
+                pinnedProjectName: _pinnedProjectName,
+              ),
+          ],
+        ],
       ),
     );
   }
@@ -543,7 +541,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: AsaColors.greyBg,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -578,13 +576,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: selected ? Colors.indigo.shade900 : Colors.transparent,
+            color: selected ? AsaColors.blue : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(
             icon,
             size: 18,
-            color: selected ? Colors.white : Colors.grey.shade700,
+            color: selected ? AsaColors.panel : AsaColors.ink2,
           ),
         ),
       ),
@@ -599,10 +597,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         children: [
           for (final item in skipped)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: AsaSpace.xs),
               child: Text(
                 '${item.folder} — ${item.reason}',
-                style: const TextStyle(fontSize: 12),
+                style: AsaText.meta,
               ),
             ),
         ],
@@ -624,20 +622,23 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: isError ? Colors.red : Colors.grey),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          child,
-        ],
+    return AsaPanel(
+      child: Padding(
+        padding: const EdgeInsets.all(AsaSpace.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isError ? Colors.red : AsaColors.ink,
+              ),
+            ),
+            const SizedBox(height: AsaSpace.sm),
+            child,
+          ],
+        ),
       ),
     );
   }

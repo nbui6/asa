@@ -5,6 +5,7 @@
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/hubs/product/projects_view.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,15 +33,16 @@ void main() {
     deadline: '2020-01',
   );
 
-  testWidgets("an overdue deadline renders in the theme's error colour", (
-    tester,
-  ) async {
-    await tester.pumpWidget(pumpRow(overdueProject));
+  testWidgets(
+    'an overdue deadline renders in the "needs you" meaning (round 37, '
+    'ADR 0029 — no separate error colour of its own)',
+    (tester) async {
+      await tester.pumpWidget(pumpRow(overdueProject));
 
-    final text = tester.widget<Text>(find.text('Jan 2020'));
-    final context = tester.element(find.text('Jan 2020'));
-    expect(text.style?.color, Theme.of(context).colorScheme.error);
-  });
+      final text = tester.widget<Text>(find.text('Jan 2020'));
+      expect(text.style?.color, AsaMeaning.needsYou.fg);
+    },
+  );
 
   testWidgets('shipped suppresses the signal even with the same overdue '
       'date', (tester) async {
@@ -57,7 +59,7 @@ void main() {
     await tester.pumpWidget(pumpRow(shipped));
 
     final text = tester.widget<Text>(find.text('Jan 2020'));
-    expect(text.style?.color, Colors.grey.shade600);
+    expect(text.style?.color, AsaColors.ink3);
   });
 
   testWidgets('a future deadline is not overdue and stays the plain '
@@ -75,6 +77,6 @@ void main() {
     await tester.pumpWidget(pumpRow(future));
 
     final text = tester.widget<Text>(find.text('Jan 2099'));
-    expect(text.style?.color, Colors.grey.shade600);
+    expect(text.style?.color, AsaColors.ink3);
   });
 }
