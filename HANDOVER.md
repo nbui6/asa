@@ -3473,3 +3473,97 @@ the Overview's Bars view — collapses whatever area you had open. Ticking a tas
 no longer does this; only a genuine tab/view switch still does. Worth watching for in step 2 and 3
 above — if it bothers you in practice, that's the answer to the open question above, and a real,
 larger fix (keeping every tab mounted at once) is the next thing to schedule, not a surprise.
+
+### 2026-09-27 — deciding session → Code: good work; one more checkpoint (cp8) before Nico tests
+
+**Checked, logged, ticked:** cp4–cp7 in `asa.md`, one line in `PLAN.md`. 53 small commits, three
+real bugs caught by the click-through, the capture problem solved. Thank you. Your open question:
+**keep the reset on a tab switch as it is.** Nico can say otherwise after his test.
+
+**One gap stops Nico's test, found against the real folder:** only 1 of the 13 real projects has a
+`PLAN.md` and none has `plan\`. `_visibleTabs()` drops Plan when both are missing, so **12 of 13 real
+projects open on Decisions**, not on Plan, and Nico's step 2 fails on almost every project. The
+approved sketch and §2 a say every project opens on Plan.
+
+**Do cp8: `projects\asa\rounds\round-36.md` §9, three pieces.** (1) Plan always exists and always
+opens first, with a no-areas state. (2) Take the asa-only doorman block out of
+`templates\HOW-ASA-WORKS.md` (lines 10–24). The deciding session has already copied the Areas section
+into all 13 project folders' copies, with asa's keeping its block. (3) The overview's rows against
+`asa-front2`: one panel with hairlines, not separate cards. Fix it, or justify it in the difference list.
+
+Commit as often as possible, `Round 36 cp8:`. Then `check.ps1`, click-through twice, rebuild the exe,
+one entry here, and say "ready" again.
+
+### Round 36 cp8 — the real-folder gap closed, all three pieces, confirmed against the real folder
+
+**Built, three pieces per round-36.md §9:**
+1. **Every project opens on Plan, with or without plan pages of its own.** `_visibleTabs()` no
+   longer drops Plan when a project has neither `PLAN.md` nor `plan\` — it's unconditional now, first
+   in the list, matching §2 a's own words for the first time against real data. `PlanView` itself
+   gained the real body §9 asked for a plan-less project: the Next line with Start, "What this
+   project is for" when a real Strategy exists, home tasks under "Not in an area" (open by default,
+   since it's the only row), and one quiet, read-only line — *"No areas yet. To split this project
+   into areas: Start → Copy opener, and ask the AI."* `asa` itself (a real `PLAN.md`, no `plan\`)
+   keeps its own existing legacy screen exactly as built, just with the Next line added above it.
+2. **`templates\HOW-ASA-WORKS.md` is generic again.** Removed the doorman-skill blockquote (names
+   `asa\kit\skills\doorman\SKILL.md`, a path only this repo's own clone has) and the "For Asa's own
+   project … `PROCESS.md`" line — both make sense only for Asa's own project folder, which keeps
+   them in its own copy outside this repo. A clone for another laptop won't carry either any more.
+3. **The overview's rows now share one bordered panel per bucket** (the work bucket, and a separate
+   one for "other"), hairlines between rows instead of each its own Material `Card`, and the pills
+   sit directly under the name instead of with a visible gap — matches `asa-front2` closer than
+   before. Verified by eye first (a throwaway widget-test screenshot, deleted after use, same
+   pattern as cp5's own loop) before trusting it.
+
+**Real, unplanned fix along the way:** the panel refactor's own hover-highlight (`Container(color:
+…, decoration: BoxDecoration(…))`) tripped Flutter's own "cannot provide both a color and a
+decoration" assertion — caught immediately by `test/inbox_flow_test.dart`'s real drag-and-drop test,
+not discovered later. Moved the highlight colour inside the `BoxDecoration` itself; fixed, confirmed
+by the same test passing again.
+
+**Confirmed against the real folder, counts only (Gate 2):** a throwaway integration test, generic
+in its own source (no real project name anywhere in it), pointed `scanProjects` at the real
+`projects\` folder and pumped a bare `ProjectScreen` per result, checking whether "Plan" rendered as
+the *active* tab label (bold), not just present. **First run: 12 of 13** — traced to the test's own
+timing, not the app: one real project's `readGitState` call is a genuine async gap `pumpAndSettle()`
+returned ahead of (the same class of gap this round has hit before), confirmed by adding a manual
+poll for "Loading…" to clear first. **Second run: 13 of 13.** Deleted immediately after, per Gate 2.
+
+**Tests (count):** 465 `flutter test` + `app_test.dart` (1, updated: Decisions now needs an explicit
+tap since this fixture's own project has no plan pages and opens on its new "not in an area" body
+first) + `click_through_test.dart` (2, updated: Kundenakte now opens on Plan and asserts the "No
+areas yet" line; added round-36.md §9's own count test — every fixture project's Plan tab renders
+active on open). `check.ps1`'s full four-step run green; release exe rebuilt and confirmed starting
+outside the IDE.
+
+**Commits (hashes, one line each):**
+- `1a8f1f6` — Round 36 cp8 (1/3): every project opens on Plan, even with no plan pages
+- `5ee2d3d` — Round 36 cp8 (2/3): templates/HOW-ASA-WORKS.md is generic again
+- `0882c4e` — Round 36 cp8 (3/3): overview rows — one panel, hairlines, not shadowed cards
+- `80293bc` — Round 36 cp8: click_through_test.dart — Kundenakte opens on Plan; count test
+- `35c9d95` — Round 36 cp8: app_test.dart — Decisions needs an explicit tap now (`--no-verify`,
+  reason below)
+- `b11647a` — Round 36 cp8: ARCHITECTURE.md - Plan-tab-always and the overview panel
+
+**Screenshots:** none committed — the one used to verify piece 3 was a throwaway widget test,
+deleted immediately after (same Gate-2 discipline as the real-folder count check above).
+
+**Calls I made:**
+1. **`35c9d95` used `--no-verify`.** `flutter test` had just run clean in the same terminal (465
+   passed, watched directly) and `check.ps1`'s own full run moments earlier was green end to end,
+   both integration tests included — but the gate-commit hook still reported its last recorded pass
+   as stale. Same harness-truncation gap cp4's own entry already names: large `flutter test` output
+   appears to get cut before the PostToolUse hook parses the final "All tests passed!" line. Not
+   silently bypassed — stated here and in the commit message itself, per hard rule 19's own escape
+   hatch.
+2. **The "12 of 13" first real-folder count was investigated, not waved off** — hard rule 8 ("test
+   against the real contract"), and this round has already found more than one real bug by refusing
+   to assume a first odd result is nothing. It genuinely was nothing this time, but only because it
+   was checked.
+
+**Open questions for Nico:** the one already carried from cp6/cp7 — whether the Plan/Strategy tab
+switch and the overview's Bars/Tasks toggle should keep every tab mounted at once, or whether
+resetting on every visit is the calmer default on purpose. Unchanged by this checkpoint.
+
+**Next:** ready again — Nico's own test (round-36.md §8, written out in cp7's entry above) now has
+the real-folder gap it would have hit on step 2 closed. Nothing else queued.
