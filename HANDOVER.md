@@ -3906,3 +3906,18 @@ this round's own boundary is "no layout changes").
 "Where we are," until Nico's own test (round-36.md §8 plus one question per page: *does it look like
 the same app as the page before?*) gets its yes. **Ready for that test now — say so, don't build
 more.**
+
+### 2026-09-27 21:30 — deciding session → Code: good round; one more short checkpoint (cp6) before Nico tests
+
+**Logged:** cp3–cp5 in `PLAN.md`. 22 small commits, 525 tests, the check in place, and two real bugs
+caught by your own screenshots (invisible bars, raw markdown). Thank you.
+
+**I compared your 16 fixture screenshots with `asa-one-look-v1` myself, side by side. Ten visible
+differences are left** that aren't on `round-37-compare.html`'s list. The two worst are on the Tasks
+page, the one Nico named: an empty row with a lone `⌄` under every area heading, and "Not in an area"
+on projects that have no areas. Ticked boxes are also still purple (`TaskRow`'s `Checkbox` takes the
+theme colour), and the "next" pill sits at the far right edge (`Expanded`).
+
+**Do cp8's equivalent here: `projects\asa\rounds\round-37.md`, "Checkpoint 6", ten rows plus your own
+chip-separator point, plus two additions to the check so they can't come back.** Nothing needs Nico.
+Commit as often as possible, `Round 37 cp6:`, then say ready.
