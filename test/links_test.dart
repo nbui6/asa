@@ -281,9 +281,10 @@ void main() {
 
     await tapAndSettle(tester, find.text('Objective 1'));
 
-    // ADR 0009 only renders once the objective is expanded — proof
-    // this landed already open, not merely on the right tab.
-    expect(find.text('ADR 0009'), findsOneWidget);
+    // The ADR chip only renders once the objective is expanded — proof
+    // this landed already open, not merely on the right tab. Round 37
+    // §D3 — both show both: the number with the (loaded) title.
+    expect(find.text('0009 · Grow via partnership'), findsOneWidget);
   });
 
   testWidgets(
@@ -332,7 +333,7 @@ void main() {
       await tapAndSettle(tester, find.text('Strategy →').first);
       await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
 
-      await tapAndSettle(tester, find.text('ADR 0009'));
+      await tapAndSettle(tester, find.text('0009 · Grow via partnership'));
 
       expect(find.byType(DecisionDetailScreen), findsOneWidget);
 
@@ -340,7 +341,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DecisionDetailScreen), findsNothing);
-      expect(find.text('ADR 0009'), findsOneWidget); // still expanded
+      // still expanded
+      expect(find.text('0009 · Grow via partnership'), findsOneWidget);
     },
   );
 

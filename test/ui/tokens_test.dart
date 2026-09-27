@@ -65,4 +65,23 @@ void main() {
       expect(asaListDate('not a date'), 'not a date');
     });
   });
+
+  group('decisionChipLabel', () {
+    test('both show both: number and title together', () {
+      expect(
+        decisionChipLabel('0003', 'Deals go through the partner portal'),
+        '0003 · Deals go through the partner portal',
+      );
+    });
+    test('no number — just the (possibly cut) title', () {
+      expect(decisionChipLabel(null, 'Short title'), 'Short title');
+    });
+    test('cuts a long title to about 40 characters', () {
+      final label = decisionChipLabel(
+        '0011',
+        'A title so long it would widen or wrap the whole chip row',
+      );
+      expect(label, '0011 · A title so long it would widen or wrap t…');
+    });
+  });
 }

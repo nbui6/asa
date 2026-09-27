@@ -171,3 +171,14 @@ String? _formatted(String? isoDate, {required bool includeYear}) {
   final monthDay = '${parsed.day} ${_months[parsed.month - 1]}';
   return includeYear ? '$monthDay ${parsed.year}' : monthDay;
 }
+
+/// Round 37 §D3 — "both show both": a decision's own number with its
+/// title, the title cut to about 40 characters so a long one never
+/// widens or wraps a chip. Used wherever a decision shows as a link
+/// rather than its own full row (Plan tab, Strategy tab).
+String decisionChipLabel(String? number, String title, {int maxLength = 40}) {
+  final cut = title.length <= maxLength
+      ? title
+      : '${title.substring(0, maxLength).trimRight()}…';
+  return number == null ? cut : '$number · $cut';
+}

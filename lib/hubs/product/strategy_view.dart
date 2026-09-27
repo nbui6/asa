@@ -5,6 +5,8 @@
 /// ADR 0025 (the strategy layer) and ADR 0026 (a round has a state, not a
 /// checkbox) are the data model; ADR 0024 (areas) does not apply — Asa has
 /// none, so an objective claims a Round directly, in its own text.
+/// Round 37 (ADR 0029) moves this screen onto the shared `ui/` parts —
+/// its own layout is unchanged, exactly `asa-strategy-v3`.
 ///
 /// **Read-only, all of it — same rule as the Plan tab.** Tapping a Round
 /// opens the project's own note (`open_url.dart`, already built); tapping
@@ -24,6 +26,11 @@ import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_state.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
+import 'package:asa/hubs/product/ui/link_chip.dart';
+import 'package:asa/hubs/product/ui/pill.dart';
+import 'package:asa/hubs/product/ui/progress_bar.dart';
+import 'package:asa/hubs/product/ui/section_label.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 class StrategyView extends StatefulWidget {
@@ -133,33 +140,20 @@ class _StrategyViewState extends State<StrategyView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label("Who it's for"),
+        const SectionLabel("Who it's for"),
+        const SizedBox(height: AsaSpace.xs),
         _whoItsFor(_plain(strategy.whoItsFor!)),
-        const SizedBox(height: 20),
-        _label('Pain points'),
-        Text(_plain(strategy.painPoints!)),
-        const SizedBox(height: 20),
-        _label('Objectives'),
+        const SizedBox(height: AsaSpace.lg),
+        const SectionLabel('Pain points'),
+        const SizedBox(height: AsaSpace.xs),
+        Text(_plain(strategy.painPoints!), style: AsaText.body),
+        const SizedBox(height: AsaSpace.lg),
+        const SectionLabel('Objectives'),
         for (var i = 0; i < strategy.objectives.length; i++)
           _objectiveTile(strategy.objectives[i], i),
-        const SizedBox(height: 12),
+        const SizedBox(height: AsaSpace.md),
         _legend(),
       ],
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-          color: Colors.grey.shade600,
-        ),
-      ),
     );
   }
 
@@ -167,18 +161,11 @@ class _StrategyViewState extends State<StrategyView> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(text)),
-        const SizedBox(width: 8),
-        InkWell(
+        Expanded(child: Text(text, style: AsaText.body)),
+        const SizedBox(width: AsaSpace.sm),
+        LinkChip(
+          'PERSONA.md ↗',
           onTap: () => openUrl(widget.personaSourceFile),
-          child: Text(
-            'PERSONA.md ↗',
-            style: TextStyle(
-              color: Colors.blue.shade700,
-              fontSize: 11,
-              fontFamily: 'monospace',
-            ),
-          ),
         ),
       ],
     );
@@ -227,9 +214,9 @@ class _StrategyViewState extends State<StrategyView> {
         .length;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+        border: Border(bottom: BorderSide(color: AsaColors.soft)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,23 +235,26 @@ class _StrategyViewState extends State<StrategyView> {
                 Icon(
                   expanded ? Icons.expand_more : Icons.chevron_right,
                   size: 16,
-                  color: Colors.grey.shade600,
+                  color: AsaColors.ink3,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AsaSpace.xs),
                 Expanded(
-                  child: Text(
-                    _plain(objective.title),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  child: Text(_plain(objective.title), style: AsaText.rowName),
                 ),
                 if (waiting > 0) ...[
-                  _waitingPill(waiting),
-                  const SizedBox(width: 8),
+                  Pill(
+                    '$waiting waiting for you',
+                    meaning: AsaMeaning.needsYou,
+                  ),
+                  const SizedBox(width: AsaSpace.sm),
                 ],
-                Text(
-                  '$completed of ${rounds.length} completed',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-                ),
+                // Round 37 §D5 — a zero count isn't shown: "0 of 0
+                // completed" said nothing a person could act on.
+                if (rounds.isNotEmpty)
+                  Text(
+                    '$completed of ${rounds.length} completed',
+                    style: AsaText.meta,
+                  ),
               ],
             ),
           ),
@@ -274,34 +264,37 @@ class _StrategyViewState extends State<StrategyView> {
           // header row and hidden the sentence behind the expand arrow, on
           // an earlier persona-check's own overwhelm worry. Nico's call
           // when he approved the sketch, not the builder's: visible.
-          const SizedBox(height: 4),
+          const SizedBox(height: AsaSpace.xs),
           Padding(
             padding: const EdgeInsets.only(left: 22),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_evidenceWord(objective.evidence) case final word?) ...[
-                  _evidenceChip(word),
-                  const SizedBox(width: 6),
+                if (_evidenceMeaning(objective.evidence) case final m?) ...[
+                  Pill(_evidenceWord(objective.evidence)!, meaning: m),
+                  const SizedBox(width: AsaSpace.xs),
                 ],
                 Expanded(child: _evidenceRow(objective.evidence)),
               ],
             ),
           ),
           if (rounds.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AsaSpace.xs),
             Padding(
               padding: const EdgeInsets.only(left: 22),
               child: ConstrainedBox(
                 // Round 35/G — the sketch's bars run about the width of the
                 // title column, not the full stretch of the window.
                 constraints: const BoxConstraints(maxWidth: 480),
-                child: _segmentBar(rounds.map((r) => r.state).toList()),
+                child: ProgressBar(
+                  segments: [for (final r in rounds) _roundFraction(r.state)],
+                  meanings: [for (final r in rounds) _roundMeaning(r.state)],
+                ),
               ),
             ),
           ],
           if (expanded) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AsaSpace.xs),
             Padding(
               padding: const EdgeInsets.only(left: 22),
               child: Column(
@@ -319,58 +312,18 @@ class _StrategyViewState extends State<StrategyView> {
     );
   }
 
-  Widget _waitingPill(int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7E9CD),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        '$count waiting for you',
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF7D4F08),
-        ),
-      ),
-    );
-  }
+  // Round-37 §2 — a round is either done or not, never partly; "planned"
+  // stays unfilled (0), matching the sketch's own light-grey planned
+  // segment, which `ProgressBar`'s own soft background already draws.
+  double _roundFraction(RoundState state) =>
+      state == RoundState.planned ? 0 : 1;
 
-  Widget _segmentBar(List<RoundState> states) {
-    return SizedBox(
-      height: 8,
-      child: Row(
-        children: [
-          for (final state in states) ...[
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _segmentColor(state),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            if (state != states.last) const SizedBox(width: 2),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Color _segmentColor(RoundState state) {
-    switch (state) {
-      case RoundState.completed:
-      case RoundState.noApprovalNeeded:
-        return const Color(0xFF2A7355);
-      case RoundState.waitingForApproval:
-        return const Color(0xFFE0A63A);
-      case RoundState.inProgress:
-        return const Color(0xFF6F8FC4);
-      case RoundState.planned:
-        return const Color(0xFFEDEEF1);
-    }
-  }
+  AsaMeaning _roundMeaning(RoundState state) => switch (state) {
+    RoundState.completed || RoundState.noApprovalNeeded => AsaMeaning.done,
+    RoundState.waitingForApproval => AsaMeaning.needsYou,
+    RoundState.inProgress => AsaMeaning.moving,
+    RoundState.planned => AsaMeaning.quiet,
+  };
 
   // The word-only chip already sits in the collapsed header row (rule 7:
   // colour is a hint, never the only signal, so the word has to be
@@ -383,7 +336,12 @@ class _StrategyViewState extends State<StrategyView> {
         Expanded(
           child: Text(
             'Would show: ${_plain(evidence)}',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            style: AsaText.meta,
+            // Round 37 §D5 — the sketch's own sentence wraps at about
+            // 300 px on a 1920 px screen; the row above already
+            // constrains its own bar to 480 px, so matching that here
+            // keeps the two aligned and readable at any window width.
+            softWrap: true,
           ),
         ),
       ],
@@ -399,35 +357,21 @@ class _StrategyViewState extends State<StrategyView> {
     return ['unknown', 'holding', 'failing'].contains(word) ? word : null;
   }
 
-  Widget _evidenceChip(String word) {
-    final Color background;
-    final Color foreground;
-    switch (word) {
+  /// ADR 0029 has no separate "error" meaning — "failing" is the most
+  /// urgent of the three evidence words, so it takes "needs you" (amber),
+  /// same reasoning the overdue-deadline signal already uses (round 37
+  /// cp1). "Holding" is done/green; "unknown" is quiet/grey.
+  AsaMeaning? _evidenceMeaning(String evidence) {
+    switch (_evidenceWord(evidence)) {
       case 'holding':
-        background = const Color(0xFFE4F0EA);
-        foreground = const Color(0xFF2A7355);
+        return AsaMeaning.done;
       case 'failing':
-        background = const Color(0xFFF6E4E4);
-        foreground = const Color(0xFF9C3F3F);
+        return AsaMeaning.needsYou;
+      case 'unknown':
+        return AsaMeaning.quiet;
       default:
-        background = const Color(0xFFECEFF3);
-        foreground = Colors.grey.shade600;
+        return null;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        word,
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w700,
-          color: foreground,
-        ),
-      ),
-    );
   }
 
   Widget _roundRow(Milestone milestone, RoundState state) {
@@ -437,112 +381,62 @@ class _StrategyViewState extends State<StrategyView> {
         onTap: () => openUrl(widget.projectSourceFile),
         child: Row(
           children: [
-            Expanded(
-              child: Text(
-                _plain(milestone.title),
-                style: const TextStyle(fontSize: 12.5),
-              ),
-            ),
-            _statePill(state),
+            Expanded(child: Text(_plain(milestone.title), style: AsaText.body)),
+            Pill(_stateLabel(state), meaning: _roundMeaning(state)),
           ],
         ),
       ),
     );
   }
 
-  Widget _statePill(RoundState state) {
-    final String label;
-    final Color background;
-    final Color foreground;
-    switch (state) {
-      case RoundState.completed:
-        label = 'completed';
-        background = const Color(0xFFE4F0EA);
-        foreground = const Color(0xFF2A7355);
-      case RoundState.waitingForApproval:
-        label = 'waiting for your approval';
-        background = const Color(0xFFF7E9CD);
-        foreground = const Color(0xFF7D4F08);
-      case RoundState.inProgress:
-        label = 'in progress';
-        background = const Color(0xFFE6ECF7);
-        foreground = const Color(0xFF2F5FA6);
-      case RoundState.planned:
-        label = 'planned';
-        background = const Color(0xFFEDEEF1);
-        foreground = Colors.grey.shade600;
-      case RoundState.noApprovalNeeded:
-        label = 'no approval needed';
-        background = const Color(0xFFE4F0EA);
-        foreground = const Color(0xFF2A7355);
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w700,
-          color: foreground,
-        ),
-      ),
-    );
-  }
+  String _stateLabel(RoundState state) => switch (state) {
+    RoundState.completed => 'completed',
+    RoundState.waitingForApproval => 'waiting for your approval',
+    RoundState.inProgress => 'in progress',
+    RoundState.planned => 'planned',
+    RoundState.noApprovalNeeded => 'no approval needed',
+  };
 
   Widget _adrRow(List<PlanLink> adrLinks) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: AsaSpace.xs),
       child: Row(
         children: [
           Expanded(
             child: Wrap(
-              spacing: 6,
+              spacing: AsaSpace.xs,
               children: [for (final link in adrLinks) _adrChip(link)],
             ),
           ),
-          InkWell(
+          LinkChip(
+            'open the text ↗',
             onTap: () => openUrl(widget.charterSourceFile),
-            child: Text(
-              'open the text ↗',
-              style: TextStyle(
-                color: Colors.blue.shade700,
-                fontSize: 11,
-                fontFamily: 'monospace',
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
+  /// Round-37 §D3 — "both show both": the number with the (shortened)
+  /// title, when the decision is actually loaded; the bare number, same
+  /// as before, when it is not (the raw-file fallback `_openAdr` also
+  /// uses).
   Widget _adrChip(PlanLink link) {
+    final decision = _decisionFor(link.target);
+    final label = decision == null
+        ? 'ADR ${link.target}'
+        : decisionChipLabel(decision.number, decision.title);
     return Tooltip(
       message: link.sentence,
-      child: InkWell(
-        onTap: () => _openAdr(link),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE6ECF7),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            'ADR ${link.target}',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF2F5FA6),
-            ),
-          ),
-        ),
-      ),
+      child: LinkChip(label, onTap: () => _openAdr(link)),
     );
+  }
+
+  Decision? _decisionFor(String number) {
+    for (final result in widget.decisions) {
+      if (result.decision?.number == number) return result.decision;
+    }
+    return null;
   }
 
   /// Round-36 §3, L15 — a loaded decision opens the real in-app detail
@@ -551,20 +445,19 @@ class _StrategyViewState extends State<StrategyView> {
   /// since neither is touched by the push. The Round link stays on
   /// `openUrl` unchanged — "as built today", per L15's own wording.
   Future<void> _openAdr(PlanLink link) async {
-    for (final result in widget.decisions) {
-      if (result.decision?.number == link.target) {
-        final changed = await Navigator.of(context).push<bool>(
-          MaterialPageRoute<bool>(
-            builder: (_) => DecisionDetailScreen(
-              decision: result.decision!,
-              areasNaming: _areasNaming(link.target),
-              onOpenArea: widget.onOpenArea,
-            ),
+    final decision = _decisionFor(link.target);
+    if (decision != null) {
+      final changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => DecisionDetailScreen(
+            decision: decision,
+            areasNaming: _areasNaming(link.target),
+            onOpenArea: widget.onOpenArea,
           ),
-        );
-        if (changed ?? false) widget.onDataChanged?.call();
-        return;
-      }
+        ),
+      );
+      if (changed ?? false) widget.onDataChanged?.call();
+      return;
     }
     unawaited(openUrl(widget.charterSourceFile));
   }
@@ -581,33 +474,37 @@ class _StrategyViewState extends State<StrategyView> {
 
   Widget _legend() {
     final unclaimed = _unclaimedCount();
+    // Round 37 §D5 — the legend only makes sense once a bar is actually
+    // shown; a project with no rounds at all (or none claimed by any
+    // objective) has nothing for it to explain.
+    if (widget.roadmap.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.only(top: 9),
       decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
+        border: Border(top: BorderSide(color: AsaColors.soft)),
       ),
       child: Wrap(
-        spacing: 16,
-        runSpacing: 6,
+        spacing: AsaSpace.lg,
+        runSpacing: AsaSpace.sm,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _legendDot(const Color(0xFF2A7355), 'completed'),
-          _legendDot(const Color(0xFFE0A63A), 'waiting for your approval'),
-          _legendDot(const Color(0xFF6F8FC4), 'in progress'),
-          _legendDot(const Color(0xFFEDEEF1), 'planned'),
+          _legendDot(AsaMeaning.done, 'completed'),
+          _legendDot(AsaMeaning.needsYou, 'waiting for your approval'),
+          _legendDot(AsaMeaning.moving, 'in progress'),
+          _legendDot(AsaMeaning.quiet, 'planned'),
           if (unclaimed > 0)
             Text(
               unclaimed == 1
                   ? '1 round serves no objective yet'
                   : '$unclaimed rounds serve no objective yet',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5),
+              style: AsaText.meta,
             ),
         ],
       ),
     );
   }
 
-  Widget _legendDot(Color color, String label) {
+  Widget _legendDot(AsaMeaning meaning, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -615,15 +512,12 @@ class _StrategyViewState extends State<StrategyView> {
           width: 14,
           height: 8,
           decoration: BoxDecoration(
-            color: color,
+            color: meaning.fg,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(color: Colors.grey.shade700, fontSize: 11.5),
-        ),
+        Text(label, style: AsaText.meta),
       ],
     );
   }

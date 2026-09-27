@@ -353,7 +353,9 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.chevron_right));
       await tester.pump();
-      await tester.tap(find.text('ADR 0009'));
+      // Round 37 §D3 — both show both: the chip names the loaded
+      // decision's own title with its number, not just "ADR 0009".
+      await tester.tap(find.text('0009 · A real decision'));
       await tester.pumpAndSettle();
 
       expect(find.byType(DecisionDetailScreen), findsOneWidget);
