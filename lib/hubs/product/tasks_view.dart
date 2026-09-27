@@ -240,11 +240,17 @@ class _TasksViewState extends State<TasksView> {
             areaGroup,
             projectFolder: _folderOf(group.project.sourceFile),
           ),
+        // Round 37 cp6, §D6 item 2 — "Not in an area" only means something
+        // once a project actually has areas to be "not in"; a project
+        // with none shows its own tasks straight under its name instead.
         if (group.tasks.isNotEmpty)
-          _notInAnAreaTile(
-            group,
-            projectFolder: _folderOf(group.project.sourceFile),
-          ),
+          if (group.areaGroups.isNotEmpty)
+            _notInAnAreaTile(
+              group,
+              projectFolder: _folderOf(group.project.sourceFile),
+            )
+          else
+            ..._directTaskRows(group),
         for (final child in group.children) _groupTile(child, depth: depth + 1),
       ],
     );
@@ -276,47 +282,61 @@ class _TasksViewState extends State<TasksView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: () => widget.onOpenProject(
-              openTarget(projectFolder, areaSourceFile: areaGroup.sourceFile),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: AsaColors.violet,
-                    shape: BoxShape.circle,
+          // Round 37 cp6, §D6 item 1 — the triangle used to sit in its own
+          // Row below this one, an empty-looking row on its own before
+          // the tasks; folded into the heading row itself, the same shape
+          // `AsaGroup`'s own header already uses.
+          Row(
+            children: [
+              InkWell(
+                onTap: () => setState(() {
+                  if (collapsed) {
+                    _collapsed.remove(key);
+                  } else {
+                    _collapsed.add(key);
+                  }
+                }),
+                child: Tooltip(
+                  message: collapsed
+                      ? 'Expand this area'
+                      : 'Collapse this area — click again to reopen',
+                  child: Icon(
+                    collapsed ? Icons.chevron_right : Icons.expand_more,
+                    size: 16,
+                    color: AsaColors.ink3,
                   ),
                 ),
-                const SizedBox(width: AsaSpace.xs),
-                Text(
-                  areaGroup.name,
-                  style: AsaText.rowName.copyWith(color: AsaColors.violet),
+              ),
+              const SizedBox(width: AsaSpace.xs),
+              InkWell(
+                onTap: () => widget.onOpenProject(
+                  openTarget(
+                    projectFolder,
+                    areaSourceFile: areaGroup.sourceFile,
+                  ),
                 ),
-                const SizedBox(width: AsaSpace.xs),
-                Text('${openTasks.length} open', style: AsaText.meta),
-              ],
-            ),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              collapsed ? Icons.chevron_right : Icons.expand_more,
-              size: 16,
-            ),
-            tooltip: collapsed
-                ? 'Expand this area'
-                : 'Collapse this area — click again to reopen',
-            onPressed: () => setState(() {
-              if (collapsed) {
-                _collapsed.remove(key);
-              } else {
-                _collapsed.add(key);
-              }
-            }),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: AsaColors.violet,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: AsaSpace.xs),
+                    Text(
+                      areaGroup.name,
+                      style: AsaText.rowName.copyWith(color: AsaColors.violet),
+                    ),
+                    const SizedBox(width: AsaSpace.xs),
+                    Text('${openTasks.length} open', style: AsaText.meta),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (!collapsed)
             if (hiddenByCodeFilter)
@@ -360,46 +380,56 @@ class _TasksViewState extends State<TasksView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: () =>
-                widget.onOpenProject(openTarget(projectFolder, openHome: true)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
+          // Round 37 cp6, §D6 item 1 — the triangle folded into the
+          // heading row itself, not a separate row below it.
+          Row(
+            children: [
+              InkWell(
+                onTap: () => setState(() {
+                  if (collapsed) {
+                    _collapsed.remove(key);
+                  } else {
+                    _collapsed.add(key);
+                  }
+                }),
+                child: Tooltip(
+                  message: collapsed
+                      ? 'Expand this group'
+                      : 'Collapse this group — click again to reopen',
+                  child: Icon(
+                    collapsed ? Icons.chevron_right : Icons.expand_more,
+                    size: 16,
                     color: AsaColors.ink3,
-                    shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: AsaSpace.xs),
-                Text(
-                  'Not in an area',
-                  style: AsaText.rowName.copyWith(color: AsaColors.ink2),
+              ),
+              const SizedBox(width: AsaSpace.xs),
+              InkWell(
+                onTap: () => widget.onOpenProject(
+                  openTarget(projectFolder, openHome: true),
                 ),
-                const SizedBox(width: AsaSpace.xs),
-                Text('${openTasks.length} open', style: AsaText.meta),
-              ],
-            ),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              collapsed ? Icons.chevron_right : Icons.expand_more,
-              size: 16,
-            ),
-            tooltip: collapsed
-                ? 'Expand this group'
-                : 'Collapse this group — click again to reopen',
-            onPressed: () => setState(() {
-              if (collapsed) {
-                _collapsed.remove(key);
-              } else {
-                _collapsed.add(key);
-              }
-            }),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: AsaColors.ink3,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: AsaSpace.xs),
+                    Text(
+                      'Not in an area',
+                      style: AsaText.rowName.copyWith(color: AsaColors.ink2),
+                    ),
+                    const SizedBox(width: AsaSpace.xs),
+                    Text('${openTasks.length} open', style: AsaText.meta),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (!collapsed)
             if (hiddenByCodeFilter)
@@ -423,6 +453,44 @@ class _TasksViewState extends State<TasksView> {
         ],
       ),
     );
+  }
+
+  /// Round 37 cp6, §D6 item 2 — a project with no areas at all shows its
+  /// own tasks straight under its name, no "Not in an area" heading and
+  /// no collapse state of its own: they show and hide with the project's
+  /// own `AsaGroup` toggle, same as `AsaGroup.children` already does for
+  /// nested projects.
+  List<Widget> _directTaskRows(TaskGroup group) {
+    final key = '${group.project.sourceFile}#home';
+    final visibleTasks = _showCode
+        ? group.tasks
+        : group.tasks.where((t) => !t.isCode).toList();
+    final openTasks = visibleTasks.where((t) => !t.done).toList();
+    final doneTasks = visibleTasks.where((t) => t.done).toList();
+    final hiddenByCodeFilter = visibleTasks.isEmpty && group.tasks.isNotEmpty;
+    final nextTask = openTasks.isEmpty ? null : openTasks.first;
+
+    if (hiddenByCodeFilter) {
+      return [
+        Padding(
+          padding: const EdgeInsets.only(left: AsaSpace.xl, top: AsaSpace.xs),
+          child: Text(
+            '${group.project.name} · ${group.tasks.length} tasks hidden, '
+            'marked code',
+            style: AsaText.meta,
+          ),
+        ),
+      ];
+    }
+
+    return [
+      for (final task in openTasks)
+        _taskRow(group.project, task, isNext: task == nextTask),
+      if (doneTasks.isNotEmpty) _showCompletedLink(key, doneTasks.length),
+      if (_showCompleted.contains(key))
+        for (final task in doneTasks)
+          _taskRow(group.project, task, isNext: false),
+    ];
   }
 
   Widget _showCompletedLink(String key, int count) {
