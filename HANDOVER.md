@@ -3412,3 +3412,64 @@ attempted this round — or is starting fresh on every tab visit actually the ca
 
 **Next:** cp7 — exe rebuilt and confirmed starting, `check.ps1` green, the final HANDOVER entry with
 Nico's own 7-step test (round-36.md §8) written out in plain words.
+
+### Round 36 cp7 — ready. Exe rebuilt, `check.ps1` green, one more real gap found and fixed on the way.
+
+**Built:** nothing new in the app itself. One more real, environment-level bug found and fixed while
+running the gate: `check.ps1`'s own step 4 ran every file under `integration_test\` in one
+`flutter test integration_test -d windows` process — fine with one file, but now that
+`click_through_test.dart` sits alongside `app_test.dart`, the second file's own app launch reliably
+failed ("Error waiting for a debug connection: The log reader stopped unexpectedly, or never
+started"), reproduced in both orders. Each file passes cleanly alone. Fixed by looping over
+`integration_test\*_test.dart` and giving each its own `flutter test` process — same coverage, no
+shared device session left over to break the next one.
+
+**Tests (count):** `check.ps1`'s full four-step run, green: `dart format`, `flutter analyze
+--fatal-infos`, `flutter test` (465), then `app_test.dart` and `click_through_test.dart` each in
+their own process (1 + 2). Release exe rebuilt (`flutter build windows --release`) and confirmed
+starting outside the IDE (launched, ran, exited cleanly).
+
+**Commits (hashes, one line each):**
+- `d676487` — Round 36 cp7: check.ps1 runs each integration test file in its own process
+- `0886a77` — Round 36 cp7: ARCHITECTURE.md - the reload fix and verdict-reload rows
+
+**Screenshots:** none this checkpoint — cp5's own screenshots and `round-36-compare.html` are the
+visual record for this round.
+
+**Calls I made:** the `check.ps1` fix is a gate-tooling change, not an app behaviour change — no
+`ARCHITECTURE.md` row for it (that file describes the app's own parts, not the test harness), just
+this entry and the script's own inline comment.
+
+**Open questions for Nico:** the one already carried from cp6 — whether the Plan/Strategy tab switch
+and the overview's Bars/Tasks toggle should keep every tab mounted at once, or whether resetting on
+every visit is the calmer default on purpose.
+
+---
+
+## Nico's own test (round-36.md §8) — about 30 minutes, one answer per page
+
+This replaces the separate tests from Rounds 32–35. Clone or open the release build, point it at a
+real folder, and go page by page:
+
+1. **Overview.** Are all your projects there, nested right (a work project's own child, the Other
+   group's own child and grandchild), with ages that tell you at a glance which one has gone quiet?
+2. **Click a project.** Does it open on its own areas (the Plan tab), with the one next thing you'd
+   actually do sitting on top, above the areas themselves?
+3. **Tick a task inside an area.** Does the count change there, on the Overview's own bar, and in the
+   Tasks view — all without you doing anything else?
+4. **Follow the links:** an area's own Objective chip → Strategy, with that objective already open →
+   back; a decision → its own area, back on the Plan tab. Did every click land where you expected,
+   and did "back" actually take you back to where you were?
+5. **Start → Copy opener, into an AI.** Ask it to add a result to one area. Reopen Asa — is the
+   result there, in that area's own page?
+6. **On the other laptop:** clone the repo, build it, run `onboard-projects.ps1`. Do your real
+   projects show up there too?
+7. **Keep or change?** One answer per page above is the only yes this whole delivery needs. Once you
+   give it, the answer gets recorded here with one commit: `Round 36: approved by Nico <date>`.
+
+**Known, named, not fixed this round** (see cp6's own entry above for the full reasoning): switching
+away from the Plan tab and back — either via Strategy, or via the Tasks view's own toggle back to
+the Overview's Bars view — collapses whatever area you had open. Ticking a task, or a plain refresh,
+no longer does this; only a genuine tab/view switch still does. Worth watching for in step 2 and 3
+above — if it bothers you in practice, that's the answer to the open question above, and a real,
+larger fix (keeping every tab mounted at once) is the next thing to schedule, not a surprise.
