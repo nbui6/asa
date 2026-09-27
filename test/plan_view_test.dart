@@ -693,8 +693,8 @@ void main() {
       await tester.tap(find.text('Sales'));
       await tester.pump();
 
-      expect(find.text('Objective 1'), findsOneWidget);
-      await tester.tap(find.text('Objective 1'));
+      expect(find.text('Objective 1 →'), findsOneWidget);
+      await tester.tap(find.text('Objective 1 →'));
       expect(opened, '1');
     });
 
@@ -716,7 +716,7 @@ void main() {
       await tester.tap(find.text('Sales'));
       await tester.pump();
 
-      expect(find.text('Objective 1'), findsNothing);
+      expect(find.text('Objective 1 →'), findsNothing);
     });
   });
 
@@ -766,7 +766,9 @@ void main() {
 
       await tester.tap(find.text('Sales'));
       await tester.pump();
-      await tester.tap(find.text('ADR 0003'));
+      // Round 37 §D3 — both show both: the chip itself names the loaded
+      // decision's own title, not just "ADR 0003".
+      await tester.tap(find.text('0003 · Deals go through the partner portal'));
       await tester.pumpAndSettle();
 
       expect(find.byType(DecisionDetailScreen), findsOneWidget);

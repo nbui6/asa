@@ -3,7 +3,8 @@
 /// goal → plan → tasks → results → decisions — and rebuilds this screen
 /// around them, sketch `asa-plan-v5.html`. **A project with no `plan\`
 /// folder (`asa` today) keeps exactly the Round 27 screen** — regression,
-/// checked explicitly, not assumed.
+/// checked explicitly, not assumed. Round 37 (ADR 0029) moves this screen
+/// onto the shared `ui/` parts — its own layout is unchanged.
 ///
 /// Sketch history: `asa-plan-v2.html` was drawn straight from Round 26's
 /// data and Nico found it overwhelming — *"the sections in Plan + derived
@@ -31,6 +32,13 @@ import 'package:asa/core/project_row.dart' show effectiveNextStepWithArea;
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/start_menu.dart';
+import 'package:asa/hubs/product/ui/area_chip.dart';
+import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/link_chip.dart';
+import 'package:asa/hubs/product/ui/progress_bar.dart';
+import 'package:asa/hubs/product/ui/section_label.dart';
+import 'package:asa/hubs/product/ui/task_row.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 class PlanView extends StatefulWidget {
@@ -168,7 +176,7 @@ class _PlanViewState extends State<PlanView> {
 
   /// Round-36 §3, L3/L9 — the task row currently drawn highlighted, or
   /// null for none. Cleared automatically about 2 s after it is set —
-  /// [_armHighlightTimer] — never left showing.
+  /// [_armHighlightTimer]. Never left showing.
   String? _highlightedRawLine;
 
   // Persona-check, re-run against this real screen: showing all ~24 of a
@@ -237,7 +245,11 @@ class _PlanViewState extends State<PlanView> {
       if (widget.plan.isEmpty) return _noPlanBody();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [_nextLineRow(), const SizedBox(height: 4), _legacyBody()],
+        children: [
+          _nextLineRow(),
+          const SizedBox(height: AsaSpace.xs),
+          _legacyBody(),
+        ],
       );
     }
 
@@ -246,13 +258,13 @@ class _PlanViewState extends State<PlanView> {
       children: [
         if (widget.strategy != null && !widget.strategy!.isEmpty) ...[
           _whatThisProjectIsFor(widget.strategy!),
-          const SizedBox(height: 4),
+          const SizedBox(height: AsaSpace.xs),
         ],
         _nextLineRow(),
-        const SizedBox(height: 4),
+        const SizedBox(height: AsaSpace.xs),
         for (final area in widget.areas) _areaRow(area),
         _notInAnAreaRow(),
-        const SizedBox(height: 16),
+        const SizedBox(height: AsaSpace.lg),
         _overviewRow(),
       ],
     );
@@ -264,14 +276,16 @@ class _PlanViewState extends State<PlanView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label('What changed'),
+        const SectionLabel('What changed'),
+        const SizedBox(height: AsaSpace.xs),
         _whatChanged(),
-        const SizedBox(height: 20),
-        _label('The plan'),
+        const SizedBox(height: AsaSpace.xl),
+        const SectionLabel('The plan'),
+        const SizedBox(height: AsaSpace.xs),
         ..._outline(),
-        const SizedBox(height: 16),
+        const SizedBox(height: AsaSpace.lg),
         _strategyPointer(),
-        const SizedBox(height: 12),
+        const SizedBox(height: AsaSpace.md),
         _readOnlyNote(),
       ],
     );
@@ -289,20 +303,15 @@ class _PlanViewState extends State<PlanView> {
       children: [
         if (widget.strategy != null && !widget.strategy!.isEmpty) ...[
           _whatThisProjectIsFor(widget.strategy!),
-          const SizedBox(height: 4),
+          const SizedBox(height: AsaSpace.xs),
         ],
         _nextLineRow(),
-        const SizedBox(height: 4),
+        const SizedBox(height: AsaSpace.xs),
         _notInAnAreaRow(),
-        const SizedBox(height: 12),
-        Text(
+        const SizedBox(height: AsaSpace.md),
+        const EmptyLine(
           'No areas yet. To split this project into areas: Start → Copy '
           'opener, and ask the AI.',
-          style: TextStyle(
-            color: Colors.grey.shade500,
-            fontStyle: FontStyle.italic,
-            fontSize: 12,
-          ),
         ),
       ],
     );
@@ -320,12 +329,15 @@ class _PlanViewState extends State<PlanView> {
     return InkWell(
       onTap: widget.onOpenStrategy,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFAFAFA),
+        padding: const EdgeInsets.symmetric(
+          vertical: AsaSpace.sm,
+          horizontal: AsaSpace.md,
+        ),
+        decoration: const BoxDecoration(
+          color: AsaColors.ground,
           border: Border(
-            bottom: const BorderSide(color: Color(0xFFE0E0E0)),
-            left: BorderSide(color: Colors.grey.shade400, width: 3),
+            bottom: BorderSide(color: AsaColors.soft),
+            left: BorderSide(color: AsaColors.ink3, width: 3),
           ),
         ),
         child: Row(
@@ -334,7 +346,7 @@ class _PlanViewState extends State<PlanView> {
             Expanded(
               child: Text.rich(
                 TextSpan(
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                  style: AsaText.body.copyWith(color: AsaColors.ink2),
                   children: [
                     const TextSpan(
                       text: 'What this project is for',
@@ -345,15 +357,8 @@ class _PlanViewState extends State<PlanView> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'Strategy →',
-              style: TextStyle(
-                color: Colors.blue.shade700,
-                fontSize: 11,
-                fontFamily: 'monospace',
-              ),
-            ),
+            const SizedBox(width: AsaSpace.sm),
+            LinkChip('Strategy →', onTap: widget.onOpenStrategy),
           ],
         ),
       ),
@@ -378,11 +383,14 @@ class _PlanViewState extends State<PlanView> {
     // own drawing of this line sets it apart from the area list below it,
     // the same way `_readOnlyNote` already sets its own box apart.
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: AsaSpace.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AsaSpace.md,
+        vertical: AsaSpace.sm,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F6FC),
-        border: Border.all(color: const Color(0xFFDCD6EF)),
+        color: AsaMeaning.area.bg,
+        border: Border.all(color: AsaColors.line),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -394,40 +402,28 @@ class _PlanViewState extends State<PlanView> {
                   : () => _openNextTask(result.area, result.task),
               child: Row(
                 children: [
-                  Text(
-                    'NEXT',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  const SectionLabel('Next'),
+                  const SizedBox(width: AsaSpace.sm),
                   Expanded(
                     child: Text(
                       text ?? 'No next step',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      style: AsaText.rowName.copyWith(
                         fontStyle: text == null
                             ? FontStyle.italic
                             : FontStyle.normal,
-                        color: text == null
-                            ? Colors.grey.shade500
-                            : Colors.black87,
+                        color: text == null ? AsaColors.ink3 : AsaColors.ink,
                       ),
                     ),
                   ),
                   if (result.area != null) ...[
-                    const SizedBox(width: 8),
-                    _areaNameChip(result.area!.name),
+                    const SizedBox(width: AsaSpace.sm),
+                    AreaChip(result.area!.name),
                   ],
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AsaSpace.md),
           StartMenu(
             projectName: widget.projectName,
             projectFolder: widget.projectFolder,
@@ -458,24 +454,6 @@ class _PlanViewState extends State<PlanView> {
     if (task != null) _armHighlightTimer();
   }
 
-  Widget _areaNameChip(String name) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEEF1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        name,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: Colors.grey.shade700,
-        ),
-      ),
-    );
-  }
-
   // --- One area's row ---------------------------------------------------
 
   Widget _areaRow(Area area) {
@@ -487,9 +465,9 @@ class _PlanViewState extends State<PlanView> {
     final expanded = _expandedAreas.contains(area.sourceFile);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+        border: Border(bottom: BorderSide(color: AsaColors.soft)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,44 +489,40 @@ class _PlanViewState extends State<PlanView> {
                 Icon(
                   expanded ? Icons.expand_more : Icons.chevron_right,
                   size: 16,
-                  color: Colors.grey.shade600,
+                  color: AsaColors.ink3,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  area.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AsaSpace.xs),
+                Text(area.name, style: AsaText.rowName),
+                const SizedBox(width: AsaSpace.sm),
                 Expanded(
                   child: Text(
                     _areaNextTaskLabel(area),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
-                    style: TextStyle(
+                    style: AsaText.meta.copyWith(
                       color: _areaHasOpenTask(area)
-                          ? Colors.grey.shade700
-                          : Colors.grey.shade500,
-                      fontSize: 12.5,
+                          ? AsaColors.ink2
+                          : AsaColors.ink3,
                       fontStyle: _areaHasOpenTask(area)
                           ? FontStyle.normal
                           : FontStyle.italic,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  _resultLabel(area),
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                const SizedBox(width: AsaSpace.sm),
+                Text(_resultLabel(area), style: AsaText.meta),
+                const SizedBox(width: AsaSpace.sm),
+                SizedBox(
+                  width: 90,
+                  child: ProgressBar(segments: [_areaFraction(area)]),
                 ),
-                const SizedBox(width: 8),
-                SizedBox(width: 90, child: _progressBar(area)),
-                const SizedBox(width: 8),
+                const SizedBox(width: AsaSpace.sm),
                 SizedBox(
                   width: 32,
                   child: Text(
                     '${area.doneCount} / ${area.totalCount}',
                     textAlign: TextAlign.right,
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                    style: AsaText.meta,
                   ),
                 ),
               ],
@@ -556,7 +530,7 @@ class _PlanViewState extends State<PlanView> {
           ),
           if (expanded)
             Padding(
-              padding: const EdgeInsets.only(left: 22, top: 8),
+              padding: const EdgeInsets.only(left: 22, top: AsaSpace.sm),
               child: _areaDetail(area),
             ),
         ],
@@ -564,21 +538,8 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _progressBar(Area area) {
-    final total = area.totalCount;
-    final fraction = total == 0 ? 0.0 : area.doneCount / total;
-    return SizedBox(
-      height: 6,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: LinearProgressIndicator(
-          value: total == 0 ? 0 : fraction,
-          backgroundColor: const Color(0xFFEDEEF1),
-          valueColor: const AlwaysStoppedAnimation(Color(0xFF2A7355)),
-        ),
-      ),
-    );
-  }
+  double _areaFraction(Area area) =>
+      area.totalCount == 0 ? 0.0 : area.doneCount / area.totalCount;
 
   String _resultLabel(Area area) {
     for (final result in area.results) {
@@ -612,80 +573,71 @@ class _PlanViewState extends State<PlanView> {
         _tasksField(area.tasks, sourceFile: area.sourceFile),
         _resultsField(area.results),
         _decisionsField(area.decisionNumbers),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: () => openUrl(area.sourceFile),
-          child: Text(
-            'open the page ↗',
-            style: TextStyle(
-              color: Colors.blue.shade700,
-              fontSize: 11,
-              fontFamily: 'monospace',
-            ),
-          ),
-        ),
+        const SizedBox(height: AsaSpace.xs),
+        LinkChip('open the page ↗', onTap: () => openUrl(area.sourceFile)),
       ],
     );
   }
 
   Widget _textField(String label, String? value, {required String empty}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _fieldLabel(label),
-          Text(
-            value == null || value.isEmpty
-                ? empty
-                : stripCodeSpanMarkers(stripEmphasisMarkers(value)),
-            style: TextStyle(
-              color: value == null || value.isEmpty
-                  ? Colors.grey.shade500
-                  : Colors.black87,
-              fontStyle: value == null || value.isEmpty
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+          SectionLabel(label),
+          const SizedBox(height: 2),
+          if (value == null || value.isEmpty)
+            EmptyLine(empty)
+          else
+            Text(
+              stripCodeSpanMarkers(stripEmphasisMarkers(value)),
+              style: AsaText.body,
             ),
-          ),
         ],
       ),
     );
   }
 
-  /// Round-36 §3, L12 — same shape as [_textField], plus one chip per
+  /// Round-36 §3, L12 — same shape as [_textField], plus one link per
   /// number in [Area.objectiveNumbers] (only ever parsed from this same
   /// Goal section — `area.dart`'s own scoping rule). Tapping one switches
   /// to Strategy with that objective expanded.
+  ///
+  /// Round-37 §D4 asks for the objective to show once, as the chip, not
+  /// as both text and chip — flagged under "Open questions for Nico"
+  /// rather than built: the real fixture's own goal text is nothing but
+  /// "Serves Objective 1.", so mechanically stripping the mention leaves
+  /// "Serves ." — worse than the duplication it was meant to fix. Fixing
+  /// this without inventing prose needs a real judgment call on what the
+  /// goal line should say instead, not a parts move.
   Widget _goalField(Area area) {
     final goal = area.goal;
+    final displayGoal = goal == null || goal.isEmpty
+        ? null
+        : stripCodeSpanMarkers(stripEmphasisMarkers(goal));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _fieldLabel('Goal'),
-          Text(
-            goal == null || goal.isEmpty
-                ? 'No goal yet'
-                : stripCodeSpanMarkers(stripEmphasisMarkers(goal)),
-            style: TextStyle(
-              color: goal == null || goal.isEmpty
-                  ? Colors.grey.shade500
-                  : Colors.black87,
-              fontStyle: goal == null || goal.isEmpty
-                  ? FontStyle.italic
-                  : FontStyle.normal,
-            ),
-          ),
+          const SectionLabel('Goal'),
+          const SizedBox(height: 2),
+          if (displayGoal == null || displayGoal.isEmpty)
+            const EmptyLine('No goal yet')
+          else
+            Text(displayGoal, style: AsaText.body),
           if (area.objectiveNumbers.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AsaSpace.xs),
             Wrap(
-              spacing: 6,
-              runSpacing: 4,
+              spacing: AsaSpace.sm,
+              runSpacing: AsaSpace.xs,
               children: [
                 for (final number in area.objectiveNumbers)
-                  _objectiveChip(number),
+                  LinkChip(
+                    'Objective $number →',
+                    onTap: () => widget.onOpenObjective?.call(number),
+                  ),
               ],
             ),
           ],
@@ -694,58 +646,16 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _objectiveChip(String number) {
-    return InkWell(
-      onTap: () => widget.onOpenObjective?.call(number),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE4F0EA),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          'Objective $number',
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2A7355),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _fieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          color: Colors.grey.shade500,
-        ),
-      ),
-    );
-  }
-
   Widget _tasksField(List<Task> tasks, {required String sourceFile}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _fieldLabel('Tasks'),
+          const SectionLabel('Tasks'),
+          const SizedBox(height: 2),
           if (tasks.isEmpty)
-            Text(
-              'Nothing yet',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontStyle: FontStyle.italic,
-              ),
-            )
+            const EmptyLine('Nothing yet')
           else
             for (final task in tasks) _taskRow(task, sourceFile: sourceFile),
         ],
@@ -755,53 +665,26 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _taskRow(Task task, {required String sourceFile}) {
     final canToggle = widget.onToggleTask != null;
-    final highlighted = _highlightedRawLine == task.rawLine;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      color: highlighted ? const Color(0xFFFFF3CD) : Colors.transparent,
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: task.done,
-              onChanged: canToggle
-                  ? (_) => widget.onToggleTask!(sourceFile, task)
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
-              style: TextStyle(
-                fontSize: 13,
-                color: task.done ? Colors.grey.shade500 : Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return TaskRow(
+      text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+      done: task.done,
+      highlighted: _highlightedRawLine == task.rawLine,
+      onToggle: canToggle
+          ? (_) => widget.onToggleTask!(sourceFile, task)
+          : null,
     );
   }
 
   Widget _resultsField(List<AreaResult> results) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _fieldLabel('Results'),
+          const SectionLabel('Results'),
+          const SizedBox(height: 2),
           if (results.isEmpty)
-            Text(
-              'Nothing yet',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontStyle: FontStyle.italic,
-              ),
-            )
+            const EmptyLine('Nothing yet')
           else
             for (final result in results) _resultRow(result),
         ],
@@ -820,18 +703,15 @@ class _PlanViewState extends State<PlanView> {
               width: 60,
               child: Text(
                 _humanDate(result.date!),
-                style: TextStyle(
+                style: AsaText.meta.copyWith(
                   fontFamily: 'monospace',
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
+                  color: AsaColors.ink2,
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AsaSpace.xs),
           ],
-          Expanded(
-            child: Text(result.text, style: const TextStyle(fontSize: 12.5)),
-          ),
+          Expanded(child: Text(result.text, style: AsaText.body)),
         ],
       ),
     );
@@ -839,23 +719,18 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _decisionsField(List<String> decisionNumbers) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: AsaSpace.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _fieldLabel('Decisions'),
+          const SectionLabel('Decisions'),
+          const SizedBox(height: 2),
           if (decisionNumbers.isEmpty)
-            Text(
-              'None yet',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontStyle: FontStyle.italic,
-              ),
-            )
+            const EmptyLine('None yet')
           else
             Wrap(
-              spacing: 6,
-              runSpacing: 4,
+              spacing: AsaSpace.sm,
+              runSpacing: AsaSpace.xs,
               children: [
                 for (final number in decisionNumbers) _adrChip(number),
               ],
@@ -865,26 +740,15 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
+  /// Round-37 §D3 — "both show both": the number with the (loaded)
+  /// decision's own title, shortened; the bare "ADR N" when it is not
+  /// loaded, same fallback `_openDecision` itself uses.
   Widget _adrChip(String number) {
-    return InkWell(
-      onTap: () => _openDecision(number),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE6ECF7),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          'ADR $number',
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2F5FA6),
-          ),
-        ),
-      ),
-    );
+    final decision = _decisionFor(number);
+    final label = decision == null
+        ? 'ADR $number'
+        : decisionChipLabel(decision.number, decision.title);
+    return LinkChip(label, onTap: () => _openDecision(number));
   }
 
   /// Round-36 §3, L13 — the decision detail screen when [number] is
@@ -936,9 +800,9 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _notInAnAreaRow() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+        border: Border(bottom: BorderSide(color: AsaColors.soft)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -953,32 +817,23 @@ class _PlanViewState extends State<PlanView> {
                       ? Icons.expand_more
                       : Icons.chevron_right,
                   size: 16,
-                  color: Colors.grey.shade600,
+                  color: AsaColors.ink3,
                 ),
-                const SizedBox(width: 6),
-                const Text(
-                  'Not in an area',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AsaSpace.xs),
+                const Text('Not in an area', style: AsaText.rowName),
+                const SizedBox(width: AsaSpace.sm),
                 Text(
                   '${widget.homeTasks.where((t) => !t.done).length} open',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  style: AsaText.meta,
                 ),
               ],
             ),
           ),
           if (_notInAnAreaExpanded)
             Padding(
-              padding: const EdgeInsets.only(left: 22, top: 6),
+              padding: const EdgeInsets.only(left: 22, top: AsaSpace.xs),
               child: widget.homeTasks.isEmpty
-                  ? Text(
-                      'Nothing yet',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    )
+                  ? const EmptyLine('Nothing yet')
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1014,33 +869,29 @@ class _PlanViewState extends State<PlanView> {
               Icon(
                 _overviewExpanded ? Icons.expand_more : Icons.chevron_right,
                 size: 16,
-                color: Colors.grey.shade600,
+                color: AsaColors.ink3,
               ),
-              const SizedBox(width: 6),
-              const Text(
-                'Overview',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                summary,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-              ),
+              const SizedBox(width: AsaSpace.xs),
+              const Text('Overview', style: AsaText.rowName),
+              const SizedBox(width: AsaSpace.sm),
+              Text(summary, style: AsaText.meta),
             ],
           ),
         ),
         if (_overviewExpanded)
           Padding(
-            padding: const EdgeInsets.only(left: 22, top: 8),
+            padding: const EdgeInsets.only(left: 22, top: AsaSpace.sm),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _label('What changed'),
+                const SectionLabel('What changed'),
+                const SizedBox(height: AsaSpace.xs),
                 _whatChanged(),
-                const SizedBox(height: 16),
-                _label('The plan'),
+                const SizedBox(height: AsaSpace.lg),
+                const SectionLabel('The plan'),
+                const SizedBox(height: AsaSpace.xs),
                 ..._outline(),
-                const SizedBox(height: 12),
+                const SizedBox(height: AsaSpace.md),
                 _readOnlyNote(),
               ],
             ),
@@ -1049,30 +900,12 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-          color: Colors.grey.shade600,
-        ),
-      ),
-    );
-  }
-
   // --- What changed --------------------------------------------------
 
   Widget _whatChanged() {
     final entries = _changeEntries(widget.plan);
     if (entries.isEmpty) {
-      return Text(
-        'Nothing dated yet.',
-        style: TextStyle(color: Colors.grey.shade600),
-      );
+      return const EmptyLine('Nothing dated yet.');
     }
 
     final shown = _olderChangesShown ? entries : entries.take(3).toList();
@@ -1084,13 +917,10 @@ class _PlanViewState extends State<PlanView> {
         for (final entry in shown) _changeRow(entry),
         if (olderCount > 0)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: InkWell(
+            padding: const EdgeInsets.only(top: AsaSpace.xs),
+            child: LinkChip(
+              'older ($olderCount) ↓',
               onTap: () => setState(() => _olderChangesShown = true),
-              child: Text(
-                'older ($olderCount) ↓',
-                style: TextStyle(color: Colors.blue.shade700, fontSize: 12),
-              ),
             ),
           ),
       ],
@@ -1115,9 +945,9 @@ class _PlanViewState extends State<PlanView> {
     return InkWell(
       onTap: () => openUrl(entry.sourceFile),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: AsaSpace.xs + 3),
         decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+          border: Border(bottom: BorderSide(color: AsaColors.soft)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1126,20 +956,22 @@ class _PlanViewState extends State<PlanView> {
               width: 60,
               child: Text(
                 _humanDate(entry.date),
-                style: TextStyle(
+                style: AsaText.meta.copyWith(
                   fontFamily: 'monospace',
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
+                  color: AsaColors.ink2,
                 ),
               ),
             ),
             Expanded(
-              child: Text(entry.text.isEmpty ? '(untitled)' : entry.text),
+              child: Text(
+                entry.text.isEmpty ? '(untitled)' : entry.text,
+                style: AsaText.body,
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AsaSpace.sm),
             Wrap(
-              spacing: 4,
-              runSpacing: 4,
+              spacing: AsaSpace.xs,
+              runSpacing: AsaSpace.xs,
               children: [
                 for (final link in shownLinks) _linkChip(link),
                 if (hiddenCount > 0)
@@ -1148,13 +980,7 @@ class _PlanViewState extends State<PlanView> {
                         .skip(_maxChipsShown)
                         .map((l) => l.sentence)
                         .join('\n'),
-                    child: Text(
-                      '+$hiddenCount',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
+                    child: Text('+$hiddenCount', style: AsaText.meta),
                   ),
               ],
             ),
@@ -1173,29 +999,22 @@ class _PlanViewState extends State<PlanView> {
   /// both are true at once: compact by default, the real sentence one
   /// hover away, never paraphrased.
   Widget _linkChip(PlanLink link) {
-    final isAdr = link.kind == PlanLinkKind.adr;
+    final label = _linkChipLabel(link);
     return Tooltip(
       message: link.sentence,
-      child: InkWell(
-        onTap: () => openUrl(_targetFor(link)),
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: isAdr ? const Color(0xFFE6ECF7) : const Color(0xFFFAF0DA),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            isAdr ? 'ADR ${link.target}' : 'Round ${link.target}',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: isAdr ? const Color(0xFF2F5FA6) : const Color(0xFF8A5A12),
-            ),
-          ),
-        ),
-      ),
+      child: LinkChip(label, onTap: () => openUrl(_targetFor(link))),
     );
+  }
+
+  /// Round-37 §D3 — both show both: the loaded decision's own title with
+  /// its number, not just "ADR N"; a bare "ADR N" fallback when it is not
+  /// loaded, same as [_adrChip].
+  String _linkChipLabel(PlanLink link) {
+    if (link.kind != PlanLinkKind.adr) return 'Round ${link.target}';
+    final decision = _decisionFor(link.target);
+    return decision == null
+        ? 'ADR ${link.target}'
+        : decisionChipLabel(decision.number, decision.title);
   }
 
   /// The real decision file for an ADR chip, when one is already loaded;
@@ -1204,11 +1023,8 @@ class _PlanViewState extends State<PlanView> {
   /// still a real, more specific file than the plan, never a dead tap.
   String _targetFor(PlanLink link) {
     if (link.kind == PlanLinkKind.adr) {
-      for (final result in widget.decisions) {
-        if (result.decision?.number == link.target) {
-          return result.decision!.sourceFile;
-        }
-      }
+      final decision = _decisionFor(link.target);
+      if (decision != null) return decision.sourceFile;
     }
     return widget.projectSourceFile;
   }
@@ -1249,13 +1065,10 @@ class _PlanViewState extends State<PlanView> {
     final more = all.length - shown.length;
     shown.add(
       Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: InkWell(
+        padding: const EdgeInsets.only(top: AsaSpace.xs),
+        child: LinkChip(
+          '+ $more more, collapsed ↓',
           onTap: () => setState(() => _moreGroupsShown = true),
-          child: Text(
-            '+ $more more, collapsed ↓',
-            style: TextStyle(color: Colors.blue.shade700, fontSize: 12),
-          ),
         ),
       ),
     );
@@ -1266,7 +1079,7 @@ class _PlanViewState extends State<PlanView> {
     final id = identityHashCode(page);
     final collapsed = !_expanded.contains(id);
     return _toggleGroup(
-      label: _titleCase(page.aspect!),
+      label: titleCaseFirst(page.aspect!),
       hasChildren: true, // a page is always worth opening, even with 0 sections
       collapsed: collapsed,
       onToggleCollapse: () => _flip(id),
@@ -1340,7 +1153,7 @@ class _PlanViewState extends State<PlanView> {
                         child: Icon(
                           collapsed ? Icons.chevron_right : Icons.expand_more,
                           size: 16,
-                          color: Colors.grey.shade600,
+                          color: AsaColors.ink3,
                         ),
                       )
                     : null,
@@ -1350,7 +1163,7 @@ class _PlanViewState extends State<PlanView> {
                   onTap: onOpen,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Text(label),
+                    child: Text(label, style: AsaText.body),
                   ),
                 ),
               ),
@@ -1366,26 +1179,19 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _strategyPointer() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
       decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
+        border: Border(top: BorderSide(color: AsaColors.soft)),
       ),
       child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: Text(
               'The two non-negotiable gates live one tab over',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
+              style: AsaText.meta,
             ),
           ),
-          Text(
-            'Strategy →',
-            style: TextStyle(
-              color: Colors.blue.shade700,
-              fontSize: 11,
-              fontFamily: 'monospace',
-            ),
-          ),
+          LinkChip('Strategy →', onTap: widget.onOpenStrategy),
         ],
       ),
     );
@@ -1393,16 +1199,19 @@ class _PlanViewState extends State<PlanView> {
 
   Widget _readOnlyNote() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AsaSpace.md,
+        vertical: AsaSpace.sm,
+      ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFDCDFE4)),
+        color: AsaColors.panel,
+        border: Border.all(color: AsaColors.line),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         'Read-only. Tapping anything opens the real file. Nothing here '
         'edits PLAN.md.',
-        style: TextStyle(color: Colors.grey.shade700, fontSize: 12.5),
+        style: AsaText.meta.copyWith(color: AsaColors.ink2),
       ),
     );
   }
@@ -1521,11 +1330,6 @@ List<_SectionNode> _sectionTree(List<Section> sections) {
     stack.add(node);
   }
   return roots;
-}
-
-String _titleCase(String value) {
-  if (value.isEmpty) return value;
-  return value[0].toUpperCase() + value.substring(1);
 }
 
 /// `today` / `yesterday` / `14 Sep` — the same convention

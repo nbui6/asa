@@ -32,6 +32,11 @@ class AsaColors {
   static const violetBg = Color(0xFFEEEAF8);
   static const grey = Color(0xFF6B7079);
   static const greyBg = Color(0xFFEEF0F3);
+
+  /// Round-36 §3, L3/L9 — a task row briefly highlighted on arrival.
+  /// Not one of the five meanings: it marks "you just landed here", not
+  /// a status.
+  static const highlight = Color(0xFFFFF3CD);
 }
 
 /// ADR 0029 §2 — each colour means exactly one thing, never picked by
@@ -181,4 +186,13 @@ String decisionChipLabel(String? number, String title, {int maxLength = 40}) {
       ? title
       : '${title.substring(0, maxLength).trimRight()}…';
   return number == null ? cut : '$number · $cut';
+}
+
+/// The only place a page's own lower-case word becomes a capitalised one
+/// — `.toUpperCase()` itself is banned from a page file, so this one
+/// letter's worth of case-changing lives here instead. Never full-caps: a
+/// page name like "sales" becomes "Sales", not "SALES".
+String titleCaseFirst(String value) {
+  if (value.isEmpty) return value;
+  return value[0].toUpperCase() + value.substring(1);
 }

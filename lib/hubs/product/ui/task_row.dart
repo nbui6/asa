@@ -20,6 +20,7 @@ class TaskRow extends StatefulWidget {
     this.parked = false,
     this.onPark,
     this.indent = 0,
+    this.highlighted = false,
     super.key,
   });
 
@@ -28,6 +29,12 @@ class TaskRow extends StatefulWidget {
   final ValueChanged<bool?>? onToggle;
   final bool isNext;
   final bool isCodeTask;
+
+  /// Round-36 §3, L3/L9 — briefly true right after this task is the one
+  /// just navigated to, so it's visible without hunting the row down.
+  /// The caller owns the ~2 s timer; this just draws the highlight while
+  /// it's set.
+  final bool highlighted;
 
   /// A `[[project]]` cross-reference, already resolved to a tappable
   /// widget by the caller (round-36's own `_crossProjectChip`) — this
@@ -57,7 +64,9 @@ class _TaskRowState extends State<TaskRow> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
-      child: SizedBox(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        color: widget.highlighted ? AsaColors.highlight : Colors.transparent,
         height: 26,
         child: Row(
           children: [
@@ -77,8 +86,7 @@ class _TaskRowState extends State<TaskRow> {
               child: Text(
                 widget.text,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
+                style: AsaText.body.copyWith(
                   color: widget.done ? AsaColors.ink3 : AsaColors.ink,
                   decoration: widget.done ? TextDecoration.lineThrough : null,
                 ),
@@ -109,9 +117,7 @@ class _TaskRowState extends State<TaskRow> {
                     child: Icon(
                       widget.parked ? Icons.bookmark : Icons.bookmark_border,
                       size: 14,
-                      color: widget.parked
-                          ? AsaColors.amber
-                          : AsaColors.ink3,
+                      color: widget.parked ? AsaColors.amber : AsaColors.ink3,
                     ),
                   ),
                 ),

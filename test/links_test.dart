@@ -279,7 +279,7 @@ void main() {
     // (Sales also holds the effective next step).
     await tapAndSettle(tester, find.text('Sales').last);
 
-    await tapAndSettle(tester, find.text('Objective 1'));
+    await tapAndSettle(tester, find.text('Objective 1 →'));
 
     // The ADR chip only renders once the objective is expanded — proof
     // this landed already open, not merely on the right tab. Round 37
@@ -295,7 +295,12 @@ void main() {
       await tapAndSettle(tester, find.text('Northwind partnership'));
       await tapAndSettle(tester, find.text('Sales').last);
 
-      await tapAndSettle(tester, find.text('ADR 0003'));
+      // Round 37 §D3 — both show both: the number with the loaded
+      // decision's own title, not just "ADR 0003".
+      await tapAndSettle(
+        tester,
+        find.text('0003 · Deals go through the partner portal'),
+      );
 
       expect(find.byType(DecisionDetailScreen), findsOneWidget);
 

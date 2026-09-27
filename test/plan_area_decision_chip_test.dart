@@ -96,7 +96,12 @@ void main() {
       // detail is visible without a further tap.
       expect(find.text('Sales'), findsOneWidget);
       expect(find.text('DECISIONS'), findsOneWidget);
-      expect(find.text('ADR 0003'), findsOneWidget);
+      // Round 37 §D3 — both show both: the number with the loaded
+      // decision's own title, not just "ADR 0003".
+      expect(
+        find.text('0003 · Deals go through the partner portal'),
+        findsOneWidget,
+      );
     },
   );
 
