@@ -256,71 +256,99 @@ class _ProjectsViewState extends State<ProjectsView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      // Round 37 cp6, §D6 item 7 — the rocket used to sit
+                      // in the name's own row, whose height it set (a
+                      // Material icon button's own tap target is taller
+                      // than a line of text), leaving a visible gap above
+                      // the pills below it. Centred (the Row's own
+                      // default) against the whole name-and-pills block
+                      // instead, `asa-front2`'s own drawing.
                       children: [
-                        Text(project.name, style: AsaText.rowName),
-                        if (jira != null) ...[
-                          const SizedBox(width: AsaSpace.sm),
-                          LinkChip(
-                            '$jira ↗',
-                            onTap: () => openUrl(project.jira!),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(project.name, style: AsaText.rowName),
+                                  if (jira != null) ...[
+                                    const SizedBox(width: AsaSpace.sm),
+                                    LinkChip(
+                                      '$jira ↗',
+                                      onTap: () => openUrl(project.jira!),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              // `asa-front2` draws the pills directly under
+                              // the name, not with a visible gap between
+                              // them.
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Pill(project.status, meaning: meaning),
+                                  if (project.priority != null) ...[
+                                    const SizedBox(width: AsaSpace.xs),
+                                    Pill(
+                                      project.priority!,
+                                      meaning: AsaMeaning.quiet,
+                                    ),
+                                  ],
+                                  if (parkedCount > 0) ...[
+                                    const SizedBox(width: AsaSpace.xs),
+                                    _parkedBadge(parkedCount),
+                                  ],
+                                  const SizedBox(width: AsaSpace.sm),
+                                  Expanded(
+                                    child: InkWell(
+                                      // L3 — only tappable when a real task
+                                      // backs the text; the typed field or
+                                      // honest absence has nowhere more
+                                      // specific to land than the row's own
+                                      // tap already goes.
+                                      onTap: nextStepResult.task == null
+                                          ? null
+                                          : () => widget.onOpenProject(
+                                              openTarget(
+                                                node.folder,
+                                                areaSourceFile: nextStepResult
+                                                    .area
+                                                    ?.sourceFile,
+                                                openHome:
+                                                    nextStepResult.area ==
+                                                    null,
+                                                highlightRawLine:
+                                                    nextStepResult
+                                                        .task!
+                                                        .rawLine,
+                                              ),
+                                            ),
+                                      child: Text(
+                                        nextStep ?? 'no next step',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AsaText.body.copyWith(
+                                          color: AsaColors.ink2,
+                                          fontStyle: nextStep == null
+                                              ? FontStyle.italic
+                                              : FontStyle.normal,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
-                        const Spacer(),
+                        ),
+                        const SizedBox(width: AsaSpace.sm),
                         _freshnessLabel(freshness, overdue),
                         const SizedBox(width: AsaSpace.xs),
                         StartMenu(
                           projectName: project.name,
                           projectFolder: node.folder,
                           repoPath: project.repoPath,
-                        ),
-                      ],
-                    ),
-                    // `asa-front2` draws the pills directly under the name,
-                    // not with a visible gap between them.
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Pill(project.status, meaning: meaning),
-                        if (project.priority != null) ...[
-                          const SizedBox(width: AsaSpace.xs),
-                          Pill(project.priority!, meaning: AsaMeaning.quiet),
-                        ],
-                        if (parkedCount > 0) ...[
-                          const SizedBox(width: AsaSpace.xs),
-                          _parkedBadge(parkedCount),
-                        ],
-                        const SizedBox(width: AsaSpace.sm),
-                        Expanded(
-                          child: InkWell(
-                            // L3 — only tappable when a real task backs the
-                            // text; the typed field or honest absence has
-                            // nowhere more specific to land than the row's
-                            // own tap already goes.
-                            onTap: nextStepResult.task == null
-                                ? null
-                                : () => widget.onOpenProject(
-                                    openTarget(
-                                      node.folder,
-                                      areaSourceFile:
-                                          nextStepResult.area?.sourceFile,
-                                      openHome: nextStepResult.area == null,
-                                      highlightRawLine:
-                                          nextStepResult.task!.rawLine,
-                                    ),
-                                  ),
-                            child: Text(
-                              nextStep ?? 'no next step',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AsaText.body.copyWith(
-                                color: AsaColors.ink2,
-                                fontStyle: nextStep == null
-                                    ? FontStyle.italic
-                                    : FontStyle.normal,
-                              ),
-                            ),
-                          ),
                         ),
                       ],
                     ),
