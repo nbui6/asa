@@ -116,8 +116,12 @@ class _ProjectsViewState extends State<ProjectsView> {
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
             ),
-            for (final node in split.work) _row(node, depth: 0),
-            if (split.other != null) _otherGroup(split.other!),
+            if (split.work.isNotEmpty)
+              _rowPanel([for (final node in split.work) _row(node, depth: 0)]),
+            if (split.other != null) ...[
+              const SizedBox(height: 16),
+              _otherGroup(split.other!),
+            ],
           ],
         ),
       ),
@@ -130,42 +134,59 @@ class _ProjectsViewState extends State<ProjectsView> {
 
   Widget _otherGroup(ProjectNode other) {
     final count = countDescendants(other);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+    return _rowPanel([
+      InkWell(
+        onTap: () => setState(() => _otherExpanded = !_otherExpanded),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: _otherExpanded ? _rowHairline : null,
+          child: Row(
+            children: [
+              Icon(
+                _otherExpanded ? Icons.expand_more : Icons.chevron_right,
+                color: Colors.grey.shade700,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                other.project.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$count · not work',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (_otherExpanded)
+        for (final child in other.children) _row(child, depth: 1),
+    ]);
+  }
+
+  /// `asa-front2` — one bordered panel, hairlines between rows, not a
+  /// separate shadowed `Card` each. [children] is flattened (each `_row`
+  /// may itself hand back more than one row, recursively, for a child or
+  /// grandchild project) so every hairline lands between real rows, not
+  /// around a nested `Column` that drew several.
+  Widget _rowPanel(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () => setState(() => _otherExpanded = !_otherExpanded),
-            borderRadius: BorderRadius.circular(4),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    _otherExpanded ? Icons.expand_more : Icons.chevron_right,
-                    color: Colors.grey.shade700,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    other.project.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$count · not work',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_otherExpanded)
-            for (final child in other.children) _row(child, depth: 1),
-        ],
+        children: children,
       ),
     );
   }
+
+  static const _rowHairline = BoxDecoration(
+    border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+  );
 
   Widget _row(ProjectNode node, {required int depth}) {
     // Round 33/E — a child or grandchild wasn't drawn at all before this:
@@ -208,20 +229,21 @@ class _ProjectsViewState extends State<ProjectsView> {
     final nextStep = nextStepResult.text;
 
     return Padding(
-      padding: EdgeInsets.only(left: depth * 24.0, bottom: 8),
+      padding: EdgeInsets.only(left: depth * 24.0),
       child: DragTarget<Task>(
         onAcceptWithDetails: (details) =>
             widget.onAssignTask(details.data, node),
         builder: (context, candidateData, rejectedData) {
           final hovering = candidateData.isNotEmpty;
-          return Card(
-            margin: EdgeInsets.zero,
-            color: hovering ? Colors.indigo.shade50 : null,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-              side: hovering
-                  ? BorderSide(color: Colors.indigo.shade300, width: 2)
-                  : BorderSide.none,
+          return Container(
+            decoration: BoxDecoration(
+              color: hovering ? Colors.indigo.shade50 : null,
+              border: Border(
+                bottom: const BorderSide(color: Color(0xFFE0E0E0)),
+                left: hovering
+                    ? BorderSide(color: Colors.indigo.shade300, width: 2)
+                    : BorderSide.none,
+              ),
             ),
             child: InkWell(
               onTap: () => widget.onOpenProject(openTarget(node.folder)),
@@ -256,7 +278,9 @@ class _ProjectsViewState extends State<ProjectsView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    // `asa-front2` draws the pills directly under the name,
+                    // not with a visible gap between them.
+                    const SizedBox(height: 2),
                     Row(
                       children: [
                         _pill(project.status, emphasis),
