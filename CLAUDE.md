@@ -15,7 +15,32 @@ same commit as the part it describes.
 
 ## Where we are
 
-**Pick up here — 2026-09-27. Round 36 is ready for Nico's own test, again — cp8 closed the gap the
+**Pick up here — 2026-09-27. Round 37 is done, cp0 through cp5, and ready for Nico's own test
+alongside Round 36's.** Full spec and its own finish line: `projects\asa\rounds\round-37.md`.
+`HANDOVER.md`'s own cp0–cp5 entries have the real detail; the short version: every page under
+`lib/hubs/product/` (except `ui/` itself) now composes one shared set of parts and tokens
+(`lib/hubs/product/ui/`, ADR 0029) instead of its own private colours, sizes and widgets, enforced by
+`test/one_look_test.dart`. Built under ADR 0027/0028 (no per-checkpoint yes needed), with one real
+mid-round check-in from the deciding session (2026-09-27 19:36) answering an open question (§D4) and
+confirming two colour calls, rather than waiting for Nico. **Three real bugs found and fixed along the
+way, none by any of the 525 unit tests — all by actually looking at a screenshot or running the
+feature test:** `ProgressBar` painted at zero size (a bare `ColoredBox` in a `Stack` with no
+`Positioned.fill` — every bar in the app was invisible until cp4's own screenshot review caught it); a
+project's one-line description showed raw `**markdown**` asterisks (pre-existing, not introduced by
+this round); `click_through_test.dart` and the real-folder screenshot test both had real bugs of their
+own (stale tap targets after the parts move; a stale-State bug reusing `ProjectScreen` across
+`pumpWidget` calls with no distinguishing `Key`). `check.ps1` is green, the release exe rebuilt and
+confirmed starting outside the IDE. **One small, non-blocking finding carried to a future round:** the
+"What changed" panel's plain `Round N` chips have no visible separator between consecutive ones,
+unlike the ADR chips' own `NNNN · Title` format — named in cp4's own `HANDOVER.md` entry, not fixed
+(pre-dates this round, and "no layout changes" is this round's own boundary). **Not yet done: Nico's
+own test** — round-37.md's own line: *"does it look like the same app as the page before?"*, one
+question per page, alongside Round 36's still-outstanding 30-minute test. Nothing here waits on more
+code, only on his yes.
+
+**Superseded 2026-09-27 by the line above; kept for history:**
+
+**Round 36 is ready for Nico's own test, again — cp8 closed the gap the
 deciding session found against the real folder.** Full spec and its own finish line:
 `projects\asa\rounds\round-36.md`. Every checkpoint (cp0–cp8) built, self-tested and committed under
 ADR 0027/0028 (no per-checkpoint yes needed) — `HANDOVER.md`'s own cp0 through cp8 entries have the
