@@ -3792,3 +3792,72 @@ took) — its own test file addresses it by type from outside, and it is real, i
 
 **Next:** cp4 — the screenshot loop into `projects\asa\screenshots\round-37\` plus
 `round-37-compare.html`; the real folder once, counts only; `persona-check` on the real screenshots.
+
+### Round 37 cp4 — the screenshot loop, the real folder once, persona-check — and two real bugs the screenshots themselves caught
+
+**Built:** `integration_test\round37_screenshots_test.dart` (thrown away after its one use, same
+reason as Round 36 cp5's own) — the same fixture (`test\fixtures\round-36\`) at 1920 and 1280 px, 16
+PNGs into `projects\asa\screenshots\round-37\`. `round-37-compare.html` — every page next to
+`asa-one-look-v1` and its own approved layout sketch, plus a note on what changed from Round 36's own
+seven-item "kept as built" list (two of those seven are now resolved by this round, unprompted: the
+Objective pill inline in the Goal sentence, and area sub-headings in Title Case). Gate 2 —
+`integration_test\round37_real_folder_test.dart` (also thrown away after its one use), pointed at the
+real `projects\` folder, asserting counts only: 13 of 13 real projects open on Plan, no error text, one
+screenshot each into `projects\asa\screenshots\round-37-real\`. `persona-check` run against those 13.
+
+**Two real bugs found against these screenshots, neither caught by any of the 525 unit tests:**
+
+1. **`ProgressBar` painted nothing at all.** A bare `ColoredBox` as a non-positioned `Stack` child gets
+   loose constraints down to zero and renders at 0×0 — both the track and the fill, on every bar in the
+   app (the overview's area segments, an area's own progress, Strategy's round bar, `PhaseBar`).
+   `progress_bar_test.dart`'s own test passed throughout because it only asserts on
+   `FractionallySizedBox.widthFactor`, never on what actually painted. Fixed with `Positioned.fill`
+   around both children. This is exactly the failure mode rule 5 exists to catch, and did.
+2. **The project description showed raw markdown** (`**Partners issue trial licences...**`,
+   literal asterisks) — a pre-existing bug, present before this round touched `project_screen.dart`,
+   found only because one real project's own note actually uses bold there. Fixed with the same
+   `stripEmphasisMarkers`/`stripCodeSpanMarkers` pair every other user-authored text in this app
+   already goes through.
+
+**One test bug, not an app bug:** the real-folder screenshot test itself reused `ProjectScreen`'s
+`State` across all 13 `pumpWidget` calls (same `runtimeType`, no distinguishing `Key`), so `initState`
+— and so `_load()` — never re-ran past project #1; screenshots 2 through 13 were stale repeats of
+project #1 until `key: ValueKey(project.folder)` fixed it. Named so a future screenshot loop doesn't
+repeat it.
+
+**persona-check verdict: APPROVE, with one named finding, not blocking.** Reviewed against
+`PERSONA.md` across 13 real, structurally varied projects (empty, populated, self-referential —
+"Asa" tracks its own development as one of the 13). The restyled screens fit well: every project opens
+directly on its own single most useful line (the "NEXT" panel), matching *"to start working again in
+under a minute, without re-reading anything"* exactly; empty states read as plain honest sentences
+("Nothing yet", "No areas yet…"), never invented data; no vocabulary beyond the persona's own words.
+**Finding, not fixed this round (pre-dates Round 37, and "no layout changes" is this round's own
+boundary):** the "What changed" panel's plain `Round N` chips (as opposed to the `NNNN · Title` ADR
+chips) run together with only a single space between consecutive ones — visible on Asa's own project
+note, the densest real "what changed" entry among the 13 (`Round 2 Round 6 Round 3 +18`). At the tired,
+end-of-day moment the persona describes, a run of same-colour, same-weight blue words with no visible
+separator risks reading as one blurred phrase rather than three distinct links — feeding his own #1
+quit reason, overwhelm. Smallest fix, for a future round: the same visible separator the ADR chips
+already have, or widen the `Wrap`'s spacing from `AsaSpace.xs` to `AsaSpace.sm`.
+
+**Tests (count):** 525 total, all green throughout (unchanged by this checkpoint's own fixes' test
+runs). `integration_test/click_through_test.dart`: both passes green, re-run twice across this
+checkpoint's two fixes.
+
+**Commits (hashes, one line each):**
+- `ab0fcef` — Round 37 cp4: fix ProgressBar — every bar was invisible, painting zero pixels
+- `9cd71ed` — Round 37 cp4: fix stale real-folder screenshots and a real markdown-rendering bug
+- `74a1a44` — Round 37 cp4: throw away the screenshot-loop test sources, their one use done
+
+**Screenshots:** `projects\asa\screenshots\round-37\` (16 PNGs, fixture), `round-37-compare.html`,
+`projects\asa\screenshots\round-37-real\` (13 PNGs, real folder) — all outside git, as they should be.
+
+**Calls I made:** neither bug fix was a judgement call — both are real, verifiable defects (a
+widget rendering at zero size; literal markdown asterisks on screen) with an obvious, narrow fix,
+found exactly the way rule 5 and this round's own screenshot step are supposed to find them.
+
+**Open questions for Nico:** the chip-spacing finding above — worth a future round's small fix, not
+blocking this one.
+
+**Next:** cp5 — exe rebuilt and confirmed starting outside the IDE; `check.ps1` green; click-through
+twice; one final `HANDOVER.md` entry confirming readiness.
