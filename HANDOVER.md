@@ -3337,3 +3337,78 @@ project brought into the `plan\` shape.
 
 **Next:** cp6 — the click-through integration test, round-36.md §6's 10-step script, run twice in a
 row against `test/fixtures/round-36/`.
+
+### Round 36 cp6 — the click-through, twice in a row, green. Three real bugs found and fixed along the way.
+
+**Built:** `integration_test/click_through_test.dart` — round-36.md §6's 10-step script, real Windows
+engine, against a fresh temp copy of the committed fixture (never the committed copy itself — step 5
+accepts a decision, which does not revert the way step 3's tick/untick does). Two `testWidgets`
+sharing one temp folder, so the second genuinely starts from what the first left, proving reopening
+after real edits doesn't break anything. Run twice in a row, both green.
+
+**Three real bugs found while writing it, all fixed:**
+1. **`project_screen.dart` gated its whole tab body on `!_loading`**, unmounting it — PlanView
+   included — for the length of any reload, including the one a plain checkbox tick triggers.
+   Ticking a task inside an open area collapsed that area right back up, every time — exactly what
+   `_areaRow`'s own sourceFile-keying comment says a reload should *not* do (`"identityHashCode would
+   change on every reload and silently collapse the row that was just ticked open"`). The keying fix
+   from an earlier round couldn't help if the widget holding that state was torn down regardless.
+2. **`projects_screen.dart` had the same shape one level up** — nulling `_scan` at the start of every
+   reload unmounted `ProjectsView` (and its own `_otherExpanded` bool) for a plain refresh tap.
+3. **Recording a decision's verdict never told its caller.** `DecisionDetailScreen` only updated its
+   own local state; the Decisions tab row, an area's own ADR chip, and an objective's own ADR chip
+   each pushed it and ignored the result, so all three kept showing the decision exactly as it was
+   *before* Accept/Reject until something unrelated happened to reload. Fixed by popping with whether
+   a verdict was actually recorded (`Navigator.pop(_verdictJustRecorded)`, both the back button and
+   the area chip) and reloading only when that comes back `true`.
+
+All three fixed the same way — keep the previous good data on screen until the new data lands,
+never null it out first — and none needed for `check.ps1`'s own suite to catch, because none of the
+465 existing tests happened to tick a box, then check the row was still open, then check it again
+after a further navigation. That chain is exactly what a click-through test is for.
+
+**Three honest adaptations, found and named rather than silently worked around:**
+1. **Step 4's tab switch (Plan → Strategy → Plan) still resets area expansion.** `_tabBody`'s own
+   `switch (_activeTab)` returns a different widget type per tab, so Flutter cannot preserve
+   PlanView's element across that round trip regardless of the reload fix above — the same reason
+   L13's "back, same area open" test relies on a *pushed route* (popped back to the same still-
+   mounted screen), not a tab switch. Fixing this for real means keeping every tab's body mounted at
+   once (an `IndexedStack` in place of that `switch`) — a real, larger change, named here rather than
+   attempted inside cp6.
+2. **The same reset hits the overview's own Bars/Tasks toggle**, for the same reason: `ProjectsView`
+   only builds while `_viewMode == projects`, so a round trip through the Tasks view collapses the
+   "other" group the same way.
+3. **Kundenakte (no `PLAN.md`, no `plan\`) has no Plan tab at all**, landing on Decisions instead —
+   `_visibleTabs()` gates Plan on `Plan.isEmpty`, true whenever neither exists, regardless of home
+   tasks. Matches the real "Customer ID System" case already confirmed in cp5's real-folder pass;
+   pre-existing, not a round-36 regression, and round-36.md §1's own table reads more broadly than
+   this particular fixture shape turned out to support.
+
+**Tests (count):** 465 `flutter test` (unchanged) + `click_through_test.dart`'s own 2 `testWidgets`
+(first pass's 10 steps, second pass's reopen-and-reverify), both green, twice in a row confirmed.
+
+**Commits (hashes, one line each):**
+- `5ccb471` — Round 36 cp6: a reload no longer discards local UI state
+- `2eca3c7` — Round 36 cp6: click_through_test.dart — round-36.md §6's 10-step script
+
+**Screenshots:** none this checkpoint.
+
+**Calls I made:**
+1. The three bugs above were fixed as found — real defects a click-through test exists to catch, not
+   judgment calls.
+2. The three adaptations above were *not* fixed — each is a real, larger architectural change
+   (mount every tab at once) that this checkpoint's own scope (prove the script, fix what it breaks
+   trivially) doesn't cover. Named plainly rather than silently reworded to match round-36.md §6's
+   own wording, and worth a future round's own line item if reopening a project and finding
+   everything collapsed keeps bothering Nico in practice.
+3. `readWriteLog()`/decision-file assertions read the real, unmocked `%APPDATA%\Asa\write-log.jsonl`
+   and the temp copy's own decision file directly, by design — the same real-contract discipline
+   this round's other tests already use, not a shortcut.
+
+**Open questions for Nico:** Should the Plan↔Strategy tab switch, and the overview's Bars↔Tasks
+toggle, keep every tab mounted at once (so an open area survives a round trip) — a real change, not
+attempted this round — or is starting fresh on every tab visit actually the calmer default, matching
+`_expanded`'s own separate, deliberate "nothing open yet" reset elsewhere in `plan_view.dart`?
+
+**Next:** cp7 — exe rebuilt and confirmed starting, `check.ps1` green, the final HANDOVER entry with
+Nico's own 7-step test (round-36.md §8) written out in plain words.
