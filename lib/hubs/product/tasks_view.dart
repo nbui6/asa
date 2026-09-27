@@ -294,11 +294,7 @@ class _TasksViewState extends State<TasksView> {
                 const SizedBox(width: AsaSpace.xs),
                 Text(
                   areaGroup.name,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AsaColors.violet,
-                  ),
+                  style: AsaText.rowName.copyWith(color: AsaColors.violet),
                 ),
                 const SizedBox(width: AsaSpace.xs),
                 Text('${openTasks.length} open', style: AsaText.meta),
@@ -379,13 +375,9 @@ class _TasksViewState extends State<TasksView> {
                   ),
                 ),
                 const SizedBox(width: AsaSpace.xs),
-                const Text(
+                Text(
                   'Not in an area',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AsaColors.ink2,
-                  ),
+                  style: AsaText.rowName.copyWith(color: AsaColors.ink2),
                 ),
                 const SizedBox(width: AsaSpace.xs),
                 Text('${openTasks.length} open', style: AsaText.meta),
@@ -477,7 +469,7 @@ class _TasksViewState extends State<TasksView> {
     final folder = widget.folderBySlug[task.crossProjectRef];
     final chip = Text(
       '↳ ${task.crossProjectRef}',
-      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+      style: AsaText.meta.copyWith(fontFamily: 'monospace'),
     );
     if (folder == null) return chip;
     return InkWell(

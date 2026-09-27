@@ -56,10 +56,10 @@ import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/task.dart';
-import 'package:asa/hubs/product/phase_bar.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
+import 'package:asa/hubs/product/ui/phase_bar.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/progress_bar.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
@@ -313,8 +313,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                               nextStep ?? 'no next step',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
+                              style: AsaText.body.copyWith(
                                 color: AsaColors.ink2,
                                 fontStyle: nextStep == null
                                     ? FontStyle.italic
@@ -383,8 +382,7 @@ class _ProjectsViewState extends State<ProjectsView> {
             const SizedBox(width: 3),
             Text(
               '$count',
-              style: TextStyle(
-                fontSize: 11,
+              style: AsaText.meta.copyWith(
                 fontWeight: ruleOfTwo ? FontWeight.bold : FontWeight.normal,
                 color: ruleOfTwo ? AsaColors.panel : AsaColors.amber,
               ),
@@ -402,8 +400,7 @@ class _ProjectsViewState extends State<ProjectsView> {
   Widget _freshnessLabel(String? freshness, bool overdue) {
     final text = Text(
       freshness ?? '—',
-      style: TextStyle(
-        fontSize: 12,
+      style: AsaText.meta.copyWith(
         color: overdue ? AsaMeaning.needsYou.fg : AsaColors.ink3,
         fontWeight: overdue ? FontWeight.bold : null,
       ),
@@ -459,8 +456,9 @@ class _AreaBar extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10.5,
+                      style: AsaText.sectionLabel.copyWith(
+                        letterSpacing: 0,
+                        fontWeight: FontWeight.normal,
                         color: AsaColors.ink3,
                       ),
                     ),
