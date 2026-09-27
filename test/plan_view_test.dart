@@ -331,7 +331,7 @@ void main() {
 
       expect(find.text('Sales'), findsOneWidget);
       expect(find.text('next b'), findsOneWidget);
-      expect(find.text('1 of 2'), findsOneWidget);
+      expect(find.text('1 / 2'), findsOneWidget);
       expect(find.text('no result yet'), findsOneWidget);
       expect(find.text('Serves Objective 1.'), findsNothing);
     });
@@ -470,7 +470,7 @@ void main() {
 
       expect(
         find.textContaining(
-          'What this project is for: Grow the partner '
+          'What this project is for — Grow the partner '
           'channel',
         ),
         findsOneWidget,

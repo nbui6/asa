@@ -109,7 +109,9 @@ void main() {
     (tester) async {
       await pumpAndLoad(tester);
 
-      await tapAndSettle(tester, find.text('Sales')); // the bar's own label
+      // "Sales 1/2" — the overview's own segment label pairs the area's
+      // name with its own fraction (asa-areas-everywhere-v1 §1).
+      await tapAndSettle(tester, find.text('Sales 1/2'));
 
       expect(find.text('Serves Objective 1.'), findsOneWidget); // Sales open
     },
@@ -425,6 +427,9 @@ void main() {
       // The overview's own next-step text changed too — same source.
       expect(find.text('Agree the shared account list'), findsNothing);
       expect(find.text('no next step'), findsOneWidget);
+      // ...and so did its own bar segment's label — Sales now reads 2/2.
+      expect(find.text('Sales 1/2'), findsNothing);
+      expect(find.text('Sales 2/2'), findsOneWidget);
 
       // Every group starts expanded in the Tasks view — no further tap
       // needed to see Sales' own sub-group (tapping the group NAME would

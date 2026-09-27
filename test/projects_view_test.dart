@@ -245,8 +245,10 @@ void main() {
       await _pump(tester, [node]);
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Sales'), findsOneWidget);
-      expect(find.text('Finance'), findsOneWidget);
+      // "Sales 1/2" — asa-areas-everywhere-v1's own segment label pairs
+      // the area's name with its own fraction.
+      expect(find.text('Sales 1/2'), findsOneWidget);
+      expect(find.text('Finance 0/0'), findsOneWidget);
     });
 
     testWidgets("the row's own next step falls further to an area's open task, "
@@ -316,7 +318,7 @@ void main() {
       );
 
       await _pump(tester, [node], onOpenProject: (t) => opened = t);
-      await tester.tap(find.text('Sales'));
+      await tester.tap(find.text('Sales 0/0'));
 
       expect(opened?.folder, 'demo');
       expect(opened?.areaSourceFile, 'plan/sales.md');

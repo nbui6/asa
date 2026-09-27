@@ -486,7 +486,9 @@ class _AreaBar extends StatelessWidget {
                 child: InkWell(
                   onTap: () => onTapArea(areas[i]),
                   child: Text(
-                    areas[i].name,
+                    // "Marketing 3/7" — asa-areas-everywhere-v1 §1's own
+                    // label, name and fraction together under one segment.
+                    '${areas[i].name} ${areas[i].doneCount}/${areas[i].totalCount}',
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

@@ -259,17 +259,29 @@ class _PlanViewState extends State<PlanView> {
     return InkWell(
       onTap: widget.onOpenStrategy,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFA),
+          border: Border(
+            bottom: const BorderSide(color: Color(0xFFE0E0E0)),
+            left: BorderSide(color: Colors.grey.shade400, width: 3),
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(
-                'What this project is for: $line',
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                  children: [
+                    const TextSpan(
+                      text: 'What this project is for',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    TextSpan(text: ' — $line'),
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -301,10 +313,16 @@ class _PlanViewState extends State<PlanView> {
     );
     final text = result.text;
 
+    // A bounded card, not just a bottom-bordered row — asa-project-page-v1's
+    // own drawing of this line sets it apart from the area list below it,
+    // the same way `_readOnlyNote` already sets its own box apart.
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F6FC),
+        border: Border.all(color: const Color(0xFFDCD6EF)),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
@@ -423,8 +441,11 @@ class _PlanViewState extends State<PlanView> {
                 _expandedAreas.add(area.sourceFile);
               }
             }),
+            // One row, per both approved sketches (asa-plan-v5,
+            // asa-project-page-v1) — round-35/G's own persona-check
+            // worry (density) is about a row's *height*, not about
+            // spreading one row's own fields across several lines.
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
                   expanded ? Icons.expand_more : Icons.chevron_right,
@@ -432,54 +453,41 @@ class _PlanViewState extends State<PlanView> {
                   color: Colors.grey.shade600,
                 ),
                 const SizedBox(width: 6),
+                Text(
+                  area.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            area.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${area.doneCount} of ${area.totalCount}',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _areaNextTaskLabel(area),
-                        style: TextStyle(
-                          color: _areaHasOpenTask(area)
-                              ? Colors.grey.shade700
-                              : Colors.grey.shade500,
-                          fontSize: 12.5,
-                          fontStyle: _areaHasOpenTask(area)
-                              ? FontStyle.normal
-                              : FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Expanded(child: _progressBar(area)),
-                          const SizedBox(width: 8),
-                          Text(
-                            _resultLabel(area),
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: Text(
+                    _areaNextTaskLabel(area),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: _areaHasOpenTask(area)
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade500,
+                      fontSize: 12.5,
+                      fontStyle: _areaHasOpenTask(area)
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _resultLabel(area),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(width: 90, child: _progressBar(area)),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 32,
+                  child: Text(
+                    '${area.doneCount} / ${area.totalCount}',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
                   ),
                 ),
               ],
