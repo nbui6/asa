@@ -3861,3 +3861,48 @@ blocking this one.
 
 **Next:** cp5 — exe rebuilt and confirmed starting outside the IDE; `check.ps1` green; click-through
 twice; one final `HANDOVER.md` entry confirming readiness.
+
+### Round 37 cp5 — ready
+
+**Built:** `ARCHITECTURE.md` updated (hard rule 11) — `lib/hubs/product/ui/` added to the layers
+diagram and "where things live," the `one_look_test.dart` enforcement rule added, `phase_bar.dart`'s
+moved path and `plan_view.dart`'s retired `_objectiveChip` reference fixed, cp0–cp4's three real
+shared-parts defects recorded under "known differences." Release exe rebuilt
+(`flutter build windows --release`) and confirmed starting outside the IDE — launched as its own
+process, still running three seconds later, closed cleanly.
+
+**Every finish-line item, checked directly, not assumed:**
+- `test/one_look_test.dart` — green (part of the 525-strong suite; the earlier cp3 entry already
+  named it finding nothing left to fail on, still true here).
+- The links tests (`links_test.dart`, 19 rows including L12/L13's own inline-link and "NNNN · Title"
+  updates) — green.
+- `integration_test/click_through_test.dart` — run **three times** across this round (cp2's own fix,
+  `check.ps1`'s own step 4, and once more explicitly for this checkpoint), green every time, both
+  passes each run.
+- `round-37-compare.html` — every page shown next to `asa-one-look-v1` and its own approved layout
+  sketch, plus the round's own "what changed from Round 36's own list" note. Verified by direct
+  screenshot review (not from memory) during cp4 — this is also how the `ProgressBar` and project-
+  description bugs were actually found.
+- `check.ps1` — all four steps green in one run: format, `flutter analyze --fatal-infos`,
+  `flutter test` (525), both integration test files.
+
+**Tests (count):** 525 unit/widget tests, `app_test.dart` and `click_through_test.dart` both green,
+all in one full `check.ps1` run plus one extra `click_through_test.dart` run after.
+
+**Commits (hashes, one line each), this checkpoint:**
+- `9023eee` — Round 37: ARCHITECTURE.md reflects the new ui/ layer
+
+**Screenshots:** unchanged since cp4 — `projects\asa\screenshots\round-37\`,
+`round-37-compare.html`, `projects\asa\screenshots\round-37-real\`.
+
+**Calls I made:** none this checkpoint — verification only.
+
+**Open questions for Nico:** carried from cp4, not blocking: the "What changed" panel's plain
+`Round N` chips have no visible separator between consecutive ones, unlike the ADR chips'
+`NNNN · Title` format — worth a small fix in a future round, not this one (pre-dates Round 37, and
+this round's own boundary is "no layout changes").
+
+**Next:** none queued by this round. Round 28 and the rest are still parked, per `CLAUDE.md`'s own
+"Where we are," until Nico's own test (round-36.md §8 plus one question per page: *does it look like
+the same app as the page before?*) gets its yes. **Ready for that test now — say so, don't build
+more.**
