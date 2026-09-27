@@ -20,17 +20,17 @@ const _bannedPatterns = [
 ];
 
 void main() {
-  final pageDir = Directory('lib/hubs/product');
-  final pageFiles =
-      pageDir
+  final allDartFiles =
+      Directory('lib/hubs/product')
           .listSync(recursive: true)
           .whereType<File>()
           .where((f) => f.path.endsWith('.dart'))
-          .where(
-            (f) => !f.path.replaceAll(r'\', '/').contains('/hubs/product/ui/'),
-          )
           .toList()
         ..sort((a, b) => a.path.compareTo(b.path));
+
+  final pageFiles = allDartFiles
+      .where((f) => !f.path.replaceAll(r'\', '/').contains('/hubs/product/ui/'))
+      .toList();
 
   test(
     'the page files this round moved onto the shared parts really exist',
@@ -60,6 +60,27 @@ void main() {
         reason:
             '$relative still writes its own style directly: $found. '
             'Compose lib/hubs/product/ui/ instead — see tokens.dart.',
+      );
+    });
+  }
+
+  // Round 37 cp6 — a bare Checkbox takes the Theme's own seed colour
+  // (found as a real purple leak against a real screenshot); the one
+  // task_row.dart's own Checkbox sets its own activeColor, so nothing
+  // else may build one of its own, ui/ included.
+  for (final file in allDartFiles) {
+    final relative = file.path.replaceAll(r'\', '/');
+    if (relative.endsWith('ui/task_row.dart')) continue;
+
+    test('$relative builds no Checkbox of its own', () {
+      final content = file.readAsStringSync();
+      expect(
+        content.contains('Checkbox('),
+        isFalse,
+        reason:
+            '$relative builds its own Checkbox — every checkbox is '
+            'TaskRow (lib/hubs/product/ui/task_row.dart), so done always '
+            'means the same green everywhere.',
       );
     });
   }

@@ -1,4 +1,5 @@
 import 'package:asa/hubs/product/ui/task_row.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +25,17 @@ void main() {
     expect(text.style?.decoration, TextDecoration.lineThrough);
   });
 
+  testWidgets('a ticked box paints done-green, never the theme colour '
+      '(round 37 cp6, §D6 item 4)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: TaskRow(text: 'Done task', done: true)),
+      ),
+    );
+    final checkbox = tester.widget<Checkbox>(find.byType(Checkbox));
+    expect(checkbox.activeColor, AsaColors.green);
+  });
+
   testWidgets('a next task shows the amber pill', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -33,6 +45,20 @@ void main() {
       ),
     );
     expect(find.text('next'), findsOneWidget);
+  });
+
+  testWidgets("the next pill sits within 16 px of the text's own end "
+      '(round 37 cp6, §D6 item 3 — Flexible, not Expanded)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: TaskRow(text: 'Next task', done: false, isNext: true),
+        ),
+      ),
+    );
+    final textRight = tester.getTopRight(find.text('Next task')).dx;
+    final pillLeft = tester.getTopLeft(find.text('next')).dx;
+    expect(pillLeft - textRight, lessThanOrEqualTo(16));
   });
 
   testWidgets('a code task shows the </> marker', (tester) async {

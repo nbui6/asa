@@ -77,12 +77,19 @@ class _TaskRowState extends State<TaskRow> {
               child: Checkbox(
                 value: widget.done,
                 onChanged: widget.onToggle,
+                // Round 37 cp6, §D6 item 4 — a bare Checkbox takes the
+                // Theme's own seed colour (purple) with no activeColor of
+                // its own; done means green everywhere, never a theme
+                // leak.
+                activeColor: AsaColors.green,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
             const SizedBox(width: AsaSpace.sm),
-            Expanded(
+            // Flexible, not Expanded — item 3: the "next" pill should sit
+            // right after the text, not pinned to the row's far edge.
+            Flexible(
               child: Text(
                 widget.text,
                 overflow: TextOverflow.ellipsis,
