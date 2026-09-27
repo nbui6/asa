@@ -6,8 +6,8 @@ import 'package:asa/core/project.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/roadmap.dart';
-import 'package:asa/hubs/product/phase_bar.dart';
 import 'package:asa/hubs/product/projects_view.dart';
+import 'package:asa/hubs/product/ui/phase_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

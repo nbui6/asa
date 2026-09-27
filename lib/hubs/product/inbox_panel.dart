@@ -21,6 +21,8 @@ library;
 
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/task.dart';
+import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 class InboxPanel extends StatefulWidget {
@@ -86,32 +88,29 @@ class _InboxPanelState extends State<InboxPanel> {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AsaSpace.xs),
         if (widget.tasks.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text(
-              'Inbox empty — nothing unfiled right now.',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-            ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AsaSpace.sm),
+            child: EmptyLine('Inbox empty — nothing unfiled right now.'),
           )
         else ...[
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             borderRadius: BorderRadius.circular(4),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
               child: Row(
                 children: [
                   Icon(
                     _expanded ? Icons.expand_more : Icons.chevron_right,
                     size: 18,
-                    color: Colors.grey.shade700,
+                    color: AsaColors.ink2,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AsaSpace.xs),
                   Text(
                     '${widget.tasks.length} unfiled — drag onto a project',
-                    style: TextStyle(color: Colors.grey.shade700),
+                    style: AsaText.body.copyWith(color: AsaColors.ink2),
                   ),
                 ],
               ),
@@ -129,15 +128,11 @@ class _InboxPanelState extends State<InboxPanel> {
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
       child: Row(
         children: [
-          Tooltip(
+          const Tooltip(
             message: 'Drag onto a project to file it there',
-            child: Icon(
-              Icons.drag_indicator,
-              size: 16,
-              color: Colors.grey.shade500,
-            ),
+            child: Icon(Icons.drag_indicator, size: 16, color: AsaColors.ink3),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AsaSpace.sm),
           Expanded(
             child: Text(stripCodeSpanMarkers(stripEmphasisMarkers(task.text))),
           ),
@@ -152,8 +147,11 @@ class _InboxPanelState extends State<InboxPanel> {
         borderRadius: BorderRadius.circular(4),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 280),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          color: Colors.white,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AsaSpace.md,
+            vertical: AsaSpace.sm,
+          ),
+          color: AsaColors.panel,
           child: Text(
             stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
             overflow: TextOverflow.ellipsis,

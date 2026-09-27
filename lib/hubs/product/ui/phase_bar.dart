@@ -16,13 +16,17 @@
 ///
 /// Each segment fills left to right by `doneCount / totalCount` — an
 /// exact fraction derived from real checkbox counts, not a typed or
-/// guessed percentage (ADR 0014's own reasoning, one level up). Colours
-/// come from [ColorScheme] rather than literal shades, so this reads
-/// correctly in both a light and dark Windows theme even though nothing
-/// else in this app has needed that distinction yet.
+/// guessed percentage (ADR 0014's own reasoning, one level up). Round 37
+/// moved this into `ui/` and onto the shared [ProgressBar] for the visual
+/// bar itself — one of the three progress-bar copies ADR 0029 names —
+/// the per-phase name labels underneath stay this file's own, the same
+/// shape `_AreaBar` in `projects_view.dart` already uses for the same
+/// reason (a name plus a fraction is not one of the named parts).
 library;
 
 import 'package:asa/core/roadmap.dart';
+import 'package:asa/hubs/product/ui/progress_bar.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 class PhaseBar extends StatelessWidget {
@@ -30,35 +34,21 @@ class PhaseBar extends StatelessWidget {
 
   final List<Phase> phases;
 
+  double _fractionOf(Phase phase) =>
+      phase.totalCount == 0 ? 0.0 : phase.doneCount / phase.totalCount;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        ProgressBar(segments: [for (final phase in phases) _fractionOf(phase)]),
+        const SizedBox(height: AsaSpace.xs),
         Row(
           children: [
             for (var i = 0; i < phases.length; i++) ...[
               if (i > 0) const SizedBox(width: 3),
-              Expanded(child: _segment(phases[i], colors)),
-            ],
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            for (var i = 0; i < phases.length; i++) ...[
-              if (i > 0) const SizedBox(width: 3),
-              Expanded(
-                child: Text(
-                  phases[i].name,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 9.5, color: colors.outline),
-                ),
-              ),
+              Expanded(child: _label(phases[i])),
             ],
           ],
         ),
@@ -66,31 +56,20 @@ class PhaseBar extends StatelessWidget {
     );
   }
 
-  Widget _segment(Phase phase, ColorScheme colors) {
-    final fraction = phase.doneCount / phase.totalCount;
-
+  Widget _label(Phase phase) {
     return Tooltip(
       message:
           '${phase.name}: ${phase.doneCount} of ${phase.totalCount} '
           'Rounds done',
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(2),
-        child: SizedBox(
-          height: 8,
-          child: Stack(
-            children: [
-              // The track — what an untouched phase looks like on its
-              // own: no fill at all, just this.
-              Container(color: colors.surfaceContainerHighest),
-              // The fill — a finished phase covers the whole track in
-              // this colour; an untouched one (fraction 0) draws none of
-              // it, leaving the track showing through instead.
-              FractionallySizedBox(
-                widthFactor: fraction,
-                child: Container(color: colors.primary),
-              ),
-            ],
-          ),
+      child: Text(
+        phase.name,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AsaText.sectionLabel.copyWith(
+          letterSpacing: 0,
+          fontWeight: FontWeight.normal,
+          color: AsaColors.ink3,
         ),
       ),
     );
