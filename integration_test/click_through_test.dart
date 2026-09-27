@@ -335,34 +335,49 @@ void main() {
     await tap(tester, find.byIcon(Icons.arrow_back)); // Northwind → overview
     await tap(tester, find.byIcon(Icons.view_agenda_outlined)); // Tasks → Bars
     await tap(tester, find.text('Kundenakte'));
-    // A third honest adaptation: round-36.md §1's own table reads "without
-    // areas, Plan shows... the home note's tasks under Not in an area,"
-    // which sounds like it should apply here. But `_visibleTabs()` gates
-    // Plan on `readPlan`'s own [Plan.isEmpty] — true whenever a project
-    // has neither `PLAN.md` nor a `plan\` folder, regardless of home
-    // tasks — and Kundenakte, like this round's own real "Customer ID
-    // System" case confirmed in cp5, has neither. No Plan tab shows at
-    // all; it lands on Decisions instead, pre-existing and unrelated to
-    // this round. Checked directly rather than assumed.
-    expect(find.text('Plan'), findsNothing);
-    expect(find.text('Nothing decided yet.'), findsOneWidget);
+    // cp8, round-36.md §9 point 1 — Kundenakte has neither `PLAN.md` nor
+    // `plan\`, and used to skip the Plan tab entirely, landing on
+    // Decisions instead (matching the real "Customer ID System" case
+    // confirmed in cp5 at the time). Fixed the same checkpoint: Plan now
+    // always shows and is always the tab a project opens on, with a real,
+    // honest body for a project with no plan pages — its own home tasks
+    // under "Not in an area", open by default since it's the only row.
+    _expectPlanIsActiveTab(tester);
+    expect(find.text('Decide whether this restarts this quarter'), findsWidgets);
+    expect(find.textContaining('No areas yet'), findsOneWidget);
     for (final tabName in ['Details', 'Decisions']) {
       await tap(tester, find.text(tabName));
       await assertNoErrorText(tester);
     }
 
-    // 10. Every tab of every fixture project opens once, no exception and
-    // no red error text. Not every project has all four — Plan needs a
-    // non-empty Plan.pages (PLAN.md or plan\, see the Kundenakte finding
-    // just above) and Strategy needs a CHARTER.md; Decisions and Details
-    // are the two that always exist. Tapping only the tabs actually on
-    // screen is the point of this step, not an assumption to work around.
+    // A count test, round-36.md §9's own ask: every fixture project opens
+    // on Plan, not just Kundenakte.
     await tap(tester, find.byIcon(Icons.arrow_back));
-    // "other" is collapsed again — the same Bars/Tasks-view reset noted
-    // above happened once more in step 9's own Tasks-view round trip.
+    for (final projectName in [
+      'Northwind partnership',
+      'Vibe coding kit',
+      'Toolkit plugin',
+    ]) {
+      await tap(tester, find.text(projectName));
+      _expectPlanIsActiveTab(tester);
+      await tap(tester, find.byIcon(Icons.arrow_back));
+    }
     if (find.text('Legacy app').evaluate().isEmpty) {
       await tap(tester, find.text('other'));
     }
+    for (final projectName in ['Legacy app', 'Legacy app docs']) {
+      await tap(tester, find.text(projectName));
+      _expectPlanIsActiveTab(tester);
+      await tap(tester, find.byIcon(Icons.arrow_back));
+    }
+
+    // 10. Every tab of every fixture project opens once, no exception and
+    // no red error text. Not every project has all four — Strategy needs
+    // a CHARTER.md, Plan/Decisions/Details always exist now. Tapping only
+    // the tabs actually on screen is the point of this step, not an
+    // assumption to work around. Already on the overview, "other" still
+    // open — the count test just above only pushed and popped projects,
+    // never touched the Bars/Tasks toggle that resets it.
     for (final projectName in [
       'Northwind partnership',
       'Vibe coding kit',
@@ -431,6 +446,15 @@ void main() {
       }
     },
   );
+}
+
+/// Round-36.md §9's own count test: not just that a "Plan" label exists
+/// (it's also in the tab row when a *different* tab is active), but that
+/// it's rendered as the *active* one — bold, per `project_screen.dart`'s
+/// own `_tabLabel`.
+void _expectPlanIsActiveTab(WidgetTester tester) {
+  final label = tester.widget<Text>(find.text('Plan'));
+  expect(label.style?.fontWeight, FontWeight.bold);
 }
 
 void _copyDir(Directory src, Directory dst) {
