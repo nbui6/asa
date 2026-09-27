@@ -1,8 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-27 (Round 36 cp6 — a reload no longer discards a
-screen's own local UI state, and accepting or rejecting a decision now tells its caller to reload).
+Last checked against the folder tree: 2026-09-27 (Round 36 cp8 — every project opens on Plan, with
+or without plan pages of its own; the overview's rows share one bordered panel, not a `Card` each).
 
 ---
 
@@ -74,15 +74,16 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/phase_bar.dart` |
 | change how a project's plan (`PLAN.md` plus `plan\*.md`, ADR 0021) is read, its headings split into sections, or its derived `[[wikilink]]`/ADR/Round links found | `lib/core/plan.dart` |
 | change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
-| change what the Plan tab shows — a project with any area: the area list, "Not in an area," "What this project is for," and the folded Overview row; a project with none (`asa` today): "what changed," the collapsible outline, the Strategy pointer, unchanged since Round 27 | `lib/hubs/product/plan_view.dart` |
+| change what the Plan tab shows — a project with any area: the area list, "Not in an area," "What this project is for," and the folded Overview row; a project with a real `PLAN.md`/`plan\` but none (`asa` today): "what changed," the collapsible outline, the Strategy pointer, unchanged since Round 27, now with the Next line above it; a project with **neither** `PLAN.md` nor `plan\` at all (round 36 cp8 — 12 of 13 real projects): the Next line, "What this project is for" if there's a real Strategy, home tasks under "Not in an area" (open by default, the only row), and a quiet "No areas yet" pointer | `lib/hubs/product/plan_view.dart`'s `build`/`_noPlanBody`/`_legacyBody` |
 | change how a project's Tasks group sorts first when reached from its own project screen, or how an area's own tasks group under its project, after the home note's own | `lib/hubs/product/tasks_view.dart`'s `pinnedProjectName` / `AreaTaskGroup` |
 | change how the Tasks view's groups are built from a scan — the parent-chain nesting rule, or which areas get their own group | `lib/core/tasks_reader.dart` |
 | change how a project's strategy (`CHARTER.md`'s Origin / Who it's for / Pain points / Objectives) is read | `lib/core/charter.dart` |
 | change how a Round's state (planned / in progress / waiting for approval / completed / no approval needed) is derived, or how `rounds\APPROVED.md` is read | `lib/core/round_state.dart`, `lib/core/round_approvals.dart` |
 | change what the Strategy tab shows — who it's for, pain points, objectives, the segmented bar, the legend | `lib/hubs/product/strategy_view.dart` |
-| change the order or presence of `project_screen.dart`'s tabs (`Plan · Strategy · Decisions · Details`, a project opens on Plan — round-36 §2 a) | `lib/hubs/product/project_screen.dart`'s `_Tab`/`_visibleTabs` |
+| change the order or presence of `project_screen.dart`'s tabs (`Plan · Strategy · Decisions · Details`) | `lib/hubs/product/project_screen.dart`'s `_Tab`/`_visibleTabs` — Plan is unconditional now (round 36 cp8, §2 a/§9: every project opens on Plan, with or without plan pages of its own) |
 | change the overview's "Next" line's own text, or the closed-area-row "next <task>" label | `lib/hubs/product/plan_view.dart`'s `_nextLineRow`/`_areaNextTaskLabel`; the underlying (text, area) chain is `lib/core/project_row.dart`'s `effectiveNextStepWithArea` |
 | change the overview row's own per-area bar segment | `lib/hubs/product/projects_view.dart`'s `_AreaBar` |
+| change the overview's own row layout — one bordered panel per bucket (work, then a separate one for "other"), hairlines between rows, not a `Card` each | `lib/hubs/product/projects_view.dart`'s `_rowPanel`/`_card` (round 36 cp8, §9 point 3) |
 | change how a project's `## Roadmap` milestone exposes the prose under its own checkbox | `lib/core/roadmap.dart`'s `Milestone.body`/`bodyLines` |
 | change what a link that lands on a project carries (which area, "Not in an area", a task to highlight) | `lib/core/project_open_target.dart`'s `ProjectOpenTarget`/`openTarget` — built by `ProjectsView`/`TasksView`, consumed by `ProjectsScreen._openProject`, which passes it to `ProjectScreen`'s `initial*` constructor params (round-36 §3, L1-L9) |
 | change the ~2s highlight a landed-on task briefly gets, or an area's own "Objective N" chip (round-36 §3, L3/L9/L12) | `lib/hubs/product/plan_view.dart`'s `_highlightedRawLine`/`_armHighlightTimer`, `_goalField`/`_objectiveChip` |
