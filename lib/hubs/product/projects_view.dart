@@ -316,12 +316,10 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                     .area
                                                     ?.sourceFile,
                                                 openHome:
-                                                    nextStepResult.area ==
-                                                    null,
-                                                highlightRawLine:
-                                                    nextStepResult
-                                                        .task!
-                                                        .rawLine,
+                                                    nextStepResult.area == null,
+                                                highlightRawLine: nextStepResult
+                                                    .task!
+                                                    .rawLine,
                                               ),
                                             ),
                                       child: Text(
