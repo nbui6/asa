@@ -1,8 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-27 (Round 36 cp8 — every project opens on Plan, with
-or without plan pages of its own; the overview's rows share one bordered panel, not a `Card` each).
+Last checked against the folder tree: 2026-09-27 (Round 37, ADR 0029 — every page under
+`lib/hubs/product/` now composes `lib/hubs/product/ui/` exclusively; nothing else changed shape).
 
 ---
 
@@ -19,6 +19,12 @@ anything that already exists on disk.
 main.dart        ← the shell: theme, which hub is shown
      ↓
 hubs/            ← one folder per hub. Only `product` exists.
+  product/ui/    ← Round 37, ADR 0029: the only place a colour, text size,
+                   spacing value or date format lives, and every small
+                   part (pill, chip, panel, row, progress bar) used by more
+                   than one page. Every other file under `hubs/product/`
+                   composes these and writes none of its own — enforced by
+                   `test/one_look_test.dart`.
      ↓
 core/            ← reading files and git. Imports nothing above it.
 
@@ -41,6 +47,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | **A project note's frontmatter may be written to — five named fields, nothing else.** ADR 0007's own whitelist, in code: `parent`, `status`, `priority`, `deadline`, `jira`. Ten fields re-decides the ADR rather than extending it. | `project_writer.dart`'s `setProjectField` — refuses any other field with a `StateError`; refuses on drift (the frontmatter changed on disk since it was read); a round-trip test per field. |
 | **Every write in `core/` is logged — what, when, which file, what it was, what it became.** ADR 0007 guardrail 3, unmet for twelve days after the ADR was accepted. | `write_log.dart`'s `appendWriteLogEntry`, append-only, in `%APPDATA%\Asa\write-log.jsonl` next to `settings.json` — never inside `projects\`. Every function in `task_writer.dart` and `project_writer.dart` calls it after a successful write. |
 | Every other write stays structured fields only, never prose | Review. `settings.dart` writes Asa's own settings file — never a project note. |
+| **No page file under `lib/hubs/product/` (everything except `ui/` itself) writes its own `Color(0x…)`, `fontSize:`, `Card(`, `.toUpperCase()` or `BoxShadow`.** Round 37, ADR 0029 — one look everywhere, one file of tokens, one set of parts. | `test/one_look_test.dart` — reads every such file as plain text and fails the build the moment one of those patterns reappears outside `ui/`. |
 
 ## Where things live
 
@@ -71,7 +78,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how the inbox — `HOME.md`'s own unfiled `## Tasks` — is read | `lib/core/inbox.dart` |
 | change the quick-capture box or the unfiled list on the front page | `lib/hubs/product/inbox_panel.dart` |
 | change how a project's `## Roadmap` is parsed into milestones (Rounds), the derived "current milestone", or how `###` headings group milestones into phases | `lib/core/roadmap.dart` |
-| change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/phase_bar.dart` |
+| change the segmented progress bar itself (its look, its fill logic) | `lib/hubs/product/ui/phase_bar.dart`, drawing its segments through the shared `lib/hubs/product/ui/progress_bar.dart` |
 | change how a project's plan (`PLAN.md` plus `plan\*.md`, ADR 0021) is read, its headings split into sections, or its derived `[[wikilink]]`/ADR/Round links found | `lib/core/plan.dart` |
 | change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
 | change what the Plan tab shows — a project with any area: the area list, "Not in an area," "What this project is for," and the folded Overview row; a project with a real `PLAN.md`/`plan\` but none (`asa` today): "what changed," the collapsible outline, the Strategy pointer, unchanged since Round 27, now with the Next line above it; a project with **neither** `PLAN.md` nor `plan\` at all (round 36 cp8 — 12 of 13 real projects): the Next line, "What this project is for" if there's a real Strategy, home tasks under "Not in an area" (open by default, the only row), and a quiet "No areas yet" pointer | `lib/hubs/product/plan_view.dart`'s `build`/`_noPlanBody`/`_legacyBody` |
@@ -86,12 +93,13 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the overview's own row layout — one bordered panel per bucket (work, then a separate one for "other"), hairlines between rows, not a `Card` each | `lib/hubs/product/projects_view.dart`'s `_rowPanel`/`_card` (round 36 cp8, §9 point 3) |
 | change how a project's `## Roadmap` milestone exposes the prose under its own checkbox | `lib/core/roadmap.dart`'s `Milestone.body`/`bodyLines` |
 | change what a link that lands on a project carries (which area, "Not in an area", a task to highlight) | `lib/core/project_open_target.dart`'s `ProjectOpenTarget`/`openTarget` — built by `ProjectsView`/`TasksView`, consumed by `ProjectsScreen._openProject`, which passes it to `ProjectScreen`'s `initial*` constructor params (round-36 §3, L1-L9) |
-| change the ~2s highlight a landed-on task briefly gets, or an area's own "Objective N" chip (round-36 §3, L3/L9/L12) | `lib/hubs/product/plan_view.dart`'s `_highlightedRawLine`/`_armHighlightTimer`, `_goalField`/`_objectiveChip` |
+| change the ~2s highlight a landed-on task briefly gets, or an area's own "Objective N" mention (round-36 §3, L3/L9/L12; round-37 §D4 — the mention is the link itself, inline in the Goal sentence, not a separate chip) | `lib/hubs/product/plan_view.dart`'s `_highlightedRawLine`/`_armHighlightTimer`, `_goalField`/`_goalText` |
 | change which objective expands when `StrategyView` is asked to open one (round-36 §3, L12) | `lib/hubs/product/strategy_view.dart`'s `objectiveToOpen`/`_objectiveIndex` — keyed by the objective's own list position, not `identityHashCode` |
 | change whether an ADR chip (`PlanView`'s area chip, `StrategyView`'s objective chip) opens the real decision detail screen or just the raw file | same file's own `_openDecision`/`_openAdr` — in-app when the decision is already loaded, `openUrl` fallback otherwise |
 | change the area chip shown on the decision detail screen itself (round-36 §3, L17) | `lib/hubs/product/decision_detail_screen.dart`'s `areasNaming`/`onOpenArea` |
 | change whether a screen's own tab body stays mounted through a reload (a checkbox tick, a manual refresh) | `project_screen.dart`/`projects_screen.dart` gate their body on `read`/`scan` being non-null, never on `_loading` too — the previous read/scan stays on screen until the new one lands, so local UI state (an open area, an expanded group) survives (round 36 cp6) |
 | change whether recording a decision's verdict reloads the caller that pushed the detail screen | `decision_detail_screen.dart`'s `_verdictJustRecorded`, popped as the route's own result (`Navigator.pop(_verdictJustRecorded)`, both the back button and the area chip); each of the three pushers (`project_screen.dart`'s decision row, `plan_view.dart`'s `_openDecision`, `strategy_view.dart`'s `_openAdr`) reloads only when it comes back `true` (round 36 cp6) |
+| change a colour, text size, spacing value or date format, or a small part shared by more than one page (`AsaPage`, `AsaPanel`, `AsaRow`, `AsaGroup`, `SectionLabel`, `Pill`, `LinkChip`, `AreaChip`, `TaskRow`, `ProgressBar`, `EmptyLine`, `SourceLine`) | `lib/hubs/product/ui/tokens.dart` and one file per part in `lib/hubs/product/ui/` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
@@ -162,3 +170,17 @@ answer was to add the missing four to `project_screen.dart`'s Details tab as pla
 all five editable there. That is what got built — this page's own "where things live" row for
 `project_screen.dart` did not need a change, since "what one project's detail screen shows" already
 covered the addition.
+
+**Resolved 2026-09-27, Round 37 (ADR 0029).** The row above ("What deliberately does not exist")
+had no entry for a shared UI layer, because there wasn't one: 25 private copies of basic parts, 11
+font sizes, 29 hard-coded colours, and no shared folder, counted across `lib/hubs/product/` before
+this round. `lib/hubs/product/ui/` now holds all of it — `tokens.dart` plus one file per part — and
+every other file under `lib/hubs/product/` composes them exclusively, enforced by
+`test/one_look_test.dart`. Three real defects were found and fixed in the shared parts themselves
+while moving pages onto them (never worked around in a page): `AsaGroup`'s single `InkWell` would
+have merged a project's name-tap with its triangle's expand/collapse; the shared `Pill` had lost the
+old outlined pill's width clamp and ellipsis; `ProgressBar`'s `Stack` painted a bare `ColoredBox`
+with no `Positioned.fill`, so every bar in the app — the overview's area segments, an area's own
+progress, Strategy's round bar, `PhaseBar` — rendered at zero size until cp4's own screenshot review
+caught it. `phase_bar.dart` moved from `lib/hubs/product/` into `ui/` alongside this same move, its
+segment drawing now the shared `ProgressBar`.
