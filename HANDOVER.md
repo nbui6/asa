@@ -3661,3 +3661,62 @@ its border/radius logic anymore.
 **Open questions for Nico:** none.
 
 **Next:** cp2 — project header, all four tabs, and decision detail onto the parts (§D2–7).
+
+### Round 37 cp2 — decision detail, Strategy, Plan, and the project header/tabs/Details, moved onto the parts
+
+**Built, in four pieces:** `decision_detail_screen.dart` onto `AsaPage` (was its own small
+`Scaffold`/`AppBar`) with `AreaChip`, `SectionLabel`, `SourceLine` (file name only, never the full
+path — §D7) and the header showing "NNNN · Title" (§D3). `strategy_view.dart` onto `SectionLabel`/
+`Pill`/`LinkChip`/`ProgressBar` (its own 4-state round bar needed `ProgressBar` to grow a `meanings`
+param, since a round is a whole-segment state, not a fraction); the "0 of 0 completed" line only
+hides when there are genuinely no rounds (§D5); the legend only shows when a bar does; an objective's
+ADR chip now names the decision's own title, not just "ADR NNNN" (§D3). `plan_view.dart` (1559
+lines, the largest file in this round) onto every token and part it needed — `TaskRow` grew a
+`highlighted` param so the round-36 highlight-on-arrival behaviour survived the move; the Objective/
+ADR chips became plain blue links (`Objective N →`, `NNNN · Title`) instead of their own green/blue
+pills, matching the sketch's own "you can click it" convention. `project_screen.dart` onto `AsaPage`
+for its header, `SectionLabel`/`Pill`/`AreaChip`/`SourceLine` for the decisions list and provenance
+block, and two real behaviour changes named in the round itself: every project now always shows all
+four tabs — an empty Strategy tab explains why and what to do instead of hiding and falling back to
+Decisions (§D2); the active tab's label keeps the same bold weight whether active or not, varying
+only colour and the underline, so switching tabs never shifts its neighbours. The Details tab's five
+fields now display the way the rest of the app already shows that data: Status as a `Pill`, Deadline
+humanised ("Jan 2027"), Jira as a chip naming the ticket ("DEMO-9 ↗"), an unset field reading "not
+set" in grey instead of the literal "(not set)", and the edit pencil sitting next to its own value
+instead of the row's far edge (§D6). The "— see below" phrase is dropped from the git-freshness
+fallback text.
+
+**One §D4 item explicitly NOT built — see Open questions below.**
+
+**Tests (count):** 514 total, all green. Updated for round-37's own, approved changes: `links_test.dart`,
+`strategy_view_test.dart`, `plan_view_test.dart`, `plan_area_decision_chip_test.dart` (ADR/Objective
+chip tap targets and assertions, now "NNNN · Title" / "Objective N →" instead of the bare "ADR NNNN" /
+"Objective N"); `project_screen_edit_test.dart` (Deadline shows humanised, Jira shows the chip label,
+"(not set)" → "not set").
+
+**Commits (hashes, one line each):**
+- `9069b81` — Round 37 cp2 (1/4): decision detail moves onto the shared parts
+- `369ad4e` — Round 37 cp2 (2/4): Strategy tab moves onto the shared parts
+- `d3e1952` — Round 37 cp2 (3/4): Plan tab moves onto the shared parts
+- `7a00ea9` — Round 37 cp2 (4/4): Project header, all four tabs, Details tab move onto the shared parts
+
+**Screenshots:** none this checkpoint — cp4's own screenshot loop is where these get compared to the
+sketch side by side.
+
+**Calls I made:** two colour normalisations, both following the same "one look everywhere" logic
+already used in cp0/cp1, not new judgement calls: Strategy's evidence-chip "failing" state uses
+`AsaMeaning.needsYou` (amber) rather than inventing a distinct error colour (ADR 0029 has none); the
+decisions-tab status pill uses `meaningForDecisionStatus` uniformly, so "superseded" now reads as
+`done` (green) rather than its own bespoke grey — a real normalisation, not a bug, since ADR 0029
+caps the palette at five meanings and superseded already reads as "resolved, not blocking" everywhere
+else in the app.
+
+**Open questions for Nico:** round-37 §D4 ("the Plan tab's Goal line shows the objective once, as the
+chip, not as both text and chip") is **not built**. The real fixture's own goal text is nothing but
+"Serves Objective 1.", and mechanically stripping the "Objective 1" mention from that text leaves
+"Serves ." — worse than the duplication it was meant to fix. Fixing this without inventing prose (or
+silently dropping real goal text) needs your own call on what the Goal line should actually say when
+its only content is the objective reference — not a parts move. Flagging rather than guessing.
+
+**Next:** cp3 — start menu, inbox panel onto the parts; delete every now-redundant private copy;
+write `test/one_look_test.dart` and add it to `check.ps1`.
