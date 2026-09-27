@@ -3146,3 +3146,103 @@ use both:
    the real screenshots". The deciding session will pass it on. Skip only that step meanwhile.
 
 **Carry on with cp4.** Nothing else from me.
+
+### Round 36 cp4 — round-36.md §3's own link table, every row wired for real. 18 + 1 tests, green.
+
+**Built:** Every row of the link table, L1 through L18, plus the "one source for every count" test
+— 19 in total, all in `test/links_test.dart`, all against one real-disk fixture (Northwind
+partnership + Sales/Finance areas + `CHARTER.md` + two ADRs; a Solo project for "not in an area"
+and the `[[project]]`-chip case; a real `other → child → grandchild` parent chain).
+
+- **L1-L4 (the overview)** and **L5-L7 (the Tasks view)** — a new `ProjectOpenTarget`
+  (`lib/core/project_open_target.dart`): a folder, plus which area to open, whether to open "Not
+  in an area" instead, and which task's `rawLine` to briefly highlight. Every link that lands on a
+  project builds one and opens through the same `ProjectsScreen._openProject`. `TasksView` gained
+  `onOpenProject` and `folderBySlug` (the latter for L7 — a `[[project]]` chip can name a project
+  with no tasks of its own, so absent from the Tasks view's own groups; resolved from the full
+  scan instead).
+- **L8** (back, state kept) needed no new code — free from `Navigator`'s own stack, since nothing
+  here reloads on a plain pop.
+- **L9/L3's own highlight** — `PlanView` gained `_highlightedRawLine`, cleared automatically after
+  ~2 s (`Future.delayed`, armed and re-armed the same way `areaToOpen` already was).
+- **L10** — `opener.dart`'s `openerText` and `StartMenu` both gained optional `nextTaskText`/
+  `areaSourceFile`, null everywhere except the Plan tab's own Next line, and only when a real task
+  is behind it.
+- **L12** — an area's Goal section shows one "Objective N" chip per `Area.objectiveNumbers`;
+  **L12's landing side** — `StrategyView` gained `objectiveToOpen`, and its own `_expanded` set was
+  re-keyed from `identityHashCode` to the objective's own list position — the exact reload-fragility
+  bug `PlanView._expandedAreas` already found for areas, caught here before it shipped.
+- **L13/L15** — an ADR chip (the Plan tab's area chip, the Strategy tab's objective chip) now
+  pushes the real `DecisionDetailScreen` when that decision is already loaded, `openUrl` staying
+  the fallback otherwise. The Round link is unchanged, "as built today", per L15's own wording.
+- **L17** — `DecisionDetailScreen` gained `areasNaming`/`onOpenArea`: one chip per area naming that
+  decision, tapping pops then tells the caller which area to open. Every pusher of the screen (the
+  decision row, the two ADR chips above) now passes both through to the same
+  `ProjectScreen._openArea`.
+- **L14** — verified the widget exists with a real, non-null `onTap`, not by tapping it — see
+  "Calls I made" below.
+
+**Two real bugs found and fixed along the way, not part of the original ask:**
+1. **`readAreasVia` built `sourceFile` with a literal `/`**, never matching `Area.sourceFile`
+   (built from `dart:io`'s own `Directory.list()`, which reports `\` on Windows) — L6 (Tasks view,
+   an area's own sub-heading) opened the right project but silently never the right area. Fixed to
+   use `Platform.pathSeparator`; the existing fake-file-access unit tests in `tasks_reader_test.dart`
+   updated to build their own keys the same way.
+2. **`decision_detail_screen_test.dart`'s real-disk test was genuinely flaky** — not discovered by
+   this round's own work, but found blocking this checkpoint's own `check.ps1` gate, and traced to
+   a real cause rather than re-run past: `appendVerdict`'s write is read → concatenate → write a
+   temp file → rename over the original, and Windows can briefly deny even a *read* of the target
+   path while that rename lands. The test's own polling loop had no tolerance for that (an uncaught
+   exception crashed the test instead of "not yet, keep polling"), and `tearDown`'s plain
+   `deleteSync` hit the same window a few milliseconds later — a folder listing showed the same
+   failure silently orphaning temp folders back to 2026-09-17. Fixed both; stress-tested 8 clean
+   runs in a row afterward.
+
+**Tests (count):** 465, all green — `check.ps1`'s full run: `dart format`, `flutter analyze
+--fatal-infos`, `flutter test` (465), `flutter test integration_test -d windows` (1). Release exe
+rebuilt and confirmed starting outside the IDE.
+
+**Commits (hashes, one line each):**
+- `0088f8c` — Round 36 cp4 (prep): effectiveNextStepWithArea names its own Task; ProjectOpenTarget
+- `f8e89fd` — Round 36 cp4 (L9, L10, L12, L13): Plan tab highlight, Objective chip, ADR chip opens decision detail
+- `7b0f0d9` — Round 36 cp4 (L12 landing, L15): Strategy expands one objective on arrival; ADR chip opens decision detail
+- `8523c18` — Round 36 cp4 (L1-L7): shared ProjectOpenTarget navigation, overview and Tasks view links
+- `5954a32` — Round 36 cp4 (L17): an area chip on the decision detail screen itself
+- `c0d8f60` — Round 36: deciding session's check-in on cp0-cp3, screenshot strategy for cp5 (hers, committed on her behalf)
+- `5e69a53` — Round 36 cp4: readAreasVia used a literal '/', never matching Area.sourceFile on Windows
+- `4e0e22e` — Round 36 cp4: test/links_test.dart — round-36.md §3's own link table, 18 + 1 tests, green
+- `65267c5` — Round 36 cp4: ARCHITECTURE.md — ProjectOpenTarget, the highlight, the two chip-to-decision-detail paths
+- `37d97a1` — Round 36 cp4: decision_detail_screen_test.dart — a real Windows file-lock race, not a flake (`--no-verify`, reason below)
+
+**Screenshots:** none this checkpoint — cp5's own job, per round-36.md §5, now with a concrete plan
+from the deciding session's check-in (see the commit above).
+
+**Calls I made:**
+1. **L14 is never actually tapped in the test.** `open_url.dart` shells out to a real, unmocked
+   `cmd /c start` — no injectable seam, same as every other `Process.run` in this app. A real tap
+   really did launch a real subprocess and once hung the whole test run for a full 10 minutes
+   waiting on an OS prompt nothing here could answer. Verified instead that the link's own `InkWell`
+   carries a real, non-null `onTap`.
+2. **This test environment has no working default mock for the clipboard platform channel.** A
+   real `Clipboard.setData`/`getData` call hangs forever — confirmed with a bare, app-free repro
+   (no Asa code involved at all) before touching L10 itself. L10 installs its own mock handler on
+   `SystemChannels.platform` and reads the captured argument directly, never calling
+   `Clipboard.getData`.
+3. **A `tester.tap()` that pushes a new route needs an explicit `tester.pump()` still inside
+   `runAsync`, immediately after the tap, or the new screen's `initState` never runs while
+   `runAsync`'s own real-time window is still open** — found by a from-scratch, app-free repro
+   after the first several attempts at `links_test.dart` all hung identically. Every navigation in
+   the file goes through one shared `tapAndSettle` helper that does this once, correctly.
+4. **The final commit used `--no-verify`.** The gate-commit hook's own recorder never saw three
+   separate full-suite passes that each printed "All tests passed!" directly to this session — the
+   likely cause is that this suite's own output is large enough that the harness persists it to a
+   side file and hands the hook only a truncated preview, with the pass line at the very end, past
+   that cutoff. Diagnosed by direct A/B testing (piped and unpiped, foreground each time), not
+   guessed; stated in the commit message itself, per hard rule 19's own escape hatch. The code's
+   own pass is independently confirmed by `check.ps1`'s full run afterward, included above.
+
+**Open questions for Nico:** none.
+
+**Next:** cp5 — the match-the-sketch loop. The deciding session's own check-in (this file, just
+above) already gives it a concrete shape: fixture screenshots via a widget test's own `toImage()`
+first (no real screen needed), the real folder's screenshots once the screen is confirmed awake.
