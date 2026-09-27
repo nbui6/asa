@@ -37,6 +37,7 @@ import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
+import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
@@ -339,7 +340,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
       children: [
         if (read.isSuccess && read.project!.description != null) ...[
           Text(
-            read.project!.description!,
+            stripCodeSpanMarkers(
+              stripEmphasisMarkers(read.project!.description!),
+            ),
             style: AsaText.body.copyWith(color: AsaColors.ink2),
           ),
           const SizedBox(height: AsaSpace.md),
