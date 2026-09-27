@@ -607,21 +607,15 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// run to a whole sentence, e.g. asa/0007's "proposed - needs Nico's
   /// decision") — the full text is one tap away, on the detail screen.
   /// Uses `displayStatus`, not the raw header field — ADR 0011: a
-  /// recorded verdict overrides a stale `proposed` header.
+  /// recorded verdict overrides a stale `proposed` header. Round 37 cp6 —
+  /// the same canonical-word rule `decision_detail_screen.dart`'s own
+  /// status line now uses too, one shared function rather than two.
   Widget _statusPill(Decision decision) {
     final status = decision.displayStatus;
-    final lower = status.toLowerCase();
-    final String label;
-    if (lower.contains('superseded')) {
-      label = 'superseded';
-    } else if (decision.isProposed) {
-      label = 'proposed';
-    } else if (lower.contains('accepted')) {
-      label = 'accepted';
-    } else {
-      label = status;
-    }
-    return Pill(label, meaning: meaningForDecisionStatus(status));
+    return Pill(
+      decisionStatusLabel(status, isProposed: decision.isProposed),
+      meaning: meaningForDecisionStatus(status),
+    );
   }
 
   Widget _detailsTab(ProjectReadResult read) {
@@ -687,7 +681,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
           effectiveNextStep(project.tasks, project.nextStep, areas: _areas) ??
               'no next step',
         ),
-        _Field('Note updated by hand', project.updated),
+        _Field(
+          'Note updated by hand',
+          asaDetailDate(project.updated) ?? project.updated,
+        ),
         _Field('Last moved (from git)', _lastMovedText(git)),
         _Field(
           'Repo',
@@ -796,6 +793,19 @@ class _Field extends StatelessWidget {
   final String label;
   final String value;
 
+  /// Round 37 cp6, §D6 item 9 — every one of this screen's own "there is
+  /// nothing here" conventions (`(not set)`, `(no code yet)`, `(not
+  /// checked)`, `no next step`, `unknown`) read as one style, not each
+  /// its own bracket-or-not wording. The word stays whatever `core/`
+  /// already derives — this only unifies how it looks.
+  static const _emptyValues = {
+    '(not set)',
+    '(no code yet)',
+    '(not checked)',
+    'no next step',
+    'unknown',
+  };
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -807,7 +817,11 @@ class _Field extends StatelessWidget {
             width: 200,
             child: Text(label, style: const TextStyle(color: AsaColors.ink3)),
           ),
-          Expanded(child: SelectableText(value, style: AsaText.body)),
+          Expanded(
+            child: _emptyValues.contains(value)
+                ? EmptyLine(value)
+                : SelectableText(value, style: AsaText.body),
+          ),
         ],
       ),
     );

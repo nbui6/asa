@@ -188,6 +188,18 @@ String decisionChipLabel(String? number, String title, {int maxLength = 40}) {
   return number == null ? cut : '$number · $cut';
 }
 
+/// The short, canonical status word a `Pill` shows, never the raw parsed
+/// status text (which can run to a whole sentence, e.g. asa/0007's
+/// "proposed - needs Nico's decision") — round 37 cp6, shared by the
+/// Decisions tab and decision detail rather than each deriving its own.
+String decisionStatusLabel(String displayStatus, {required bool isProposed}) {
+  final lower = displayStatus.toLowerCase();
+  if (lower.contains('superseded')) return 'superseded';
+  if (isProposed) return 'proposed';
+  if (lower.contains('accepted')) return 'accepted';
+  return displayStatus;
+}
+
 /// The only place a page's own lower-case word becomes a capitalised one
 /// — `.toUpperCase()` itself is banned from a page file, so this one
 /// letter's worth of case-changing lives here instead. Never full-caps: a

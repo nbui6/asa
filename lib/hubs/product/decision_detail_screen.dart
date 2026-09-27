@@ -17,6 +17,7 @@ import 'package:asa/core/decision_writer.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/hubs/product/ui/area_chip.dart';
 import 'package:asa/hubs/product/ui/asa_page.dart';
+import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/source_line.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
@@ -207,15 +208,24 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   }
 
   Widget _statusLine(Decision decision) {
-    final parts = <String>[
-      if (decision.date != null) decision.date!,
-      if (decision.displayStatus.isNotEmpty) decision.displayStatus,
-    ];
+    // Round 37 cp6, §D6 item 10 — the same "one format per kind" and
+    // "status is its Pill" rules the Decisions tab and Plan tab already
+    // follow, not plain grey text of their own here.
+    final date = asaDetailDate(decision.date);
 
     return Wrap(
       spacing: AsaSpace.md,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        for (final part in parts) Text(part, style: AsaText.meta),
+        if (date != null) Text(date, style: AsaText.meta),
+        if (decision.displayStatus.isNotEmpty)
+          Pill(
+            decisionStatusLabel(
+              decision.displayStatus,
+              isProposed: decision.isProposed,
+            ),
+            meaning: meaningForDecisionStatus(decision.displayStatus),
+          ),
         if (decision.supersededBy != null)
           Text(
             'Superseded by ${decision.supersededBy}',
@@ -253,6 +263,14 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
         Row(
           children: [
             OutlinedButton(
+              // Round 37 cp6, §D6 item 4 — a bare OutlinedButton takes the
+              // Theme's own seed colour (purple) with no style of its own;
+              // neutral here, the same as "quiet" everywhere else — Reject
+              // isn't one of the five meanings, and green is Accept's own.
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AsaColors.ink2,
+                side: const BorderSide(color: AsaColors.line),
+              ),
               onPressed: _saving ? null : () => _recordVerdict(false),
               child: const Text('Reject'),
             ),
