@@ -29,6 +29,8 @@ import 'dart:io';
 import 'package:asa/core/write_log.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/projects_screen.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,6 +106,27 @@ void main() {
   Future<void> assertNoErrorText(WidgetTester tester) async {
     expect(find.textContaining('Exception'), findsNothing);
     expect(find.textContaining('Error'), findsNothing);
+  }
+
+  /// Round-37 §D4 — "Objective N" is now an inline link inside the Goal
+  /// sentence's own `Text.rich`, not a separate tappable widget a plain
+  /// `tester.tap(find.text(...))` can land on. Invokes the matching
+  /// span's own `TapGestureRecognizer` directly instead.
+  Future<void> tapObjectiveLink(WidgetTester tester, String label) async {
+    void searchSpan(InlineSpan span) {
+      if (span is TextSpan) {
+        if (span.text == label && span.recognizer is TapGestureRecognizer) {
+          (span.recognizer! as TapGestureRecognizer).onTap!();
+          return;
+        }
+        span.children?.forEach(searchSpan);
+      }
+    }
+
+    for (final richText in tester.widgetList<RichText>(find.byType(RichText))) {
+      searchSpan(richText.text);
+    }
+    await tester.pumpAndSettle();
   }
 
   testWidgets('first pass — round-36.md §6, steps 1-10', (tester) async {
@@ -212,8 +235,13 @@ void main() {
     // (an IndexedStack in place of that switch) — a real, larger change,
     // named here and in this checkpoint's own HANDOVER entry rather than
     // attempted inside cp6 or silently left unmentioned.
-    await tap(tester, find.text('Objective 1'));
-    expect(find.text('ADR 0003'), findsOneWidget); // only shows expanded
+    await tapObjectiveLink(tester, 'Objective 1');
+    // Round 37 §D3 — both show both: the number with the loaded
+    // decision's own title, not just "ADR 0003". Only shows expanded.
+    expect(
+      find.text('0003 · Deals go through the partner portal'),
+      findsOneWidget,
+    );
     await tap(tester, find.text('Plan'));
     expect(find.text('Sales'), findsOneWidget); // back, but collapsed again
     expect(
@@ -320,8 +348,9 @@ void main() {
     expect(find.text('Legacy app'), findsNothing);
 
     // Tasks view → an area sub-heading → Plan, that area open.
+    // Round 37 §D1 — the sub-heading is normal case now, not all-caps.
     await tap(tester, find.byIcon(Icons.checklist));
-    await tap(tester, find.text('ENABLEMENT'));
+    await tap(tester, find.text('Enablement'));
     expect(
       find.text(
         "Serves Objective 2 — would show: the partner's two consultants "
@@ -457,7 +486,10 @@ void main() {
 /// own `_tabLabel`.
 void _expectPlanIsActiveTab(WidgetTester tester) {
   final label = tester.widget<Text>(find.text('Plan'));
-  expect(label.style?.fontWeight, FontWeight.bold);
+  // Round 37 §D2 — every tab label keeps the same bold weight whether
+  // active or not (so switching tabs never shifts its neighbours);
+  // "active" now shows only in colour (AsaColors.ink, not ink3).
+  expect(label.style?.color, AsaColors.ink);
 }
 
 void _copyDir(Directory src, Directory dst) {
