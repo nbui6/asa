@@ -46,6 +46,26 @@ void main() {
     expect(find.text('</>'), findsOneWidget);
   });
 
+  testWidgets('a parked task shows the filled bookmark, always visible', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TaskRow(
+            text: 'Parked task',
+            done: false,
+            parked: true,
+            onPark: () {},
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.bookmark), findsOneWidget);
+    final opacity = tester.widget<Opacity>(find.byType(Opacity));
+    expect(opacity.opacity, 1); // visible without hovering
+  });
+
   testWidgets('the park icon is invisible until hovered', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

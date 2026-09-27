@@ -14,6 +14,7 @@ class AsaGroup extends StatelessWidget {
     required this.openCount,
     required this.expanded,
     required this.onToggleExpand,
+    this.onNameTap,
     this.onMarkAllDone,
     this.children = const [],
     this.nested = false,
@@ -23,7 +24,15 @@ class AsaGroup extends StatelessWidget {
   final String name;
   final int openCount;
   final bool expanded;
+
+  /// The triangle's own tap — expand/collapse only. The name has its own,
+  /// separate tap ([onNameTap]): round-36 §3 L5, opening the project,
+  /// is a different action from opening this group in place.
   final VoidCallback onToggleExpand;
+
+  /// Null leaves the name a plain label — a nested area's own heading
+  /// (not a project) has nowhere further to open from here.
+  final VoidCallback? onNameTap;
 
   /// Null hides the mark-all tick — a group with nothing to mark done.
   final VoidCallback? onMarkAllDone;
@@ -52,40 +61,39 @@ class AsaGroup extends StatelessWidget {
   }
 
   Widget _header() {
-    return InkWell(
-      onTap: onToggleExpand,
-      child: SizedBox(
-        height: 28,
-        child: Row(
-          children: [
-            Icon(
+    return SizedBox(
+      height: 28,
+      child: Row(
+        children: [
+          InkWell(
+            onTap: onToggleExpand,
+            child: Icon(
               expanded ? Icons.expand_more : Icons.chevron_right,
               size: 14,
               color: AsaColors.ink3,
             ),
-            const SizedBox(width: AsaSpace.xs),
-            SizedBox(
-              width: 16,
-              child: onMarkAllDone == null
-                  ? null
-                  : InkWell(
-                      onTap: onMarkAllDone,
-                      child: const Tooltip(
-                        message: 'Mark all done',
-                        child: Icon(
-                          Icons.check,
-                          size: 14,
-                          color: AsaColors.ink3,
-                        ),
-                      ),
+          ),
+          const SizedBox(width: AsaSpace.xs),
+          SizedBox(
+            width: 16,
+            child: onMarkAllDone == null
+                ? null
+                : InkWell(
+                    onTap: onMarkAllDone,
+                    child: const Tooltip(
+                      message: 'Mark all done',
+                      child: Icon(Icons.check, size: 14, color: AsaColors.ink3),
                     ),
-            ),
-            const SizedBox(width: AsaSpace.xs),
-            Text(name, style: AsaText.rowName),
-            const SizedBox(width: AsaSpace.sm),
-            Text('$openCount open', style: AsaText.meta),
-          ],
-        ),
+                  ),
+          ),
+          const SizedBox(width: AsaSpace.xs),
+          InkWell(
+            onTap: onNameTap,
+            child: Text(name, style: AsaText.rowName),
+          ),
+          const SizedBox(width: AsaSpace.sm),
+          Text('$openCount open', style: AsaText.meta),
+        ],
       ),
     );
   }

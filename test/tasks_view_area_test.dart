@@ -1,5 +1,7 @@
-// Round 34/E — area tasks in the Tasks view, grouped by area name, after
-// the project's own home-note tasks. Invented data throughout.
+// Round 34/E — area tasks in the Tasks view, grouped by area name.
+// Round 37 §D1 flipped the order to match the Plan tab: areas first, the
+// project's own home-note tasks ("Not in an area") last. Invented data
+// throughout.
 
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_open_target.dart';
@@ -42,7 +44,7 @@ void main() {
   }
 
   group('Round 34/E — area tasks group by area name', () {
-    testWidgets("an area group shows after the project's own tasks, "
+    testWidgets("an area group shows before the project's own tasks, "
         'named in the sub-heading', (tester) async {
       const group = TaskGroup(
         project: _project,
@@ -66,12 +68,12 @@ void main() {
       await tester.pumpWidget(pumpTasksView(group));
 
       expect(find.text('Home task'), findsOneWidget);
-      expect(find.text('SALES'), findsOneWidget);
+      expect(find.text('Sales'), findsOneWidget);
       expect(find.text('Sales task'), findsOneWidget);
 
       final homeY = tester.getTopLeft(find.text('Home task')).dy;
       final areaY = tester.getTopLeft(find.text('Sales task')).dy;
-      expect(homeY, lessThan(areaY));
+      expect(areaY, lessThan(homeY));
     });
 
     testWidgets('ticking an area task calls onToggleAreaTask with the '
@@ -167,7 +169,7 @@ void main() {
         pumpTasksView(group, onOpenProject: (t) => opened = t),
       );
 
-      await tester.tap(find.text('DEMO'));
+      await tester.tap(find.text('Demo'));
 
       expect(opened?.folder, 'demo');
       expect(opened?.areaSourceFile, isNull);
@@ -198,7 +200,7 @@ void main() {
         pumpTasksView(group, onOpenProject: (t) => opened = t),
       );
 
-      await tester.tap(find.text('SALES'));
+      await tester.tap(find.text('Sales'));
 
       expect(opened?.folder, 'demo');
       expect(opened?.areaSourceFile, 'demo/plan/sales.md');

@@ -17,6 +17,7 @@ class TaskRow extends StatefulWidget {
     this.isNext = false,
     this.isCodeTask = false,
     this.crossProjectChip,
+    this.parked = false,
     this.onPark,
     this.indent = 0,
     super.key,
@@ -32,6 +33,12 @@ class TaskRow extends StatefulWidget {
   /// widget by the caller (round-36's own `_crossProjectChip`) — this
   /// row just makes room for it, never builds it.
   final Widget? crossProjectChip;
+
+  /// Already parked — shows the filled bookmark, amber, always visible
+  /// (not just on hover: an already-parked task's own state is something
+  /// worth seeing without pointing at it first). An unparked task's own
+  /// outline bookmark still only shows on hover, per the sketch.
+  final bool parked;
 
   final VoidCallback? onPark;
 
@@ -92,15 +99,19 @@ class _TaskRowState extends State<TaskRow> {
             if (widget.onPark != null) ...[
               const SizedBox(width: AsaSpace.xs),
               Opacity(
-                opacity: _hovering ? 1 : 0,
+                opacity: widget.parked || _hovering ? 1 : 0,
                 child: Tooltip(
-                  message: 'Park this task',
+                  message: widget.parked
+                      ? 'Parked — tap to unpark'
+                      : 'Park this task',
                   child: InkWell(
                     onTap: widget.onPark,
-                    child: const Icon(
-                      Icons.bookmark_border,
+                    child: Icon(
+                      widget.parked ? Icons.bookmark : Icons.bookmark_border,
                       size: 14,
-                      color: AsaColors.ink3,
+                      color: widget.parked
+                          ? AsaColors.amber
+                          : AsaColors.ink3,
                     ),
                   ),
                 ),

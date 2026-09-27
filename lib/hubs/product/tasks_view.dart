@@ -1,7 +1,13 @@
 /// Product Hub — front page, Tasks view.
 ///
 /// Spec: `HANDOVER.md`, 2026-09-07 entry, "the front-page Tasks view."
-/// Sketch: `asa-tasks-view.png`/`.html`, seventh and approved pass.
+/// Sketch: `asa-tasks-view.png`/`.html`, seventh and approved pass — the
+/// content and controls that sketch approved (triangle, mark-all, name,
+/// "Show completed (N)", the Code-tasks switch, one expand/collapse menu)
+/// are unchanged; round 37 (`asa-one-look-v1`) only changes the parts
+/// this screen is drawn from, per ADR 0029 — one panel instead of a card
+/// per project, `AsaGroup`/`TaskRow` instead of this file's own copies,
+/// areas before "Not in an area" (was the opposite order).
 ///
 /// **Deviation from the sketch, deliberate:** the sketch draws a drag grip
 /// on every task row. Reordering (and dragging a subtask out from under
@@ -9,18 +15,6 @@
 /// a real subtask yet, so there is nothing to drag. An inert grip icon
 /// would promise a capability that is not there; this version omits it
 /// rather than build a decoration that misleads.
-///
-/// **Fixed 2026-09-13:** a task's text was shown raw, backticks and all —
-/// visible on real content, `asa.md`'s own `## Tasks` section ("Fix
-/// `decision_detail_screen_test.dart`'s flakiness"). `markdown.dart`'s
-/// `stripCodeSpanMarkers`/`stripEmphasisMarkers` are applied here, at
-/// display time — the parsed [Task.text] itself stays raw, same rule
-/// `decision_detail_screen.dart` already follows for a decision's body.
-///
-/// **2026-09-13, later — parked tasks.** `HANDOVER.md`'s "parked items,
-/// and the rule of two". A parked task shows a small bookmark chip, same
-/// visual language the `(Code)` icon already set — but tappable, since
-/// parking (unlike being Code's task) is something Nico toggles here.
 library;
 
 import 'package:asa/core/markdown.dart';
@@ -28,6 +22,11 @@ import 'package:asa/core/project.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/tasks_reader.dart';
+import 'package:asa/hubs/product/ui/asa_group.dart';
+import 'package:asa/hubs/product/ui/asa_panel.dart';
+import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/task_row.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
 class TasksView extends StatefulWidget {
@@ -98,11 +97,9 @@ class _TasksViewState extends State<TasksView> {
   @override
   Widget build(BuildContext context) {
     if (widget.groups.isEmpty) {
-      return const _Panel(
-        child: Text(
-          'No open Tasks sections in any project note yet — add a '
-          '## Tasks list of `- [ ]` lines to one and reload.',
-        ),
+      return const EmptyLine(
+        'No open Tasks sections in any project note yet — add a '
+        '## Tasks list of `- [ ]` lines to one and reload.',
       );
     }
 
@@ -110,8 +107,19 @@ class _TasksViewState extends State<TasksView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _controlsRow(),
-        const SizedBox(height: 16),
-        for (final group in _orderedGroups()) _groupTile(group, depth: 0),
+        const SizedBox(height: AsaSpace.lg),
+        AsaPanel(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AsaSpace.xs),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final group in _orderedGroups())
+                  _groupTile(group, depth: 0),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -199,105 +207,46 @@ class _TasksViewState extends State<TasksView> {
         ? group.tasks
         : group.tasks.where((t) => !t.isCode).toList();
     final openTasks = visibleTasks.where((t) => !t.done).toList();
-    final doneTasks = visibleTasks.where((t) => t.done).toList();
-    final hiddenByCodeFilter = visibleTasks.isEmpty && group.tasks.isNotEmpty;
+    final totalOpen =
+        group.tasks.where((t) => !t.done).length +
+        group.areaGroups.fold<int>(
+          0,
+          (sum, a) => sum + a.tasks.where((t) => !t.done).length,
+        );
 
-    return Padding(
-      padding: EdgeInsets.only(left: depth * 24.0, bottom: 12),
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      collapsed ? Icons.chevron_right : Icons.expand_more,
-                    ),
-                    tooltip: collapsed
-                        ? 'Expand this group'
-                        : 'Collapse this group — click again to reopen',
-                    onPressed: () => setState(() {
-                      if (collapsed) {
-                        _collapsed.remove(key);
-                      } else {
-                        _collapsed.add(key);
-                      }
-                    }),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.check),
-                    tooltip: 'Mark all done for this group',
-                    onPressed: openTasks.isEmpty
-                        ? null
-                        : () => widget.onMarkAllDone(group.project),
-                  ),
-                  // L5 — the project's own name opens its Plan tab.
-                  InkWell(
-                    onTap: () => widget.onOpenProject(
-                      openTarget(_folderOf(group.project.sourceFile)),
-                    ),
-                    child: Text(
-                      group.project.name.toUpperCase(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (!collapsed) ...[
-                if (hiddenByCodeFilter)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 48),
-                    child: Text(
-                      '${group.project.name} · ${group.tasks.length} tasks '
-                      'hidden, marked code',
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                  )
-                else ...[
-                  for (final task in openTasks) _taskRow(group.project, task),
-                  if (doneTasks.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 48, top: 4),
-                      child: InkWell(
-                        onTap: () => setState(() {
-                          if (_showCompleted.contains(key)) {
-                            _showCompleted.remove(key);
-                          } else {
-                            _showCompleted.add(key);
-                          }
-                        }),
-                        child: Text(
-                          _showCompleted.contains(key)
-                              ? 'Hide completed'
-                              : 'Show completed (${doneTasks.length})',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ),
-                    ),
-                  if (_showCompleted.contains(key))
-                    for (final task in doneTasks) _taskRow(group.project, task),
-                ],
-              ],
-              if (!collapsed)
-                for (final areaGroup in group.areaGroups)
-                  _areaGroupTile(
-                    areaGroup,
-                    depth: depth + 1,
-                    projectFolder: _folderOf(group.project.sourceFile),
-                  ),
-              for (final child in group.children)
-                _groupTile(child, depth: depth + 1),
-            ],
+    return AsaGroup(
+      name: group.project.name,
+      openCount: totalOpen,
+      expanded: !collapsed,
+      nested: depth > 0,
+      onToggleExpand: () => setState(() {
+        if (collapsed) {
+          _collapsed.remove(key);
+        } else {
+          _collapsed.add(key);
+        }
+      }),
+      // L5 — the project's own name opens its Plan tab.
+      onNameTap: () =>
+          widget.onOpenProject(openTarget(_folderOf(group.project.sourceFile))),
+      onMarkAllDone: openTasks.isEmpty
+          ? null
+          : () => widget.onMarkAllDone(group.project),
+      children: [
+        // Round 37 §D1 — areas first, "Not in an area" last, same order
+        // as the Plan tab.
+        for (final areaGroup in group.areaGroups)
+          _areaGroupTile(
+            areaGroup,
+            projectFolder: _folderOf(group.project.sourceFile),
           ),
-        ),
-      ),
+        if (group.tasks.isNotEmpty)
+          _notInAnAreaTile(
+            group,
+            projectFolder: _folderOf(group.project.sourceFile),
+          ),
+        for (final child in group.children) _groupTile(child, depth: depth + 1),
+      ],
     );
   }
 
@@ -308,7 +257,6 @@ class _TasksViewState extends State<TasksView> {
   /// this group deliberately does not offer.
   Widget _areaGroupTile(
     AreaTaskGroup areaGroup, {
-    required int depth,
     required String projectFolder,
   }) {
     final key = areaGroup.sourceFile;
@@ -321,131 +269,204 @@ class _TasksViewState extends State<TasksView> {
     final doneTasks = visibleTasks.where((t) => t.done).toList();
     final hiddenByCodeFilter =
         visibleTasks.isEmpty && areaGroup.tasks.isNotEmpty;
+    final nextTask = openTasks.isEmpty ? null : openTasks.first;
 
     return Padding(
-      padding: EdgeInsets.only(left: depth * 24.0, top: 8),
+      padding: const EdgeInsets.only(left: AsaSpace.lg, top: AsaSpace.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              IconButton(
-                icon: Icon(collapsed ? Icons.chevron_right : Icons.expand_more),
-                tooltip: collapsed
-                    ? 'Expand this area'
-                    : 'Collapse this area — click again to reopen',
-                onPressed: () => setState(() {
-                  if (collapsed) {
-                    _collapsed.remove(key);
-                  } else {
-                    _collapsed.add(key);
-                  }
-                }),
-              ),
-              // L6 — the area's own sub-heading opens that one area.
-              InkWell(
-                onTap: () => widget.onOpenProject(
-                  openTarget(
-                    projectFolder,
-                    areaSourceFile: areaGroup.sourceFile,
+          InkWell(
+            onTap: () => widget.onOpenProject(
+              openTarget(projectFolder, areaSourceFile: areaGroup.sourceFile),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: AsaColors.violet,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                child: Text(
-                  areaGroup.name.toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    fontSize: 12.5,
-                    color: Colors.grey.shade700,
+                const SizedBox(width: AsaSpace.xs),
+                Text(
+                  areaGroup.name,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AsaColors.violet,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: AsaSpace.xs),
+                Text('${openTasks.length} open', style: AsaText.meta),
+              ],
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              collapsed ? Icons.chevron_right : Icons.expand_more,
+              size: 16,
+            ),
+            tooltip: collapsed
+                ? 'Expand this area'
+                : 'Collapse this area — click again to reopen',
+            onPressed: () => setState(() {
+              if (collapsed) {
+                _collapsed.remove(key);
+              } else {
+                _collapsed.add(key);
+              }
+            }),
           ),
           if (!collapsed)
             if (hiddenByCodeFilter)
               Padding(
-                padding: const EdgeInsets.only(left: 48),
+                padding: const EdgeInsets.only(left: AsaSpace.xl),
                 child: Text(
                   '${areaGroup.name} · ${areaGroup.tasks.length} tasks '
                   'hidden, marked code',
-                  style: TextStyle(color: Colors.grey.shade600),
+                  style: AsaText.meta,
                 ),
               )
             else ...[
-              for (final task in openTasks) _areaTaskRow(areaGroup, task),
+              for (final task in openTasks)
+                _areaTaskRow(areaGroup, task, isNext: task == nextTask),
               if (doneTasks.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 48, top: 4),
-                  child: InkWell(
-                    onTap: () => setState(() {
-                      if (_showCompleted.contains(key)) {
-                        _showCompleted.remove(key);
-                      } else {
-                        _showCompleted.add(key);
-                      }
-                    }),
-                    child: Text(
-                      _showCompleted.contains(key)
-                          ? 'Hide completed'
-                          : 'Show completed (${doneTasks.length})',
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                  ),
-                ),
+                _showCompletedLink(key, doneTasks.length),
               if (_showCompleted.contains(key))
-                for (final task in doneTasks) _areaTaskRow(areaGroup, task),
+                for (final task in doneTasks)
+                  _areaTaskRow(areaGroup, task, isNext: false),
             ],
         ],
       ),
     );
   }
 
-  Widget _taskRow(Project project, Task task) {
+  /// A project's own home-note tasks, shown last (round 37 §D1) under the
+  /// same "Not in an area" heading the Plan tab already uses.
+  Widget _notInAnAreaTile(TaskGroup group, {required String projectFolder}) {
+    final key = '${group.project.sourceFile}#home';
+    final collapsed = _collapsed.contains(key);
+    final visibleTasks = _showCode
+        ? group.tasks
+        : group.tasks.where((t) => !t.isCode).toList();
+    final openTasks = visibleTasks.where((t) => !t.done).toList();
+    final doneTasks = visibleTasks.where((t) => t.done).toList();
+    final hiddenByCodeFilter = visibleTasks.isEmpty && group.tasks.isNotEmpty;
+    final nextTask = openTasks.isEmpty ? null : openTasks.first;
+
     return Padding(
-      padding: const EdgeInsets.only(left: 40, top: 2, bottom: 2),
-      child: Row(
+      padding: const EdgeInsets.only(left: AsaSpace.lg, top: AsaSpace.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Checkbox(
-            value: task.done,
-            onChanged: (_) => widget.onToggleTask(project, task),
-          ),
-          Expanded(
-            child: Text(
-              stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
-              style: task.done ? TextStyle(color: Colors.grey.shade500) : null,
-            ),
-          ),
-          if (task.crossProjectRef != null) _crossProjectChip(task),
-          if (task.isCode)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Tooltip(
-                message: "This task is Code's, not yours",
-                child: Icon(Icons.code, size: 16, color: Colors.grey.shade500),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Tooltip(
-              message: task.parked
-                  ? 'Parked — tap to unpark'
-                  : 'Tap to park this task',
-              child: InkWell(
-                borderRadius: BorderRadius.circular(4),
-                onTap: () => widget.onToggleParked(project, task),
-                child: Icon(
-                  task.parked ? Icons.bookmark : Icons.bookmark_border,
-                  size: 16,
-                  color: task.parked
-                      ? Colors.amber.shade800
-                      : Colors.grey.shade400,
+          InkWell(
+            onTap: () =>
+                widget.onOpenProject(openTarget(projectFolder, openHome: true)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: AsaColors.ink3,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
+                const SizedBox(width: AsaSpace.xs),
+                const Text(
+                  'Not in an area',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AsaColors.ink2,
+                  ),
+                ),
+                const SizedBox(width: AsaSpace.xs),
+                Text('${openTasks.length} open', style: AsaText.meta),
+              ],
             ),
           ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(
+              collapsed ? Icons.chevron_right : Icons.expand_more,
+              size: 16,
+            ),
+            tooltip: collapsed
+                ? 'Expand this group'
+                : 'Collapse this group — click again to reopen',
+            onPressed: () => setState(() {
+              if (collapsed) {
+                _collapsed.remove(key);
+              } else {
+                _collapsed.add(key);
+              }
+            }),
+          ),
+          if (!collapsed)
+            if (hiddenByCodeFilter)
+              Padding(
+                padding: const EdgeInsets.only(left: AsaSpace.xl),
+                child: Text(
+                  '${group.project.name} · ${group.tasks.length} tasks '
+                  'hidden, marked code',
+                  style: AsaText.meta,
+                ),
+              )
+            else ...[
+              for (final task in openTasks)
+                _taskRow(group.project, task, isNext: task == nextTask),
+              if (doneTasks.isNotEmpty)
+                _showCompletedLink(key, doneTasks.length),
+              if (_showCompleted.contains(key))
+                for (final task in doneTasks)
+                  _taskRow(group.project, task, isNext: false),
+            ],
         ],
       ),
+    );
+  }
+
+  Widget _showCompletedLink(String key, int count) {
+    return Padding(
+      padding: const EdgeInsets.only(left: AsaSpace.xl, top: AsaSpace.xs),
+      child: InkWell(
+        onTap: () => setState(() {
+          if (_showCompleted.contains(key)) {
+            _showCompleted.remove(key);
+          } else {
+            _showCompleted.add(key);
+          }
+        }),
+        child: Text(
+          _showCompleted.contains(key)
+              ? 'Hide completed'
+              : 'Show completed ($count)',
+          style: AsaText.meta,
+        ),
+      ),
+    );
+  }
+
+  Widget _taskRow(Project project, Task task, {required bool isNext}) {
+    return TaskRow(
+      text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+      done: task.done,
+      isNext: isNext,
+      isCodeTask: task.isCode,
+      indent: AsaSpace.xl,
+      onToggle: (_) => widget.onToggleTask(project, task),
+      crossProjectChip: task.crossProjectRef == null
+          ? null
+          : _crossProjectChip(task),
+      parked: task.parked,
+      onPark: () => widget.onToggleParked(project, task),
     );
   }
 
@@ -454,21 +475,12 @@ class _TasksViewState extends State<TasksView> {
   /// otherwise, same as every task here already was before this round.
   Widget _crossProjectChip(Task task) {
     final folder = widget.folderBySlug[task.crossProjectRef];
-    final chip = Container(
-      margin: const EdgeInsets.only(left: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '↳ ${task.crossProjectRef}',
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-      ),
+    final chip = Text(
+      '↳ ${task.crossProjectRef}',
+      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
     );
     if (folder == null) return chip;
     return InkWell(
-      borderRadius: BorderRadius.circular(4),
       onTap: () => widget.onOpenProject(openTarget(folder)),
       child: chip,
     );
@@ -479,53 +491,21 @@ class _TasksViewState extends State<TasksView> {
   /// No parking icon — Round 34 F's amendment to ADR 0021 covers checkbox
   /// state only, and parking is a different write this group does not
   /// offer for an area's file.
-  Widget _areaTaskRow(AreaTaskGroup areaGroup, Task task) {
+  Widget _areaTaskRow(
+    AreaTaskGroup areaGroup,
+    Task task, {
+    required bool isNext,
+  }) {
     final onToggle = widget.onToggleAreaTask;
-    return Padding(
-      padding: const EdgeInsets.only(left: 40, top: 2, bottom: 2),
-      child: Row(
-        children: [
-          Checkbox(
-            value: task.done,
-            onChanged: onToggle == null
-                ? null
-                : (_) => onToggle(areaGroup.sourceFile, task),
-          ),
-          Expanded(
-            child: Text(
-              stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
-              style: task.done ? TextStyle(color: Colors.grey.shade500) : null,
-            ),
-          ),
-          if (task.isCode)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Tooltip(
-                message: "This task is Code's, not yours",
-                child: Icon(Icons.code, size: 16, color: Colors.grey.shade500),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Panel extends StatelessWidget {
-  const _Panel({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: child,
+    return TaskRow(
+      text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+      done: task.done,
+      isNext: isNext,
+      isCodeTask: task.isCode,
+      indent: AsaSpace.xl,
+      onToggle: onToggle == null
+          ? null
+          : (_) => onToggle(areaGroup.sourceFile, task),
     );
   }
 }

@@ -161,7 +161,7 @@ void main() {
       await pumpAndLoad(tester);
 
       await tapAndSettle(tester, find.byIcon(Icons.checklist)); // Tasks view
-      await tapAndSettle(tester, find.text('SOLO PROJECT'));
+      await tapAndSettle(tester, find.text('Solo project'));
 
       expect(find.text('Solo project'), findsOneWidget); // header
     },
@@ -173,7 +173,7 @@ void main() {
       await pumpAndLoad(tester);
 
       await tapAndSettle(tester, find.byIcon(Icons.checklist));
-      await tapAndSettle(tester, find.text('SALES'));
+      await tapAndSettle(tester, find.text('Sales'));
 
       expect(find.text('Serves Objective 1.'), findsOneWidget);
     },
@@ -195,13 +195,13 @@ void main() {
       await pumpAndLoad(tester);
 
       await tapAndSettle(tester, find.byIcon(Icons.checklist)); // Tasks view
-      await tapAndSettle(tester, find.text('SOLO PROJECT'));
+      await tapAndSettle(tester, find.text('Solo project'));
 
       await tapAndSettle(tester, find.byIcon(Icons.arrow_back));
 
       // Back on the Tasks view, not the Overview — the group name is
       // still visible, and so is the Tasks-view-only "Code tasks" filter.
-      expect(find.text('SOLO PROJECT'), findsOneWidget);
+      expect(find.text('Solo project'), findsOneWidget);
       expect(find.text('Code tasks'), findsOneWidget);
     },
   );

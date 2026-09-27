@@ -38,7 +38,7 @@ void main() {
     expect(find.text('a child task'), findsNothing);
   });
 
-  testWidgets('tapping the header calls onToggleExpand', (tester) async {
+  testWidgets('tapping the triangle calls onToggleExpand', (tester) async {
     var toggled = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -52,8 +52,31 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Kundenakte'));
+    await tester.tap(find.byIcon(Icons.chevron_right));
     expect(toggled, isTrue);
+  });
+
+  testWidgets('tapping the name calls onNameTap, not onToggleExpand', (
+    tester,
+  ) async {
+    var nameTapped = false;
+    var toggled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AsaGroup(
+            name: 'Kundenakte',
+            openCount: 1,
+            expanded: false,
+            onToggleExpand: () => toggled = true,
+            onNameTap: () => nameTapped = true,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Kundenakte'));
+    expect(nameTapped, isTrue);
+    expect(toggled, isFalse);
   });
 
   testWidgets('no mark-all tick when onMarkAllDone is null', (tester) async {
