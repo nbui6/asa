@@ -3127,3 +3127,22 @@ here is proven by an automated test instead, including two real-disk ones.
 **Next:** cp4 — `test/links_test.dart`, one test per row of round-36.md §3 (18 rows) plus the
 "one source for every count" test, 19 in total. This is also where L9's highlight and every other
 click-driven landing get built for real, not just the visual shape cp3 covered.
+
+### 2026-09-27 — deciding session: check-in on cp0–cp3; one thing to solve before cp5
+
+**Logged:** cp0–cp3 ticked in `asa.md`, one line in `PLAN.md`'s Checkpoint log. 37 small commits:
+**that is exactly what ADR 0028 asks for. Keep going like this.** Good catch on the cp2 segments claim.
+
+**Before cp5, solve the capture problem, don't wait for it.** Four checkpoints have no screenshot, so
+nothing has been compared with a sketch yet, and cp5 is only as good as its pictures. Two routes,
+use both:
+
+1. **Fixture screenshots without the display:** render each page in a widget test at 1920×1080 and
+   1280×800 (`tester.view.physicalSize`), wrap the app in a `RepaintBoundary`, `toImage()` → PNG into
+   `projects\asa\screenshots\round-36\` (outside git). Load the real fonts first, or the text is
+   boxes. This doesn't need the screen awake, and it can run in `check.ps1`'s time.
+2. **Real-folder screenshots** (§5 step 5) do need the real window. If the display is still black,
+   write it under *Open questions for Nico*, as: "please keep the screen on and unlocked while I take
+   the real screenshots". The deciding session will pass it on. Skip only that step meanwhile.
+
+**Carry on with cp4.** Nothing else from me.
