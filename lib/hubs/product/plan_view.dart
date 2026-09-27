@@ -186,7 +186,11 @@ class _PlanViewState extends State<PlanView> {
     super.initState();
     final target = widget.areaToOpen;
     if (target != null) _expandedAreas.add(target);
-    if (widget.openHomeOnStart) _notInAnAreaExpanded = true;
+    // Round 36 cp8, §9 point 1 — a project with no plan pages at all shows
+    // "Not in an area" as its only row; open by default, same reasoning
+    // openHomeOnStart already uses for a caller that asked for it.
+    final soleRow = widget.areas.isEmpty && widget.plan.isEmpty;
+    if (widget.openHomeOnStart || soleRow) _notInAnAreaExpanded = true;
     _highlightedRawLine = widget.highlightTaskRawLine;
     if (_highlightedRawLine != null) _armHighlightTimer();
   }
@@ -219,7 +223,27 @@ class _PlanViewState extends State<PlanView> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.areas.isEmpty) return _legacyBody();
+    if (widget.areas.isEmpty) {
+      // Round 36 cp8, §9 point 1 — found against the real folder: 12 of 13
+      // real projects have neither `PLAN.md` nor `plan\`, and used to land
+      // on the Decisions tab entirely (this widget never even built) —
+      // contradicting §2 a's own "every project opens on Plan." A project
+      // with a real `PLAN.md` (asa, today) keeps its own legacy screen
+      // unchanged, just with the Next line above it; a project with
+      // neither gets the Next line, "what this project is for" if there's
+      // a real Strategy, its home tasks under "Not in an area" (the only
+      // row, so open by default — see initState), and one quiet pointer
+      // to how it would grow areas at all.
+      if (widget.plan.isEmpty) return _noPlanBody();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _nextLineRow(),
+          const SizedBox(height: 4),
+          _legacyBody(),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,6 +277,37 @@ class _PlanViewState extends State<PlanView> {
         _strategyPointer(),
         const SizedBox(height: 12),
         _readOnlyNote(),
+      ],
+    );
+  }
+
+  /// Round 36 cp8, §9 point 1 — a project with neither `PLAN.md` nor
+  /// `plan\`: no areas, no legacy roadmap, nothing invented to fill the
+  /// gap. Just the Next line, why the project exists if that's known, its
+  /// own home tasks (the only row here, open by default), and one honest
+  /// pointer to how it would grow areas at all — never a button that
+  /// writes anything itself, matching ADR 0021's own read-only rule.
+  Widget _noPlanBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.strategy != null && !widget.strategy!.isEmpty) ...[
+          _whatThisProjectIsFor(widget.strategy!),
+          const SizedBox(height: 4),
+        ],
+        _nextLineRow(),
+        const SizedBox(height: 4),
+        _notInAnAreaRow(),
+        const SizedBox(height: 12),
+        Text(
+          'No areas yet. To split this project into areas: Start → Copy '
+          'opener, and ask the AI.',
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontStyle: FontStyle.italic,
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }

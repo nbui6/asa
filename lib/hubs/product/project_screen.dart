@@ -262,9 +262,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// `Details` never move and never disappear.
   List<_Tab> _visibleTabs() {
     final strategy = _strategy;
-    final plan = _plan;
     return [
-      if (plan != null && !plan.isEmpty) _Tab.plan,
+      // Round 36 cp8, §9 point 1 — every project opens on Plan (§2 a),
+      // with or without a `PLAN.md`/`plan\` of its own; `PlanView` itself
+      // now has a real body for that empty case. Hiding this tab was the
+      // real gap: 12 of 13 real projects landed on Decisions instead.
+      _Tab.plan,
       if (strategy != null && !strategy.isEmpty) _Tab.strategy,
       _Tab.decisions,
       _Tab.details,
@@ -422,10 +425,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
           onDataChanged: _load,
         );
       case _Tab.plan:
-        final plan = _plan;
-        if (plan == null || plan.isEmpty) return _decisionsTab(read);
+        // Round 36 cp8, §9 point 1 — always PlanView, never a fallback to
+        // Decisions: PlanView itself now has a real, honest body for a
+        // project with no plan pages at all (`_noPlanBody`).
         return PlanView(
-          plan: plan,
+          plan: _plan ?? const Plan(pages: []),
           areas: _areas,
           decisions: _decisions ?? const [],
           homeTasks: read.isSuccess ? read.project!.tasks : const [],
