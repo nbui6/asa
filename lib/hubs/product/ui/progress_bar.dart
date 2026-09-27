@@ -52,10 +52,18 @@ class ProgressBar extends StatelessWidget {
         height: height,
         child: Stack(
           children: [
-            const ColoredBox(color: AsaColors.soft),
-            FractionallySizedBox(
-              widthFactor: fraction.clamp(0, 1),
-              child: ColoredBox(color: meaning.fg),
+            // Positioned.fill — a bare ColoredBox in a Stack gets loose
+            // constraints down to zero and paints nothing at all (found
+            // against a real screenshot, round-37 cp4: every ProgressBar
+            // on screen was an invisible strip). Filling the Stack's own
+            // bounds is what actually makes the track and fill visible.
+            const Positioned.fill(child: ColoredBox(color: AsaColors.soft)),
+            Positioned.fill(
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: fraction.clamp(0, 1),
+                child: ColoredBox(color: meaning.fg),
+              ),
             ),
           ],
         ),
