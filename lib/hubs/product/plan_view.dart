@@ -390,7 +390,10 @@ class _PlanViewState extends State<PlanView> {
         vertical: AsaSpace.sm,
       ),
       decoration: BoxDecoration(
-        color: AsaMeaning.area.bg,
+        // Round 37 cp6, §D6 item 6 — violet means an area (one of the
+        // five meanings); this box isn't one, so it's a plain white
+        // panel, no tint, matching `asa-one-look-v1`'s own drawing.
+        color: AsaColors.panel,
         border: Border.all(color: AsaColors.line),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -675,6 +678,12 @@ class _PlanViewState extends State<PlanView> {
   }
 
   Widget _tasksField(List<Task> tasks, {required String sourceFile}) {
+    // Round 37 cp6, §D6 item 5 — the same first-open-unparked-task rule
+    // `_areaNextTaskLabel` already uses for the closed row's own summary;
+    // an opened area's task list gets the same "next" pill the sketch
+    // draws, not just that closed-row text.
+    final openTasks = tasks.where((t) => !t.done && !t.parked);
+    final nextTask = openTasks.isEmpty ? null : openTasks.first.rawLine;
     return Padding(
       padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
@@ -685,17 +694,27 @@ class _PlanViewState extends State<PlanView> {
           if (tasks.isEmpty)
             const EmptyLine('Nothing yet')
           else
-            for (final task in tasks) _taskRow(task, sourceFile: sourceFile),
+            for (final task in tasks)
+              _taskRow(
+                task,
+                sourceFile: sourceFile,
+                isNext: task.rawLine == nextTask,
+              ),
         ],
       ),
     );
   }
 
-  Widget _taskRow(Task task, {required String sourceFile}) {
+  Widget _taskRow(
+    Task task, {
+    required String sourceFile,
+    bool isNext = false,
+  }) {
     final canToggle = widget.onToggleTask != null;
     return TaskRow(
       text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
       done: task.done,
+      isNext: isNext,
       highlighted: _highlightedRawLine == task.rawLine,
       onToggle: canToggle
           ? (_) => widget.onToggleTask!(sourceFile, task)
@@ -827,6 +846,10 @@ class _PlanViewState extends State<PlanView> {
   // --- Not in an area ----------------------------------------------------
 
   Widget _notInAnAreaRow() {
+    final openHomeTasks = widget.homeTasks.where((t) => !t.done && !t.parked);
+    final nextHomeTask = openHomeTasks.isEmpty
+        ? null
+        : openHomeTasks.first.rawLine;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
       decoration: const BoxDecoration(
@@ -866,7 +889,11 @@ class _PlanViewState extends State<PlanView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         for (final task in widget.homeTasks)
-                          _taskRow(task, sourceFile: widget.projectSourceFile),
+                          _taskRow(
+                            task,
+                            sourceFile: widget.projectSourceFile,
+                            isNext: task.rawLine == nextHomeTask,
+                          ),
                       ],
                     ),
             ),
@@ -1000,8 +1027,17 @@ class _PlanViewState extends State<PlanView> {
             Wrap(
               spacing: AsaSpace.xs,
               runSpacing: AsaSpace.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                for (final link in shownLinks) _linkChip(link),
+                // Round 37 cp6 — the deciding session's own cp4 finding:
+                // consecutive Round chips read as one run-on phrase with
+                // only a bare space between them. The same visible " · "
+                // separator the ADR chips already carry inside their own
+                // label, between chips here instead.
+                for (var i = 0; i < shownLinks.length; i++) ...[
+                  if (i > 0) const Text('·', style: AsaText.meta),
+                  _linkChip(shownLinks[i]),
+                ],
                 if (hiddenCount > 0)
                   Tooltip(
                     message: links
