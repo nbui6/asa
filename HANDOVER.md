@@ -3567,3 +3567,97 @@ resetting on every visit is the calmer default on purpose. Unchanged by this che
 
 **Next:** ready again — Nico's own test (round-36.md §8, written out in cp7's entry above) now has
 the real-folder gap it would have hit on step 2 closed. Nothing else queued.
+
+### 2026-09-27 — deciding session → Code: cp8 checked and logged; Round 37 is specced but **waits for Nico's yes**
+
+**cp8:** ticked in `asa.md`, logged in `PLAN.md`. The `--no-verify` reason is fine as written. Round 36
+is finished apart from Nico's own test.
+
+**Don't start Round 37 yet.** Nico found the UI inconsistent, the Tasks page in particular. The
+deciding session wrote `projects\asa\rounds\round-37.md` (one set of parts in
+`lib/hubs/product/ui/`, one meaning per colour, a check that fails on page-local styles) and ADR 0029,
+both waiting for his yes on `projects\asa\sketches\asa-one-look-v1.html`. The yes gets written here.
+Until then: nothing to build. Don't change any page's look on your own.
+
+### 2026-09-27 — deciding session → Code: Nico said yes, start Round 37
+
+**Nico approved `projects\asa\sketches\asa-one-look-v1.html`** (*"yes"*), after one change he asked
+for: tasks closer together, **26 px per task row**, as tight as the Plan tab (*"the tasks space between
+each others are too big"*). ADR 0029 is accepted.
+
+**Read `projects\asa\rounds\round-37.md` end to end, then ADR 0029. Start with cp0 and go through to
+cp5.** Build against the sketch image, side by side, never from memory. **Commit as often as
+possible** (ADR 0028), `Round 37 cpN:`, never push, one entry here per checkpoint with the six
+headings. **No page layout changes:** if making a page use the shared parts would move something
+Nico approved, write it under *Open questions for Nico* and skip that piece.
+
+Say "ready" only when `one_look_test.dart`, the links tests and the click-through are all green, and
+`round-37-compare.html` shows every page next to the sketch.
+
+### Round 37 cp0 — tokens.dart and every part, tested
+
+**Built:** `lib/hubs/product/ui/tokens.dart` — colours (exact `:root` values from
+`sketches\asa-one-look-v1.html`), the five-meaning system (`AsaMeaning`: done/needsYou/moving/
+area/quiet), `meaningForStatus`/`meaningForDecisionStatus`, five text styles, spacing in steps of 4,
+960 px content width, one date formatter (`asaListDate`/`asaDetailDate`). Twelve parts, one file
+each: `AsaPage`, `AsaPanel`, `AsaRow`, `AsaGroup`, `SectionLabel`, `Pill`, `LinkChip`, `AreaChip`,
+`TaskRow` (26 px, park icon on hover only), `ProgressBar`, `EmptyLine`, `SourceLine`.
+
+**Tests (count):** 42 new widget tests, one file per part, all green; 507 total, no regressions.
+
+**Commits:** `55b03fa` — Round 37 cp0: lib/hubs/product/ui/ — tokens.dart and every part, tested
+
+**Screenshots:** none this checkpoint.
+
+**Calls I made:** `AsaPage` needed two shapes, not one — a project/decision-detail screen (back
+arrow, name large underneath, per round-37's own table) and the root screen (no back arrow, name
+inline at 18, matching the sketch's own drawn Tasks-page mock exactly rather than the table's more
+general prose). Built as one widget with two modes (`onBack` null or not), not two separate parts —
+round-37's own list names one `AsaPage`.
+
+**Open questions for Nico:** none yet.
+
+**Next:** cp1 — Tasks view and the overview onto the parts (§D1).
+
+### Round 37 cp1 — Tasks view and the overview, moved onto the parts
+
+**Built:** Tasks view: one `AsaPanel` instead of a `Card` per project; `AsaGroup` instead of its own
+header (triangle, mark-all, name in normal case); `TaskRow` instead of its own task rows; areas
+first, "Not in an area" last (was the opposite order — round-37 §D1). Overview: `projects_screen.dart`
+now opens with `AsaPage` instead of its own `Scaffold`/`AppBar`; `projects_view.dart`'s status pill
+is the shared `Pill`, by meaning, instead of its own outlined one; the area bar's visual segments are
+`ProgressBar`.
+
+**Two real gaps found moving onto the parts, both fixed in `ui/` itself, not worked around in a
+page:**
+1. `AsaGroup`'s header was one `InkWell` for the whole row — would have broken L5 (the project's
+   *name* opens its Plan tab, a different action from the triangle's own expand/collapse). Split
+   into `onToggleExpand` and a separate `onNameTap`.
+2. `TaskRow` had no way to show an already-parked task distinctly from an unparked one on hover —
+   added `parked`, always showing the filled bookmark for a parked task, matching what this screen
+   already did before this round.
+3. The shared `Pill` had neither the width limit nor the ellipsis the old status pill used to clip a
+   whole-paragraph status value with (a real value found in one project note). Fixed in `ui/pill.dart`
+   itself — every pill everywhere gets the same protection now, not just the one caller that
+   originally needed it.
+
+**Tests (count):** 509 total, all green (three ALL-CAPS finders and one order assertion updated in
+existing tests for round-37's own, approved changes; `overdue_test.dart` updated — the overdue
+signal borrows the "needs you" meaning now, ADR 0029 has no separate "error" colour).
+
+**Commits (hashes, one line each):**
+- `11f2c07` — Round 37 cp1 (1/2): Tasks view moves onto the shared parts
+- `30798a3` — Round 37 cp1 (2/2): Overview and its page shell move onto the shared parts
+
+**Screenshots:** none this checkpoint — cp4's own screenshot loop is where these get compared to the
+sketch side by side.
+
+**Calls I made:** the three fixes above were real defects a shared-parts move exists to catch, not
+judgement calls. Kept `_Panel` (projects_screen.dart's own small title+body wrapper for the
+folder-error/no-folder/skipped-folders states) as a thin composition over `AsaPanel` rather than
+deleting it outright — it adds a title `AsaPanel` itself doesn't have, and doesn't duplicate any of
+its border/radius logic anymore.
+
+**Open questions for Nico:** none.
+
+**Next:** cp2 — project header, all four tabs, and decision detail onto the parts (§D2–7).
