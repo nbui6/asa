@@ -3246,3 +3246,94 @@ from the deciding session's check-in (see the commit above).
 **Next:** cp5 — the match-the-sketch loop. The deciding session's own check-in (this file, just
 above) already gives it a concrete shape: fixture screenshots via a widget test's own `toImage()`
 first (no real screen needed), the real folder's screenshots once the screen is confirmed awake.
+
+### Round 36 cp5 — the match-the-sketch loop. Three real gaps found and fixed; seven differences left, all judged and written down.
+
+**Built:** `test/fixtures/round-36/` — a persistent, invented fixture on disk (Northwind
+partnership with four `plan\*.md` areas — Marketing, Sales, Enablement, Finance, one all-done, one
+with no result yet — a `CHARTER.md` with three objectives, three ADRs, one `proposed`; Kundenakte
+with no `plan\` folder at all; a work project with a child, Toolkit → Toolkit plugin; Other with a
+grandchild, Other → Legacy app → Legacy app docs). A real-engine integration test (since deleted,
+see below) rendered every page from round-36.md §1's table at 1920×1080 and 1280×800 into
+`projects\asa\screenshots\round-36\`, 16 PNGs. Compared each one against its own sketch, found and
+fixed three real layout gaps that didn't match: the area row's collapsed layout (was three stacked
+lines, is now one line — chevron, name, next-task text, result date, bar, `N / M`), the Next line
+(was a plain row, is now a bordered card matching the sketch's boxed look), and the overview's area
+segment labels (were bare area names, are now `Name N/M`). Re-captured, re-compared, matched. Built
+`projects\asa\screenshots\round-36-compare.html` (outside git) — every fixture screenshot next to
+its sketch, both widths, one page, plus the formal difference list round-36.md §5 step 3 asks for.
+**Gate 2, real folder, counts only:** launched against the real `projects\` folder (13 real
+projects), captured `overview`, `tasks-view`, `project-plan-tab`, `project-decisions-tab`,
+`project-details-tab` into `projects\asa\screenshots\round-36-real\` (dated, outside git) via a
+throwaway test built, run once, then deleted — no real project name in its own source, only in the
+PNGs it produced. Ran `persona-check` against `PERSONA.md` on those five real screenshots (not the
+code): **APPROVE WITH CONDITION** — nothing regressed, the honest empty-state fallback (a project
+with no `CHARTER.md`/`plan\` correctly shows "Nothing decided yet." on Decisions, real hand-typed
+fields on Details) held up against real data, but round-36's own centerpiece — the Next line, the
+area rows, the area/objective chips — is **not yet visible against any real project**, because none
+of the 13 has adopted a `plan\` folder yet. Condition: say that plainly rather than let a green
+persona-check read as "areas proven real" — the first real proof waits for Nico's own §8 test.
+
+**The difference list (round-36.md §5 step 3), all seven judged, none needing a code fix:**
+1. Segment bars, checkboxes and area chips render in the app's purple/indigo theme colour, not the
+   sketches' green — **stays.** Every coloured dot or dashed outline in these sketches is that
+   document's own "what's new in this sketch" annotation (stated in each one's own legend), not a
+   colour spec. The app's colour is `ColorScheme.fromSeed` in `main.dart`, set long before this
+   round.
+2. Start is an icon-only rocket button, not "Start ▾" text — **stays.** Round-36.md §1's own table
+   names the Start menu "as built in Round 32," explicitly out of this round's scope.
+3. The Plan tab has no "· updated N days ago" line under the project title, present in
+   `asa-project-page-v1`'s own mockup — **stays.** That same table row scopes what to take from
+   that sketch to "(tab order, the Next line)" only.
+4. An open area's "Objective N" chip sits on its own line under the Goal sentence, not inline
+   mid-sentence — **stays.** It has to be its own tappable target for L12; a separate line keeps
+   that target unambiguous.
+5. Tasks view's area sub-headings render in ALL CAPS where the sketch shows Title Case — **stays.**
+   Same annotation-colour reasoning as #1; the app already uppercases every group heading, project
+   and area alike, for one consistent rule.
+6. "What this project is for → Strategy →" sits right-aligned at the row's far right, not inline
+   after the sentence — **stays.** Cosmetic; still one line, still one tap.
+7. Decision detail's back control is a bare "←", not "← Decisions" — **stays.** Matches this app's
+   existing back-arrow convention everywhere else; round 36 only added this screen's area chip
+   (L17), not its header.
+
+**Tests (count):** 465 `flutter test` + 1 `flutter test integration_test -d windows` (`app_test.dart`)
+— `check.ps1`'s full four-step run, green. Release exe rebuilt (`flutter build windows --release`)
+and confirmed starting outside the IDE (launched, ran, exited 0).
+
+**Commits (hashes, one line each):**
+- `85cf967` — Round 36 cp5: test/fixtures/round-36/ + round36_screenshots_test.dart
+- `e935e15` — Round 36 cp5: remove round36_screenshots_test.dart after its one-time use
+
+**Screenshots:** `projects\asa\screenshots\round-36\` — 16 PNGs (overview, tasks-view,
+project-plan-tab, project-plan-tab-sales-open, project-strategy-tab, project-decisions-tab,
+decision-detail, project-details-tab, each at 1920×1080 and 1280×800). `projects\asa\screenshots\round-36-real\`
+— 5 PNGs, dated, real folder, Gate 2 (counts only, above). `projects\asa\screenshots\round-36-compare.html`
+— the side-by-side page, both sets plus the difference list. All outside git.
+
+**Calls I made:**
+1. **`85cf967` bundled two pieces that should have been separate commits.** Three visual fixes
+   (area row layout, Next-line card, segment labels) had already been made and staged earlier this
+   session but not yet committed; adding the fixture and screenshot test to the index and
+   committing picked up both together — 21 files instead of the ~16 the fixture alone would have
+   been. Not undone (undoing and re-splitting a working, tested commit is pure churn), but named
+   here rather than left silent.
+2. **Deleted `round36_screenshots_test.dart` right after using it**, rather than keeping it as a
+   permanent fixture. `check.ps1`'s step 4 runs every file under `integration_test\` on every
+   future run; this file's only job (capturing the 16 match-the-sketch PNGs) was already done, and
+   leaving it in made step 4 launch two extra full app windows back-to-back for no regression
+   value — which is exactly what made it fail once with a Windows debug-connection hiccup before
+   the deletion. `test/fixtures/round-36/` stays; cp6's click-through test needs it.
+3. **Persona-check's verdict is APPROVE WITH CONDITION, not a plain APPROVE**, specifically because
+   the round's own new UI has no real-data evidence yet — see "Built," above. This is named as a
+   condition rather than quietly absorbed into a clean pass.
+4. **The real-folder screenshot test was written generic and deleted immediately after its one
+   run** (Gate 2) — same pattern as the fixture-screenshot test, but stricter: its own source never
+   named a real project, only its output did, and that output lives outside git.
+
+**Open questions for Nico:** none. The real-data verification gap named above is not a question —
+it's a known limit of what a review can confirm before he does his own §8 test with his own real
+project brought into the `plan\` shape.
+
+**Next:** cp6 — the click-through integration test, round-36.md §6's 10-step script, run twice in a
+row against `test/fixtures/round-36/`.
