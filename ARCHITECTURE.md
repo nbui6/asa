@@ -1,8 +1,8 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-26 (Round 36 cp3 — round-36 §2 a-c, f: tab order and
-opening on Plan, the Next line, next-task area rows, and the overview reading areas too).
+Last checked against the folder tree: 2026-09-27 (Round 36 cp4 — round-36.md §3's own link table,
+every row wired for real and proven by `test/links_test.dart`).
 
 ---
 
@@ -84,6 +84,11 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the overview's "Next" line's own text, or the closed-area-row "next <task>" label | `lib/hubs/product/plan_view.dart`'s `_nextLineRow`/`_areaNextTaskLabel`; the underlying (text, area) chain is `lib/core/project_row.dart`'s `effectiveNextStepWithArea` |
 | change the overview row's own per-area bar segment | `lib/hubs/product/projects_view.dart`'s `_AreaBar` |
 | change how a project's `## Roadmap` milestone exposes the prose under its own checkbox | `lib/core/roadmap.dart`'s `Milestone.body`/`bodyLines` |
+| change what a link that lands on a project carries (which area, "Not in an area", a task to highlight) | `lib/core/project_open_target.dart`'s `ProjectOpenTarget`/`openTarget` — built by `ProjectsView`/`TasksView`, consumed by `ProjectsScreen._openProject`, which passes it to `ProjectScreen`'s `initial*` constructor params (round-36 §3, L1-L9) |
+| change the ~2s highlight a landed-on task briefly gets, or an area's own "Objective N" chip (round-36 §3, L3/L9/L12) | `lib/hubs/product/plan_view.dart`'s `_highlightedRawLine`/`_armHighlightTimer`, `_goalField`/`_objectiveChip` |
+| change which objective expands when `StrategyView` is asked to open one (round-36 §3, L12) | `lib/hubs/product/strategy_view.dart`'s `objectiveToOpen`/`_objectiveIndex` — keyed by the objective's own list position, not `identityHashCode` |
+| change whether an ADR chip (`PlanView`'s area chip, `StrategyView`'s objective chip) opens the real decision detail screen or just the raw file | same file's own `_openDecision`/`_openAdr` — in-app when the decision is already loaded, `openUrl` fallback otherwise |
+| change the area chip shown on the decision detail screen itself (round-36 §3, L17) | `lib/hubs/product/decision_detail_screen.dart`'s `areasNaming`/`onOpenArea` |
 | add a hub | `lib/hubs/<name>/`, and one line in `main.dart` |
 
 ## Where a new thing goes
