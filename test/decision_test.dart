@@ -518,4 +518,90 @@ void main() {
       );
     });
   });
+
+  group('Round 39 cp2 — the **Links:** line', () {
+    test("reads area, objective, round and supersedes, in the manual's own "
+        'worked example', () {
+      final result = parseDecision(
+        '# ADR 0009 - Title\n\n**Date:** 2026-09-28 · **Status:** '
+            'accepted\n**Links:** Area: Sales · Serves: Objective 2 · '
+            'Round: 38 · Supersedes: 0005\n\n## Decision\nSomething.\n',
+        '0009.md',
+      );
+      final links = result.decision!.links;
+      expect(links.area, 'Sales');
+      expect(links.objective, '2');
+      expect(links.round, '38');
+      expect(links.supersedes, '0005');
+      expect(links.scopeAlways, isFalse);
+    });
+
+    test('Scope: always is read as a bool, not a string to compare later', () {
+      final result = parseDecision(
+        '# ADR 0012 - Title\n\n**Status:** accepted\n**Links:** Scope: '
+            'always\n\n## Decision\nSomething.\n',
+        '0012.md',
+      );
+      expect(result.decision!.links.scopeAlways, isTrue);
+      expect(result.decision!.links.area, isNull);
+    });
+
+    test('a decision with no Links line reads as DecisionLinks.none, and '
+        'keeps working everywhere else', () {
+      final result = parseDecision(
+        '# ADR 0001 - Title\n\n**Status:** accepted\n\n## Decision\n'
+            'Something.\n',
+        '0001.md',
+      );
+      expect(result.decision!.links, same(DecisionLinks.none));
+      expect(result.decision!.links.area, isNull);
+    });
+
+    test("a subset of fields is fine - leaving one out means it doesn't "
+        'apply, not a parse failure', () {
+      final result = parseDecision(
+        '# ADR 0010 - Title\n\n**Status:** accepted\n**Links:** Area: '
+            'Finance\n\n## Decision\nSomething.\n',
+        '0010.md',
+      );
+      final links = result.decision!.links;
+      expect(links.area, 'Finance');
+      expect(links.objective, isNull);
+      expect(links.round, isNull);
+      expect(links.supersedes, isNull);
+    });
+
+    test('Supersedes: on the Links line merges into the same supersedes '
+        'field the status text already fills, never a second field to '
+        'check', () {
+      // Status text names no supersession at all - only the Links line
+      // does, and Decision.supersedes still reads it.
+      final result = parseDecision(
+        '# ADR 0011 - Title\n\n**Status:** accepted\n**Links:** '
+            'Supersedes: 0005\n\n## Decision\nSomething.\n',
+        '0011.md',
+      );
+      expect(result.decision!.supersedes, '0005');
+    });
+
+    test('the status text\'s own "supersedes NNNN" still wins when both '
+        'are somehow present, since it was read first', () {
+      final result = parseDecision(
+        '# ADR 0013 - Title\n\n**Status:** accepted (supersedes 0003)\n'
+            '**Links:** Supersedes: 0005\n\n## Decision\nSomething.\n',
+        '0013.md',
+      );
+      expect(result.decision!.supersedes, '0003');
+    });
+
+    test('"Serves: Objective 2" extracts the bare number, the same shape '
+        "area.dart's own objectiveNumbers already uses", () {
+      final result = parseDecision(
+        '# ADR 0014 - Title\n\n**Status:** accepted\n**Links:** Serves: '
+            'Objective 2\n\n## Decision\nSomething.\n',
+        '0014.md',
+      );
+      expect(result.decision!.links.objective, '2');
+    });
+  });
 }

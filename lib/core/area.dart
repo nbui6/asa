@@ -12,6 +12,7 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart' show FileAccess;
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/plan.dart';
@@ -238,6 +239,26 @@ Future<List<Area>> readAreasVia(String projectFolder, FileAccess files) async {
         sourceFile: '$planDir$sep$name',
         aspect: _stemOf(name),
       ),
+  ];
+}
+
+/// Round 39 cp2 — "an area knows its decisions: the ones it names, plus
+/// the ones that name it." Every area whose own `## Decisions` mentions
+/// [decision]'s number (the existing, forward direction: `area.dart`'s
+/// own `decisionNumbers`), **or** whose name matches [decision]'s own
+/// `**Links:** Area:` line (the new, reverse direction — a decision can
+/// declare its area without that area's page needing to mention it back).
+/// The one shared rule three view files each used to duplicate.
+List<Area> areasNamingDecision(Decision? decision, List<Area> areas) {
+  if (decision == null) return const [];
+  final number = decision.number;
+  final linkedArea = decision.links.area?.trim().toLowerCase();
+
+  return [
+    for (final area in areas)
+      if ((number != null && area.decisionNumbers.contains(number)) ||
+          (linkedArea != null && area.name.toLowerCase() == linkedArea))
+        area,
   ];
 }
 

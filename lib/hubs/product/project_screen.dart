@@ -534,7 +534,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           MaterialPageRoute<bool>(
             builder: (_) => DecisionDetailScreen(
               decision: decision,
-              areasNaming: _areasNaming(decision.number),
+              areasNaming: areasNamingDecision(decision, _areas),
               onOpenArea: _openArea,
             ),
           ),
@@ -561,9 +561,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   Text(decision.title, style: AsaText.rowName),
                   if (decision.status != null) _statusPill(decision),
                   // Round 34/D — the areas that name this ADR (ADR number
-                  // match, same as an area's own decisionNumbers). Tapping
-                  // one opens the Plan tab with that area already open.
-                  for (final area in _areasNaming(decision.number))
+                  // match, or Round 39's own **Links:** line). Tapping one
+                  // opens the Plan tab with that area already open.
+                  for (final area in areasNamingDecision(decision, _areas))
                     AreaChip(area.name, onTap: () => _openArea(area)),
                   // The pill alone would drop "names what replaced it" —
                   // still required (HANDOVER.md §5b), so it stays as a
@@ -582,17 +582,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
         ),
       ),
     );
-  }
-
-  /// Round 34/D — every area whose own `decisionNumbers` names [number].
-  /// A decision can be named by more than one area; every one gets its own
-  /// chip, never merged into one.
-  List<Area> _areasNaming(String? number) {
-    if (number == null) return const [];
-    return [
-      for (final area in _areas)
-        if (area.decisionNumbers.contains(number)) area,
-    ];
   }
 
   /// Round-36 §3, L17 — also handed to `DecisionDetailScreen`, `PlanView`

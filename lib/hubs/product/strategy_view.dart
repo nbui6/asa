@@ -443,7 +443,7 @@ class _StrategyViewState extends State<StrategyView> {
         MaterialPageRoute<bool>(
           builder: (_) => DecisionDetailScreen(
             decision: decision,
-            areasNaming: _areasNaming(link.target),
+            areasNaming: areasNamingDecision(decision, widget.areas),
             onOpenArea: widget.onOpenArea,
           ),
         ),
@@ -453,14 +453,6 @@ class _StrategyViewState extends State<StrategyView> {
     }
     unawaited(openUrl(widget.charterSourceFile));
   }
-
-  /// Round-36 §3, L17 — every area whose own `decisionNumbers` names
-  /// [number], same rule `ProjectScreen._areasNaming` and
-  /// `PlanView._areasNaming` already use.
-  List<Area> _areasNaming(String number) => [
-    for (final area in widget.areas)
-      if (area.decisionNumbers.contains(number)) area,
-  ];
 
   // --- Legend --------------------------------------------------------
 

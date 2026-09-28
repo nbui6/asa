@@ -41,6 +41,33 @@ class Verdict {
   final String reason;
 }
 
+/// Round 39 cp2 — the optional `**Links:**` line on a decision:
+/// `**Links:** Area: Sales · Serves: Objective 2 · Round: 38 · Supersedes:
+/// 0005`. Every field is optional; leaving one out means it doesn't apply,
+/// never a guess. `Scope: always` marks a rule that holds everywhere, not
+/// tied to one area.
+class DecisionLinks {
+  const DecisionLinks({
+    this.area,
+    this.objective,
+    this.round,
+    this.supersedes,
+    this.scopeAlways = false,
+  });
+
+  final String? area;
+
+  /// The bare objective number (`"2"`), the same shape `area.dart`'s own
+  /// `objectiveNumbers` already uses — parsed out of `Serves: Objective 2`
+  /// (or kept as the raw value when it isn't that exact shape).
+  final String? objective;
+  final String? round;
+  final String? supersedes;
+  final bool scopeAlways;
+
+  static const DecisionLinks none = DecisionLinks();
+}
+
 /// A decision. Every field but [title] and [sourceFile] may be empty or
 /// null — absence is normal, not an error. See the notes at the top of
 /// this file for why.
@@ -58,6 +85,7 @@ class Decision {
     this.supersededBy,
     this.verdict,
     this.verdictUnreadable = false,
+    this.links = DecisionLinks.none,
   });
 
   final String? number;
@@ -65,9 +93,16 @@ class Decision {
   final String? date;
   final String? status;
 
-  /// The ADR number this one replaces, read out of the status text —
-  /// `accepted (supersedes 0005)`.
+  /// The ADR number this one replaces — from the status text
+  /// (`accepted (supersedes 0005)`) or, Round 39, the `**Links:**` line's
+  /// own `Supersedes:` value. `parseDecision` already merges the two; this
+  /// is always the effective answer, never a second field to check.
   final String? supersedes;
+
+  /// Round 39 cp2 — the parsed `**Links:**` line, [DecisionLinks.none] when
+  /// there isn't one. Old decisions without it keep working everywhere
+  /// else; they are simply not found by area, objective or round.
+  final DecisionLinks links;
 
   /// The ADR number that replaced this one, read out of the status text —
   /// `superseded by 0008`.
@@ -222,6 +257,7 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
   // read as "proposed" — that is exactly how six of seven already-decided
   // rows went unnoticed. Distinct from "no verdict yet" (yourCall == null).
   final verdictUnreadable = yourCall != null && verdict == null;
+  final links = _parseLinks(afterHeading);
 
   return DecisionReadResult(
     decision: Decision(
@@ -229,7 +265,7 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
       title: title,
       date: date,
       status: status,
-      supersedes: _supersedes(status),
+      supersedes: _supersedes(status) ?? links.supersedes,
       supersededBy: _supersededBy(status),
       why: why,
       decision: decisionText,
@@ -237,9 +273,66 @@ DecisionReadResult parseDecision(String text, String sourceFile) {
       sourceFile: sourceFile,
       verdict: verdict,
       verdictUnreadable: verdictUnreadable,
+      links: links,
     ),
     rawText: text,
     sourceFile: sourceFile,
+  );
+}
+
+/// Round 39 cp2 — `**Links:** Area: Sales · Serves: Objective 2 · Round:
+/// 38 · Supersedes: 0005 · Scope: always`, in any order, any subset. A
+/// segment with no `:` is ignored rather than guessed at; an unrecognised
+/// key is ignored the same way, so a future key never becomes silent
+/// corruption of an existing one.
+final RegExp _objectiveInServes = RegExp(
+  r'Objective\s*(\d+)',
+  caseSensitive: false,
+);
+
+DecisionLinks _parseLinks(String afterHeading) {
+  final raw = _inlineLabel(afterHeading, 'Links');
+  if (raw == null) return DecisionLinks.none;
+
+  String? area;
+  String? objective;
+  String? round;
+  String? supersedes;
+  var scopeAlways = false;
+
+  // The line itself may end at the first real line break; a segment never
+  // spans what `_inlineLabel` already cut off at the next field/heading.
+  final firstLine = raw.split('\n').first;
+
+  for (final part in firstLine.split('·')) {
+    final segment = part.trim();
+    if (segment.isEmpty) continue;
+    final colon = segment.indexOf(':');
+    if (colon == -1) continue;
+    final key = segment.substring(0, colon).trim().toLowerCase();
+    final value = segment.substring(colon + 1).trim();
+    if (value.isEmpty) continue;
+
+    switch (key) {
+      case 'area':
+        area = value;
+      case 'serves':
+        objective = _objectiveInServes.firstMatch(value)?.group(1) ?? value;
+      case 'round':
+        round = value;
+      case 'supersedes':
+        supersedes = value;
+      case 'scope':
+        if (value.toLowerCase() == 'always') scopeAlways = true;
+    }
+  }
+
+  return DecisionLinks(
+    area: area,
+    objective: objective,
+    round: round,
+    supersedes: supersedes,
+    scopeAlways: scopeAlways,
   );
 }
 

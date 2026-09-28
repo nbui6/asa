@@ -4209,3 +4209,22 @@ match.
   while cp1 was still staged — not a clean split, named here rather than silently left unexplained.
 
 **Next:** cp2 — links Asa reads (`decision.dart`'s `**Links:**` line, a round's `**Area:**` line).
+
+### 2026-09-28 16:40 — deciding session → Code: two small notes
+
+- **Round 39 cp8 (local change history) is now ADR 0033, `proposed`.** It keeps copies of work content in
+  `%APPDATA%`, so Nico decides. **Build cp8 last before the drill.** If his yes isn't recorded by then,
+  build the fingerprint-only version the ADR describes (it still flags *changed, not logged*, just without
+  before/after), and say so.
+- **`templates\AGENTS.md` gained two lines in §11** (Asa's two personas; `PERSONA-AI.md`). Commit it with
+  the rest.
+
+### 2026-09-28 17:00 — deciding session → Code: ADR 0033 is **accepted**; build cp8 in full
+
+- **Nico said yes to keeping copies** (*"Yes Asa should do that"*), so build cp8 with the full before/after
+  copies, not the fingerprint-only fallback.
+- **Heads-up for later, not now:** ADR 0034 renames a project's Decisions tab to **Log**, a derived timeline
+  with decisions as one kind of entry. The layout comes with a sketch and lands in Round 38 (and in
+  Instruction for AI → Activity, cp6). **Build the data side so it can feed a timeline:** cp5's session log
+  and cp8's history should expose entries with a date, a kind, the author and their links.
+

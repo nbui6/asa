@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:asa/core/area.dart';
+import 'package:asa/core/decision.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _fullExample = '''
@@ -204,6 +205,87 @@ void main() {
         'Finance',
         'Enablement',
       ]);
+    });
+  });
+
+  group('Round 39 cp2 — areasNamingDecision, both directions', () {
+    const sales = Area(
+      name: 'Sales',
+      sourceFile: 'plan/sales.md',
+      tasks: [],
+      results: [],
+      decisionNumbers: ['0003'],
+      objectiveNumbers: [],
+    );
+    const finance = Area(
+      name: 'Finance',
+      sourceFile: 'plan/finance.md',
+      tasks: [],
+      results: [],
+      decisionNumbers: [],
+      objectiveNumbers: [],
+    );
+
+    Decision decision({
+      String? number,
+      DecisionLinks links = DecisionLinks.none,
+    }) {
+      return Decision(
+        title: 'Title',
+        why: '',
+        decision: '',
+        whatWouldChangeThis: '',
+        sourceFile: 'decisions/x.md',
+        number: number,
+        links: links,
+      );
+    }
+
+    test("the forward direction — the area's own page names the ADR", () {
+      final found = areasNamingDecision(decision(number: '0003'), [
+        sales,
+        finance,
+      ]);
+      expect(found, [sales]);
+    });
+
+    test("the reverse direction — the decision's own Links: Area: line, "
+        "even when the area's page never mentions the ADR back", () {
+      final found = areasNamingDecision(
+        decision(
+          number: '0099',
+          links: const DecisionLinks(area: 'Finance'),
+        ),
+        [sales, finance],
+      );
+      expect(found, [finance]);
+    });
+
+    test('both directions at once name the same area once, not twice', () {
+      final found = areasNamingDecision(
+        decision(
+          number: '0003',
+          links: const DecisionLinks(area: 'Sales'),
+        ),
+        [sales, finance],
+      );
+      expect(found, [sales]);
+    });
+
+    test('the area name match is case-insensitive', () {
+      final found = areasNamingDecision(
+        decision(links: const DecisionLinks(area: 'SALES')),
+        [sales, finance],
+      );
+      expect(found, [sales]);
+    });
+
+    test('a null decision, or one naming no area at all, finds none', () {
+      expect(areasNamingDecision(null, [sales, finance]), isEmpty);
+      expect(
+        areasNamingDecision(decision(number: '9999'), [sales, finance]),
+        isEmpty,
+      );
     });
   });
 }

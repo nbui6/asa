@@ -810,7 +810,7 @@ class _PlanViewState extends State<PlanView> {
         MaterialPageRoute<bool>(
           builder: (_) => DecisionDetailScreen(
             decision: decision,
-            areasNaming: _areasNaming(number),
+            areasNaming: areasNamingDecision(decision, widget.areas),
             onOpenArea: widget.onOpenArea,
           ),
         ),
@@ -827,14 +827,6 @@ class _PlanViewState extends State<PlanView> {
     }
     return null;
   }
-
-  /// Round-36 §3, L17 — every area whose own `decisionNumbers` names
-  /// [number], same rule `ProjectScreen._areasNaming` already uses for
-  /// the decision row itself.
-  List<Area> _areasNaming(String number) => [
-    for (final area in widget.areas)
-      if (area.decisionNumbers.contains(number)) area,
-  ];
 
   String _decisionSourceFor(String number) {
     for (final result in widget.decisions) {

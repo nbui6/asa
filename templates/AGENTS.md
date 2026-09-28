@@ -301,6 +301,8 @@ At the end: `status: closed`, then one line in `.asa-log.md`:
 - **He decides; you prepare.** Never act on something only he can decide. Write it as `proposed`, and
   ask.
 - **More about him:** `workshop\BOSS.md` and the Asa project's `PERSONA.md`.
+- **Asa has two users,** Nico and you. `PERSONA-AI.md` in the Asa project describes you. A screen or file
+  is checked against the persona it's for (`persona-check`).
 
 ## 12. Rules that don't bend
 
