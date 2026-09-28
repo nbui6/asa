@@ -4609,3 +4609,34 @@ cut off), plus the unreadable-project case.
 `check-notes.ps1`, `test/check_test.dart`, together.
 
 **Next:** cp5 — sessions and their log.
+
+---
+
+### Round 39 cp5 — sessions and their log
+
+**`.asa-session.md`** was already fully readable since cp3 (`session_file.dart`) — nothing new
+needed there, per the round's own "as before." **New: `lib\core\session_log.dart`**, reading
+`.asa-log.md`'s own append-only lines (manual §7.11:
+`- YYYY-MM-DD HH:MM–HH:MM · Account · what you did · files`). Only the leading date is parsed out,
+for filtering; the rest stays verbatim — checked against the real `asa\.asa-log.md`, whose own real
+lines don't all keep the same shape after the date (one has a dropped start time, `–16:47` with
+nothing before the dash), so re-parsing into fixed fields would have invented structure that isn't
+really there.
+
+**Wired into `asa-brief --since`:** now shows matching `.asa-log.md` lines too, newest first,
+alongside change requests and decisions — closing the gap between cp3's own spec ("everything
+recorded... from the logs") and what it actually did (nothing, until now).
+
+**Verified against real data:** `asa-brief --since 2026-09-28` on the real folder now shows Asa's
+own 15 real log lines from today, newest first, alongside its change request and six decisions.
+
+**Tests:** `test/session_log_test.dart` (4 cases: the real dropped-start-time shape, no file,
+unparseable lines skipped, file order preserved) plus a new `brief_test.dart` case proving
+`--since` includes a recent log line and excludes an older one.
+
+**Verified:** `flutter analyze --fatal-infos` clean, `flutter test` — 642 total, all green.
+
+**Commits:** `lib/core/session_log.dart`, `lib/core/brief.dart`, `test/session_log_test.dart`,
+`test/brief_test.dart`, together.
+
+**Next:** cp8 — Asa's own local change history.

@@ -135,6 +135,20 @@ void main() {
       final text = await briefSince(root, DateTime(2026, 9, 25));
       expect(text, isNot(contains('Northwind partnership')));
     });
+
+    test('a recent .asa-log.md line is included, newest first', () async {
+      final logFile = File('${northwind()}${Platform.pathSeparator}.asa-log.md')
+        ..writeAsStringSync(
+          '- 2026-09-20 09:00–09:30 · Claude Code · older line · x\n'
+          '- 2026-09-26 10:00–10:30 · Claude Code · newer line · y\n',
+        );
+      addTearDown(logFile.deleteSync);
+
+      final text = await briefSince(root, DateTime(2026, 9, 25));
+      expect(text, contains('Northwind partnership'));
+      expect(text, contains('newer line'));
+      expect(text, isNot(contains('older line')));
+    });
   });
 
   group(r"projects\BOSS.md's own Read this first and Your rules — invented "

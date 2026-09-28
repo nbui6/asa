@@ -19,6 +19,7 @@ import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_file.dart';
 import 'package:asa/core/session_file.dart';
+import 'package:asa/core/session_log.dart';
 
 const FileAccess _files = DiskFileAccess();
 
@@ -453,7 +454,12 @@ Future<String> briefSince(String projectsRoot, DateTime since) async {
           (d.isProposed || d.links.scopeAlways),
     );
 
-    if (recentChanges.isEmpty && recentDecisions.isEmpty) continue;
+    final logEntries = await readSessionLog(summary.folder, _files);
+    final recentLog = logEntries.where((e) => !e.date.isBefore(since));
+
+    if (recentChanges.isEmpty && recentDecisions.isEmpty && recentLog.isEmpty) {
+      continue;
+    }
     foundAnything = true;
 
     buffer
@@ -467,6 +473,11 @@ Future<String> briefSince(String projectsRoot, DateTime since) async {
     for (final d in recentDecisions) {
       buffer.writeln(
         '- ${d.date} · decision ADR ${d.number ?? "?"}: ${d.title}',
+      );
+    }
+    for (final e in recentLog.toList().reversed) {
+      buffer.writeln(
+        '- ${e.date.toIso8601String().split("T").first} · ${e.text}',
       );
     }
   }
