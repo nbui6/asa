@@ -74,4 +74,14 @@ void main() {
       expect(text, isNot(contains('next task')));
     });
   });
+
+  group('resumeText', () {
+    test("Round 39 cp7 — the exact shape round-39.md's own spec gives", () {
+      expect(
+        resumeText('Northwind partnership'),
+        'Run asa-brief "Northwind partnership" and continue. If it '
+        r"isn't there, open projects\AGENTS.md and follow it.",
+      );
+    });
+  });
 }

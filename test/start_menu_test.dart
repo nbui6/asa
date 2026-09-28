@@ -7,6 +7,7 @@
 
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Future<void> _pump(WidgetTester tester, String repoPath) async {
@@ -36,15 +37,44 @@ void main() {
     },
   );
 
-  testWidgets('shows all three actions', (tester) async {
+  testWidgets('shows all four actions', (tester) async {
     await _pump(tester, r'C:\demo\repo');
     await tester.tap(find.byIcon(Icons.rocket_launch_outlined));
     await tester.pumpAndSettle();
 
     expect(find.text('Copy opener'), findsOneWidget);
+    expect(find.text('Resume'), findsOneWidget);
     expect(find.text('Open folder'), findsOneWidget);
     expect(find.text('Open code in VS Code'), findsOneWidget);
   });
+
+  testWidgets(
+    'Round 39 cp7 — Resume copies asa-brief on this project, by name',
+    (tester) async {
+      // Same reasoning as links_test.dart's own L10 test — this machine's
+      // test environment has no working default clipboard mock, so a real
+      // Clipboard.setData call hangs rather than resolving.
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+
+      await _pump(tester, r'C:\demo\repo');
+      await tester.tap(find.byIcon(Icons.rocket_launch_outlined));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Resume'));
+      await tester.pumpAndSettle();
+
+      expect(copied, contains('asa-brief "Demo"'));
+      expect(copied, contains(r'projects\AGENTS.md'));
+    },
+  );
 
   testWidgets('Open code in VS Code is disabled when repo-path is empty '
       '— never a dead tap', (tester) async {

@@ -49,6 +49,7 @@ class StartMenu extends StatelessWidget {
           value: _StartAction.copyOpener,
           child: Text('Copy opener'),
         ),
+        const PopupMenuItem(value: _StartAction.resume, child: Text('Resume')),
         const PopupMenuItem(
           value: _StartAction.openFolder,
           child: Text('Open folder'),
@@ -76,6 +77,9 @@ class StartMenu extends StatelessWidget {
           ),
         );
         if (context.mounted) _say(context, 'Copied');
+      case _StartAction.resume:
+        await Clipboard.setData(ClipboardData(text: resumeText(projectName)));
+        if (context.mounted) _say(context, 'Copied');
       case _StartAction.openFolder:
         // Fire-and-forget, same pattern as open_url.dart — explorer.exe's
         // own exit code is not a reliable success signal.
@@ -99,4 +103,4 @@ class StartMenu extends StatelessWidget {
   }
 }
 
-enum _StartAction { copyOpener, openFolder, openCode }
+enum _StartAction { copyOpener, resume, openFolder, openCode }

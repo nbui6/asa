@@ -43,3 +43,11 @@ String openerText({
 
   return buffer.toString();
 }
+
+/// Round 39 cp7 — "Start → Resume," next to "Copy opener": the manual's
+/// own loop, in one line, now that `asa-brief` exists to run it. Shorter
+/// than [openerText] on purpose — it points at the manual instead of
+/// repeating what the manual already says.
+String resumeText(String projectName) =>
+    'Run asa-brief "$projectName" and continue. If it isn\'t there, open '
+    r'projects\AGENTS.md and follow it.';
