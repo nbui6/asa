@@ -4133,7 +4133,7 @@ templates only; `sync-manual` copies them across.
 for it to read the files that are relevant."* **The drill proves the system does that.** Commit as often
 as possible, never push, one entry here per checkpoint.
 
-### 2026-09-28 15:00 — deciding session → Code: renamed **Instruction for AI**; the instruction is now version 2; Round 39 gains cp8
+### 2026-09-28 — deciding session → Code: renamed **Instruction for AI**; the instruction is now version 2; Round 39 gains cp8
 
 - **The screen is called *Instruction for AI*,** not Asa HR. The sketch is now
   `projects\asa\sketches\asa-instruction-for-ai-v4.html`; the old `asa-hr-v4.html` stays, superseded.
@@ -4166,7 +4166,7 @@ session's own new `asa` skill (invisible to itself until this ran) — and
 
 **Next:** cp1 — the manual installed and kept in sync (`kit\sync-manual.ps1`).
 
-### 2026-09-28 16:10 — deciding session → Code: the Instruction for AI is **version 3**; Round 40 is the deciding session's, not yours
+### 2026-09-28 — deciding session → Code: the Instruction for AI is **version 3**; Round 40 is the deciding session's, not yours
 
 - **`templates\AGENTS.md` is version 3** (338 lines). It adds "one place, one shape", `(waiting: Name,
   since date)` on tasks, and **§13, getting a project into shape**. Commit it with the other two files, if
@@ -4210,7 +4210,7 @@ match.
 
 **Next:** cp2 — links Asa reads (`decision.dart`'s `**Links:**` line, a round's `**Area:**` line).
 
-### 2026-09-28 16:40 — deciding session → Code: two small notes
+### 2026-09-28 — deciding session → Code: two small notes
 
 - **Round 39 cp8 (local change history) is now ADR 0033, `proposed`.** It keeps copies of work content in
   `%APPDATA%`, so Nico decides. **Build cp8 last before the drill.** If his yes isn't recorded by then,
@@ -4219,7 +4219,7 @@ match.
 - **`templates\AGENTS.md` gained two lines in §11** (Asa's two personas; `PERSONA-AI.md`). Commit it with
   the rest.
 
-### 2026-09-28 17:00 — deciding session → Code: ADR 0033 is **accepted**; build cp8 in full
+### 2026-09-28 — deciding session → Code: ADR 0033 is **accepted**; build cp8 in full
 
 - **Nico said yes to keeping copies** (*"Yes Asa should do that"*), so build cp8 with the full before/after
   copies, not the fingerprint-only fallback.
@@ -4260,3 +4260,74 @@ unexplained).
 
 **Next:** cp3 — `asa-brief`, the routing.
 
+
+---
+
+## From the deciding session — 2026-09-28 · heads-up, no action until named
+
+- `templates\AGENTS.md` changed (v3.1): `projects\BOSS.md` replaces `workshop\BOSS.md` in §2, the loop's step 1 reads its *Read this first* part, §11 points to it. Commit it in its own commit.
+- Round 39: see the note at the top of `projects\asa\rounds\round-39.md` (cp3 prints *Read this first*; cp8 watches BOSS.md and AGENTS.md; **the real BOSS.md holds health data — never in the repo, a fixture or a screenshot**; cp6 still waits for a sketch yes, now `asa-instruction-for-ai-v5`).
+
+## From the deciding session — 2026-09-28 · two things
+
+- **New: Round 39 cp9, "just the user"** — see `projects\asa\rounds\round-39.md`. Do it after the checkpoint you're in, before cp4.
+- **Sketches approved:** `asa-instruction-for-ai-v5` (cp6 is unblocked, spec updated: *Working with the user* instead of Activity) and `asa-log-v2` (Round 38 gets §E; read the banner at its top).
+
+- **Links backfilled** on decisions 0001–0029 (content, in `projects\`). Found while doing it: the reader keeps only the **last** value when a key repeats (0032 has `Round: 39 · Round: 38`, 0034 has two `Serves:`). Please accept a repeated key or `Round: 38, 39` as a list, with a test. Small; fold into cp4 or cp9.
+
+---
+
+### Round 39 cp3 — `asa-brief`, the routing
+
+**Built:** `bin\brief.dart` (thin CLI, `avoid_print` disabled for that one file only) + `bin\asa-brief.cmd`
++ `bin\README.md` (PATH setup), all backed by `lib\core\brief.dart` — pure Dart, no Flutter import.
+`asa-brief "<project>" [--area <name>] [--round <N>]`, `--all`, and `--since <date>`, following the
+manual's §4 table: always the frontmatter/next step, session state, newest `CHANGES.md` rows, and
+`proposed`/`Scope: always` decisions (superseded ones excluded everywhere); `--area` adds the goal,
+open tasks, last three results, its one objective (by position in `CHARTER.md`'s own numbered list),
+decisions linked either direction, and its waiting rounds; `--round` adds the finish line and test
+(via a new `sectionTextContaining` in `round_file.dart` — real files word these headings too
+differently for an exact or prefix match to survive more than one file) plus its decisions and area.
+Two new pure readers: `lib\core\changes_file.dart` (`CHANGES.md`'s table, same shape as
+`round_approvals.dart`) and `lib\core\session_file.dart` (`.asa-session.md`'s frontmatter + three body
+lines, `possiblyInProgress`/`isCutOff` per the manual's own 2-hour rule).
+
+**Added mid-checkpoint, from the deciding session's own live note in `round-39.md`:** every briefing
+now opens with `projects\BOSS.md`'s own *Read this first* section (found via the same
+`sectionTextContaining`), when the file has one. **Never printed into a repo file, a fixture or a
+screenshot** — tests use an invented BOSS.md in a temp folder, never the real one.
+
+**A real bug caught before it shipped:** `session_file.dart`'s `_bodyLine` used `\s*` after the label,
+and `\s` matches a newline — a blank `Doing:` line silently swallowed the next labeled line whole.
+Its own test caught it (`flutter test` failing, not a guess); fixed to `[ \t]*`.
+
+**Verified against real data, not only the fixture:** ran `dart run bin/brief.dart` for `--all`,
+`--since`, a single project, `--area`, and `--round` against the real 13-project folder and the real
+`asa` project's own real areas, decisions and BOSS.md. All five read correctly; `--round 39`'s own
+"finish line" reads as "(not stated)" — honestly, since round-39.md's own headings never use that
+exact wording, not a bug.
+
+**Golden test:** `test/brief_test.dart`, against a temp copy of `test\fixtures\round-36\northwind` —
+every count and name checked by hand against the fixture's own real files (five tasks, three open;
+two dated results; one proposed decision of three; the one objective by number; both decisions the
+Sales page names). 17 new tests total across `brief_test.dart`/`changes_file_test.dart`/
+`session_file_test.dart`. 596 total, all green.
+
+**Written clean, not fixed after the fact:** the deciding session flagged `brief.dart:355` (and one
+doc comment) as still naming Nico while cp3 was in flight — fixed before commit, along with the same
+in `changes_file.dart`'s and `round_file.dart`'s own doc comments, and `test/changes_file_test.dart`'s
+fixture rows (which had drifted from the real `CHANGES.md` header — already `the user` there, checked
+by re-reading the real file, not assumed).
+
+**Not done, on purpose:** cp8's own local-change history, so `--since` says plainly that an
+edited-but-unlogged file may not be visible yet. Round-file finish-line/test extraction is loose —
+first heading matching a keyword, in file order — a deliberate looseness, not a mis-parse.
+
+**Commits:** `lib/core/brief.dart`, `lib/core/changes_file.dart`, `lib/core/session_file.dart`,
+`lib/core/round_file.dart` (BOSS.md + finish-line/test additions), `bin/`, and their tests, in their
+own commit.
+
+**Next:** cp9 ("just the user") next, per round-39.md's own instruction — do it right after this
+checkpoint, before cp4. The repeated-`Links:`-key fix above folds in there.
+
+- **Links backfilled** on decisions 0001–0029 (content, in `projects\`). Found while doing it: the reader keeps only the **last** value when a key repeats (0032 has `Round: 39 · Round: 38`, 0034 has two `Serves:`). Please accept a repeated key or `Round: 38, 39` as a list, with a test. Small; fold into cp4 or cp9.

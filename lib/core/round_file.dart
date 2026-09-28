@@ -8,6 +8,23 @@
 /// `core/`.
 library;
 
+import 'package:asa/core/decisions_reader.dart' show FileAccess;
+import 'package:asa/core/markdown.dart' show sectionText;
+
+/// Reads `rounds\round-<roundNumber>.md`'s own text. Null when there is no
+/// such file — a round number with no spec file, or a typo, is not an
+/// error `asa-brief` should crash on.
+Future<String?> readRoundFileText(
+  String projectFolder,
+  String roundNumber,
+  FileAccess files,
+) async {
+  final name = 'round-$roundNumber.md';
+  final names = await files.listFiles('$projectFolder/rounds');
+  if (!names.contains(name)) return null;
+  return files.readFile('$projectFolder/rounds/$name');
+}
+
 /// `**Area:** App`, near the top of the file — the manual's own §6 shape.
 /// Null when the file names none, which is normal: not every round
 /// belongs to one area.
@@ -24,3 +41,33 @@ String? parseRoundArea(String roundFileText) {
   final value = match.group(1)!.trim();
   return value.isEmpty ? null : value;
 }
+
+final RegExp _heading = RegExp(r'^#{2,3}\s*(.+)$', multiLine: true);
+
+/// The body of the first `##`/`###` heading whose own text contains
+/// [keyword] (case-insensitive) — real round files number and word their
+/// headings differently (`## The finish line`, `## 1. The finish line —
+/// what "done" means`), so neither an exact match nor a prefix match
+/// survives contact with more than one file. Null when no heading
+/// mentions it at all.
+String? sectionTextContaining(String roundFileText, String keyword) {
+  final lower = keyword.toLowerCase();
+  for (final match in _heading.allMatches(roundFileText)) {
+    final headingText = match.group(1)!.trim();
+    if (headingText.toLowerCase().contains(lower)) {
+      return sectionText(roundFileText, headingText);
+    }
+  }
+  return null;
+}
+
+/// The round's own finish line — "what done means" — wherever its
+/// heading actually says so.
+String? parseRoundFinishLine(String roundFileText) =>
+    sectionTextContaining(roundFileText, 'finish line');
+
+/// How the round is tested — its own heading is worded differently file to
+/// file ("The click-through", or the user's own name on it); whichever
+/// mentions testing first, in file order, is the one asa-brief shows.
+String? parseRoundTest(String roundFileText) =>
+    sectionTextContaining(roundFileText, 'test');
