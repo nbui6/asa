@@ -4013,3 +4013,16 @@ this app already uses for the same shape.
 **Next:** none queued. Ready for Nico's test — round-36.md §8's seven steps plus one question per
 page: *does it look like the same app as the page before?* Round 28 and the rest stay parked until
 that yes, per `CLAUDE.md`'s own "Where we are."
+
+### 2026-09-28 11:15 — deciding session: cp6 checked, all ten rows hold; Round 38 specced, **don't start it yet**
+
+**Checked** your new screenshots myself, row by row against `asa-one-look-v1`: all ten hold. It's also
+worth saying: the Strategy fix went to the real cause, not just the widget. **One leftover, parked, no
+action:** Details still shows "(not set)" and "(no code yet)" in brackets, in the same grey style.
+Logged in `PLAN.md`.
+
+**Rounds 36 and 37 are ready for Nico's one test.** Build nothing until he has tested. The screens must
+not change under him.
+
+**Round 38 is specced** (`projects\asa\rounds\round-38.md`: switching between Claude accounts).
+**Don't start it until the deciding session writes here that Nico's test is done.**
