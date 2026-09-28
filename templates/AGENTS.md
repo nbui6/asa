@@ -6,7 +6,7 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3.6, 2026-09-28.*
+Version 3.7, 2026-09-28.*
 
 **This page is the one door.** Start here, every time; everything else is reached from here, only when your
 job needs it:
@@ -27,7 +27,9 @@ find project knowledge anywhere else, bring it here (§13) and say so.
 
 ## Before anything else — is this laptop set up?
 
-Check three things, in this order. **Stop at the first one that fails,** tell the user in one line, and fix
+**0. If `projects\.asa-paused` exists, stop:** say *"AI is paused for this folder"* and do nothing else.
+
+Then check three things, in this order. **Stop at the first one that fails,** tell the user in one line, and fix
 it with them.
 
 1. **Asa is set up here:** `projects\.asa-setup.md` exists (§7.12). If not, the user runs
@@ -374,7 +376,7 @@ app: installed · commands: on PATH · skills: installed for Claude Code, packag
 - **They decide; you prepare.** Never act on something only they can decide. Write it as `proposed`, and
   ask.
 - **Who they are, and how to work with them:** `projects\BOSS.md`. Its *Read this first* part every session;
-  the rest when you need it. **It holds health information: never copy it into a repo, a fixture, a
+  the rest when you need it. **It's private: never copy it into a repo, a fixture, a
   screenshot or anything sent out.** The user sees it in Asa under *Instruction for AI → Working with you*.
 - **When they set a rule for how you work,** add it to BOSS.md's *Your rules* the same day, dated, in their
   words. A correction that isn't a rule yet goes in its *Corrections* table; the same one twice → a rule.
@@ -413,6 +415,9 @@ user's contradicts one here, theirs wins; say so once.*
 14. **Only the user pushes to git.** Commit as often as possible; never push; never move work content into
     the Asa repo.
 15. **No customer, partner or personal data in any file.** Structures, decisions and reasoning are fine.
+    **Never open a file ending `.local.md`, or the user's private folder:** they hold what must stay out of AI
+    sessions (decisions 0018, 0046). If you find a `.local.md` inside `projects\`, tell the user to move it to
+    their private folder (`asa\guides\private-folder.md`); don't open it.
 16. **The tool is neutral; the user's own files are not.** Anything that ships with Asa never names the
     user (on screen *you*, in text *the user*); in their own files, use the name at the top of `BOSS.md`.
 

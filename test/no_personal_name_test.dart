@@ -32,7 +32,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 final RegExp _wholeWord = RegExp(r'\bnico\b', caseSensitive: false);
 
-const _scannedDirs = ['lib', 'bin', 'test', 'templates', 'kit'];
+// `guides\` (Round 44 prep) is not one of cp9's own five named folders,
+// but it's shipped, user-facing documentation same as `templates\` —
+// added here rather than left as a silent gap the day it first appeared.
+const _scannedDirs = ['lib', 'bin', 'test', 'templates', 'kit', 'guides'];
 
 const _wholeFileExceptions = {
   'kit/package-for-tester.ps1',
