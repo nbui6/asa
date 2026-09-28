@@ -55,7 +55,7 @@ Future<void> main(List<String> args) async {
   if (all) {
     final root = await _projectsRootOrFail();
     if (root == null) return;
-    print(await briefAll(root));
+    print(await briefAll(root, recordHistory: true));
     return;
   }
 
@@ -81,7 +81,9 @@ Future<void> main(List<String> args) async {
   final root = await _projectsRootOrFail();
   if (root == null) return;
   final folder = '$root${Platform.pathSeparator}$project';
-  print(await briefProject(folder, area: area, round: round));
+  print(
+    await briefProject(folder, area: area, round: round, recordHistory: true),
+  );
 }
 
 /// The projects folder Asa itself is pointed at — read the same way the

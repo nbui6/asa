@@ -9,6 +9,7 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/area.dart';
+import 'package:asa/core/change_history.dart';
 import 'package:asa/core/changes_file.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
@@ -76,6 +77,64 @@ Future<String?> _readBossIntro(String projectsRoot) async {
   return buffer.isEmpty ? null : buffer.toString().trim();
 }
 
+/// Round 39 cp8 (ADR 0033) — "when Asa scans a project, it keeps a dated
+/// copy of every watched file that changed." `asa-brief` is one of the
+/// few things that actually looks at a project today, so it is one of
+/// the places that scan happens from.
+///
+/// **Opt-in, not on by default** — deliberately unlike `write_log.dart`'s
+/// own default-to-the-real-path convention: this fires on every single
+/// read, which is exactly what the whole existing test suite already
+/// does constantly. Defaulting it on would mean every test in this repo
+/// that ever calls `briefProject`/`briefAll` starts writing real files
+/// into the real `%APPDATA%\Asa\history\` the moment this function
+/// exists — [recordHistory] must be true, which only `bin/brief.dart`'s
+/// own CLI passes. Best-effort either way: no `APPDATA` (or any other
+/// real-disk problem) ever breaks a briefing over a history nobody asked
+/// to see this time.
+Future<void> _recordScan(
+  bool recordHistory,
+  String projectFolder,
+  String projectsRoot, {
+  String? historyRoot,
+  DateTime? now,
+}) async {
+  if (!recordHistory) return;
+  try {
+    await recordChanges(
+      projectFolder,
+      projectsRoot,
+      historyRoot: historyRoot,
+      now: now,
+    );
+  } on FileSystemException {
+    // A locked or unreadable file this pass — try again next scan.
+  }
+}
+
+/// Same as [_recordScan], for the projects-root files (`BOSS.md`,
+/// `AGENTS.md`) — called once per briefing, not once per project, since
+/// every project would otherwise re-check the same two files.
+Future<void> _recordRootScan(
+  bool recordHistory,
+  String projectsRoot, {
+  String? historyRoot,
+  DateTime? now,
+}) async {
+  if (!recordHistory) return;
+  try {
+    await recordChanges(
+      projectsRoot,
+      projectsRoot,
+      isRoot: true,
+      historyRoot: historyRoot,
+      now: now,
+    );
+  } on FileSystemException {
+    // A locked or unreadable file this pass — try again next scan.
+  }
+}
+
 String _sessionLine(SessionFile? session, DateTime now) {
   if (session == null) return 'Session: none.';
   if (!session.isOpen) {
@@ -100,11 +159,26 @@ Future<String> briefProject(
   String? area,
   String? round,
   DateTime? now,
+  bool recordHistory = false,
+  String? historyRoot,
 }) async {
   final effectiveNow = now ?? DateTime.now();
   final buffer = StringBuffer();
 
   final projectsRoot = Directory(projectFolder).parent.path;
+  await _recordScan(
+    recordHistory,
+    projectFolder,
+    projectsRoot,
+    historyRoot: historyRoot,
+    now: effectiveNow,
+  );
+  await _recordRootScan(
+    recordHistory,
+    projectsRoot,
+    historyRoot: historyRoot,
+    now: effectiveNow,
+  );
   final bossIntro = await _readBossIntro(projectsRoot);
   if (bossIntro != null) {
     buffer
@@ -340,11 +414,22 @@ Future<String> _roundSlice(
 
 /// `asa-brief --all` — every project's status, next step, freshness, what
 /// waits for the user, and any cut-off session.
-Future<String> briefAll(String projectsRoot, {DateTime? now}) async {
+Future<String> briefAll(
+  String projectsRoot, {
+  DateTime? now,
+  bool recordHistory = false,
+  String? historyRoot,
+}) async {
   final effectiveNow = now ?? DateTime.now();
   final scan = await scanProjects(projectsRoot);
   final buffer = StringBuffer('# asa-brief --all\n');
 
+  await _recordRootScan(
+    recordHistory,
+    projectsRoot,
+    historyRoot: historyRoot,
+    now: effectiveNow,
+  );
   final bossIntro = await _readBossIntro(projectsRoot);
   if (bossIntro != null) {
     buffer
@@ -362,6 +447,14 @@ Future<String> briefAll(String projectsRoot, {DateTime? now}) async {
   }
 
   for (final summary in scan.projects) {
+    await _recordScan(
+      recordHistory,
+      summary.folder,
+      projectsRoot,
+      historyRoot: historyRoot,
+      now: effectiveNow,
+    );
+
     final project = summary.project;
     final days = summary.daysStale(effectiveNow);
     final freshness = days == null
@@ -416,18 +509,15 @@ Future<String> briefAll(String projectsRoot, {DateTime? now}) async {
 /// always` decisions dated on or after it. cp8's own local-change history
 /// (ADR 0033) is not built yet, so an edited-but-unlogged file is not
 /// reported here yet — said plainly rather than silently missing.
-Future<String> briefSince(String projectsRoot, DateTime since) async {
+Future<String> briefSince(
+  String projectsRoot,
+  DateTime since, {
+  String? historyRoot,
+}) async {
   final scan = await scanProjects(projectsRoot);
-  final buffer =
-      StringBuffer(
-          '# asa-brief --since ${since.toIso8601String().split("T").first}\n',
-        )
-        ..writeln()
-        ..writeln(
-          "Note: Asa's own change history (cp8) isn't built yet — an edit "
-          'with no log line anywhere below may still have happened and '
-          'simply not be visible here.',
-        );
+  final buffer = StringBuffer(
+    '# asa-brief --since ${since.toIso8601String().split("T").first}\n',
+  );
 
   final bossIntro = await _readBossIntro(projectsRoot);
   if (bossIntro != null) {
@@ -439,6 +529,43 @@ Future<String> briefSince(String projectsRoot, DateTime since) async {
   }
 
   var foundAnything = false;
+
+  void writeHistoryLines(
+    List<ChangeRecord> history,
+    List<SessionLogEntry>? log,
+  ) {
+    for (final record in history.where((r) => !r.timestamp.isBefore(since))) {
+      // A first-ever snapshot has nothing to compare against — that is
+      // Asa noticing the file, not a change to it, so "changed, not
+      // logged" (a real edit with no log line) doesn't apply to it.
+      final logged =
+          record.before == null || log == null || isLoggedChange(record, log)
+          ? ''
+          : ' — changed, not logged';
+      final date = record.timestamp.toIso8601String().split('T').first;
+      final verb = record.before == null ? 'first seen' : 'changed';
+      final lineCounts = record.before == null
+          ? '${record.linesAfter} line(s)'
+          : '${record.linesBefore} line(s) before, ${record.linesAfter} after';
+      buffer.writeln('- ${record.path} $verb ($date) — $lineCounts$logged');
+    }
+  }
+
+  final rootHistory = await readChangeHistory(
+    projectsRoot,
+    isRoot: true,
+    historyRoot: historyRoot,
+  );
+  final rootRecent = rootHistory.where((r) => !r.timestamp.isBefore(since));
+  if (rootRecent.isNotEmpty) {
+    foundAnything = true;
+    buffer
+      ..writeln()
+      ..writeln('## BOSS.md / AGENTS.md');
+    // No .asa-log.md to check these against — they sit next to every
+    // project, not inside one, so "changed, not logged" doesn't apply.
+    writeHistoryLines(rootHistory, null);
+  }
 
   for (final summary in scan.projects) {
     final changes = await readChangeRequests(summary.folder, _files);
@@ -457,7 +584,16 @@ Future<String> briefSince(String projectsRoot, DateTime since) async {
     final logEntries = await readSessionLog(summary.folder, _files);
     final recentLog = logEntries.where((e) => !e.date.isBefore(since));
 
-    if (recentChanges.isEmpty && recentDecisions.isEmpty && recentLog.isEmpty) {
+    final history = await readChangeHistory(
+      summary.folder,
+      historyRoot: historyRoot,
+    );
+    final recentHistory = history.where((r) => !r.timestamp.isBefore(since));
+
+    if (recentChanges.isEmpty &&
+        recentDecisions.isEmpty &&
+        recentLog.isEmpty &&
+        recentHistory.isEmpty) {
       continue;
     }
     foundAnything = true;
@@ -480,6 +616,7 @@ Future<String> briefSince(String projectsRoot, DateTime since) async {
         '- ${e.date.toIso8601String().split("T").first} · ${e.text}',
       );
     }
+    writeHistoryLines(history, logEntries);
   }
 
   if (!foundAnything) {

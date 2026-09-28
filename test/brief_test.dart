@@ -204,6 +204,66 @@ Not part of either section, and never printed by asa-brief.
       expect(text, isNot(contains('Working with you')));
     });
   });
+
+  group(r'Round 39 cp8 — recording is opt-in, never the real %APPDATA%\Asa\ '
+      'by accident', () {
+    late Directory historyDir;
+
+    setUp(() {
+      historyDir = Directory.systemTemp.createTempSync(
+        'asa-brief-history-test-',
+      );
+    });
+
+    tearDown(() => historyDir.deleteSync(recursive: true));
+
+    test('recordHistory defaults to false — nothing is ever written, '
+        'even with a historyRoot given', () async {
+      await briefProject(northwind(), historyRoot: historyDir.path);
+      expect(historyDir.listSync(), isEmpty);
+    });
+
+    test('recordHistory: true actually records, into the given '
+        'sandboxed root only', () async {
+      await briefProject(
+        northwind(),
+        recordHistory: true,
+        historyRoot: historyDir.path,
+      );
+      expect(historyDir.listSync(), isNotEmpty);
+    });
+
+    test('--since shows a recorded change as changed, not logged, when '
+        'no .asa-log.md entry matches its date', () async {
+      final charterFile = File(
+        '${northwind()}${Platform.pathSeparator}CHARTER.md',
+      );
+      final originalCharter = charterFile.readAsStringSync();
+      addTearDown(() => charterFile.writeAsStringSync(originalCharter));
+
+      await briefProject(
+        northwind(),
+        recordHistory: true,
+        historyRoot: historyDir.path,
+        now: DateTime(2026, 9, 20),
+      );
+      charterFile.writeAsStringSync('# Changed for this test\n');
+      await briefProject(
+        northwind(),
+        recordHistory: true,
+        historyRoot: historyDir.path,
+        now: DateTime(2026, 9, 27),
+      );
+
+      final text = await briefSince(
+        root,
+        DateTime(2026, 9, 25),
+        historyRoot: historyDir.path,
+      );
+      expect(text, contains('CHARTER.md changed'));
+      expect(text, contains('changed, not logged'));
+    });
+  });
 }
 
 void _copyDir(Directory src, Directory dst) {

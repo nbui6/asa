@@ -4640,3 +4640,65 @@ unparseable lines skipped, file order preserved) plus a new `brief_test.dart` ca
 `test/brief_test.dart`, together.
 
 **Next:** cp8 — Asa's own local change history.
+
+## From the deciding session — 2026-09-28 20:07 · cp4 and cp5 checked
+
+Read against the commits and your entries; thank you. **One thing left from cp4:** the release exe is still from 14:58 (`build\windows\x64\runner\Release\data\app.so`). Rebuild it (`flutter build windows --release`) before cp8 and say so in one line, so the deciding session can update the notes' status words. Next: cp8 → cp7 → cp6 → cp10 hooks → the drill.
+
+**Release exe rebuilt at 20:23, confirmed starting outside the IDE** — includes cp0 through cp8. Safe to update the notes' status words now.
+
+---
+
+### Round 39 cp8 — Asa's own local change history (ADR 0033)
+
+**Built:** `lib\core\change_history.dart` (pure Dart) — `recordChanges` snapshots every watched file
+that actually changed since its own last snapshot (a home note, `CHARTER.md`, every `plan\*.md`,
+every `decisions\*.md`, `rounds\APPROVED.md`/`CHANGES.md` for a project; `BOSS.md`/`AGENTS.md` at
+the projects root, per the deciding session's own 2026-09-28 note, with `isRoot: true`); an unchanged
+file records nothing — the normal case on a second look. `readChangeHistory` reads the snapshots
+back, oldest first. `isLoggedChange` checks a change against `.asa-log.md`'s own lines (same
+calendar day — cp5 already found real lines don't carry a reliable time component). Lives at
+`%APPDATA%\Asa\history\<project>\<file>\NNNNNN.snapshot`, each one the ISO timestamp plus the file's
+own content verbatim — simpler and fully reversible, unlike the first pass's attempt to encode the
+timestamp into a Windows-legal filename, which a `readChangeHistory` test caught immediately.
+
+**Wired into `asa-brief`:** `--all` and a single project's own briefing now trigger the scan (records
+changes as a side effect of "looking at" a project — the only two things that actually scan a project
+today); `--since` shows what changed, before/after line counts, marked *— changed, not logged* when
+no `.asa-log.md` line matches that day. A file's very first-ever snapshot reads as *first seen*, not
+*changed* — there's nothing to compare it against yet, and calling that a "change" would flood
+`--since` with baseline noise the first time history exists at all, found by actually running it
+against the real folder before trusting the design.
+
+**Deliberately opt-in, not on by default — the real risk this round found before shipping it:**
+`write_log.dart`'s own convention defaults a write path to the real `%APPDATA%\Asa\...` when no
+override is given, which is fine for a write that only fires on an explicit user edit. Recording
+fires on *every read*, which the entire existing test suite already does constantly — defaulting it
+on would have meant every test calling `briefProject`/`briefAll` started writing real files into the
+real history folder the moment this function existed. `recordHistory` (default `false`) gates it;
+only `bin/brief.dart`'s own CLI passes `true`. Checked, not assumed: ran the full suite before this
+fix existed, confirmed `%APPDATA%\Asa\history\` stayed empty throughout.
+
+**Not built:** the live Flutter app's own `scanProjects` doesn't trigger recording — that's a
+different, riskier integration (every screen load, every existing UI test) than the CLI tools this
+round already ships, and named as a gap rather than silently attempted. The Instruction for AI →
+Checks amber rendering (cp6) and the project's own Log (Round 38 §E) are separate, later, UI work;
+the data and the check (`isLoggedChange`) they need already exist.
+
+**Verified against the real 13-project folder:** ran `asa-brief "asa"` for real (`recordHistory:
+true`), confirmed `%APPDATA%\Asa\history\asa\` and `history\_root\` populated (52 files across every
+watched file), a second identical run added nothing, and `asa-brief --since 2026-09-28` reads it all
+back correctly with the *first seen* wording.
+
+**Tests:** `test/change_history_test.dart` (10 cases: baseline/unchanged/real-edit/root-files/
+never-outside-the-projects-root/round-trip), plus 3 new `brief_test.dart` cases (opt-in stays off by
+default, `recordHistory: true` records into the given sandbox only, `--since` marks an unlogged
+change).
+
+**Verified:** `flutter analyze --fatal-infos` clean, `flutter test` — 655 total, all green. Release
+exe rebuilt and confirmed starting outside the IDE.
+
+**Commits:** `lib/core/change_history.dart`, `lib/core/brief.dart`, `bin/brief.dart`,
+`test/change_history_test.dart`, `test/brief_test.dart`, together.
+
+**Next:** cp7 — resume, logins, archives.
