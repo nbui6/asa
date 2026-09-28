@@ -394,3 +394,75 @@ addition are one act (the rule exists because the archiving was overdue).
 - **New:** `asa\guides\` (private-folder, pause-ai, offline-copy; neutral, shown step by step in the app). Commit them.
 - **`templates\AGENTS.md`:** *Before anything else* gains step 0 (*if `projects\.asa-paused` exists, stop*); §12 rule 15 adds the private folder. Commit, `sync-manual.ps1`.
 - **Round 44** (`projects\asa\rounds\round-44.md`, ADR 0046): private folder, AI access, Pause AI, offline copy, secrets. **After Round 41.** Order: Round 39 → 41 → 44 → 38 → 42 → 43.
+
+## From the deciding session — 2026-09-28 · the order changes: working Asa v1 first
+
+Nico wants a working Asa before anything else. **New order:** Round 39's rest (cp6 → cp10 → the drill) → **Round 38** → **Round 42** → **Round 43** → Nico's test of v1. **After v1:** Round 41, then Round 44. cp7 and cp8 checked; the rebuilt app (20:23) let the deciding session update the notes' status words.
+
+## From the deciding session — 2026-09-28 · Round 41 is part of v1
+
+Order for working Asa v1: Round 39's rest → Round 38 → Round 42 → Round 43 → **Round 41** → Nico's test on both laptops. Round 44 after v1.
+
+## From the deciding session — 2026-09-28 · READ FIRST: Delivery v1, in one go
+
+**Nico is tired of small pieces. Build all of v1, test it, compare it with what he approved, persona-check it (his persona and the AI's), then hand over once.** The whole spec, the order, the checks and the only three reasons to stop early are in **`projects\asa\rounds\delivery-v1.md`**. Tick its *Progress* list as you go. Add the one line to the top of `CLAUDE.md` it asks for, and the no-cost Stop hook that keeps you going. Commit as often as possible, a `HANDOVER.md` entry per checkpoint, never push. **ADR 0047** makes this Asa's rule 17 (`templates\AGENTS.md`; commit it).
+
+---
+
+### Delivery v1, item 1 (part) — Round 39 cp6: Instruction for AI, the screen
+
+**Blocker found and worked around, named per delivery-v1.md's own rule 2:** adding the Stop hook to
+`.claude\settings.json` was refused by Claude Code's own auto-mode classifier (*"Self-Modification"*)
+— editing this session's own hook/permission config is guarded and can't be done from inside the
+session it would govern. `.claude\hooks\delivery-check.ps1` is written (BOM, fails open on anything
+it can't read, checks `delivery-v1.md`'s own Progress list against the last real answer via
+`transcript_path`) but **not wired into `settings.json`** — that one line needs the user's own hand
+once. Continuing without it; the actual work doesn't depend on it.
+
+**Built:** three new pure-Dart readers plus the screen itself.
+- `lib\core\skills_catalog.dart` — every skill/agent in `kit\`, whether the repo's own `.claude\skills\`
+  copy matches the source, and `dist\skills\*.zip`'s own mtime as *last packaged*.
+- `lib\core\manual_status.dart` — `templates\AGENTS.md` vs the installed `projects\AGENTS.md`
+  (byte-identical, or which `##` sections differ), and the template's own last real commit (date +
+  message) via `git log`, same command shape `git_state.dart` already uses.
+- `lib\core\check.dart` gains two small exports: `isEmptyBossTemplate` (made public, cp6 needs the
+  same check cp4 already built) and `bossFillPrompt` (extracts `templates\BOSS.md`'s own quoted
+  prompt for the *Fill with your AI* button — checked against the real template, not invented).
+- `lib\hubs\product\instruction_for_ai_screen.dart` — the five parts (How it works, Instructions,
+  Skills & agents, Working with you, Checks), embedded straight into `ProjectsScreen`'s own body as
+  a third `_ViewMode`, next to Projects and Tasks (not its own `AsaPage`/`Scaffold` — nested page
+  chrome was the wrong shape once actually tried).
+
+**A real test-writing bug caught immediately:** the widget test's first pass hung on
+`pumpAndSettle timed out` — `_load()` does real `dart:io` reads and a real `git` subprocess, which
+Flutter's fake test zone never advances on its own, so the loading spinner (an
+indefinitely-animating `CircularProgressIndicator`) never lets `pumpAndSettle` settle. Fixed with
+`tester.runAsync()`, the same pattern `project_screen_edit_test.dart`'s own `pumpAndSettleReal`
+already established — found by hitting it, not by remembering the rule in advance.
+
+**Verified against a real, invented fixture workspace** (a sibling `asa\` folder with real
+`kit\skills\`/`kit\agents\`/`.claude\skills\`/`templates\`, and a `projects\` with a real BOSS.md and
+one well-shaped project) — never the real repo or the real projects folder for the widget test
+itself, though `skills_catalog_test.dart` and `manual_status_test.dart` do check against the real
+repo directly (the real `asa` skill, the real `reviewer` agent, the real git history of
+`templates\AGENTS.md`).
+
+**Not verified: what it actually looks like.** No tool in this session can screenshot a running
+Windows desktop app — the same honest limit that has applied to every screen built this whole
+session, not new to cp6. The release exe was rebuilt and started outside the IDE, confirmed running,
+not confirmed by eye. The whole-delivery check (item 6) is where real screenshots against the
+approved sketch happen.
+
+**Tests:** `skills_catalog_test.dart` (6), `manual_status_test.dart` (5), `check_test.dart` (+2 for
+`bossFillPrompt`), `instruction_for_ai_screen_test.dart` (5 widget tests, one per part plus the
+switcher). 677 total, all green.
+
+**Also committed in this same pass:** `templates\AGENTS.md` v3.8 — rule 17 (ADR 0047, "hand over
+finished work, not pieces"), already written by the deciding session; synced to the real
+`projects\AGENTS.md`.
+
+**Commits:** the three new core readers + the screen + its wiring into `projects_screen.dart`, their
+tests, together; `templates\AGENTS.md` v3.8 in its own commit; `.claude\hooks\delivery-check.ps1`
+committed as an inert file (not yet wired in).
+
+**Next:** cp10 — recording happens by itself (hooks).

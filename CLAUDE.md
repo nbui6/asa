@@ -1,5 +1,8 @@
 # CLAUDE.md - Asa
 
+**Delivery v1 in progress:** `projects\asa\rounds\delivery-v1.md`. Continue with the next item;
+don't hand over pieces.
+
 **`AGENTS.md`, in this same folder, is the canonical onboarding file — read it first, before
 this one.** It holds everything that is true regardless of tool: what Asa is, how to find the
 workspace, the three roles, Gate 1 and Gate 2, the doorman, the feedback channel. This file adds

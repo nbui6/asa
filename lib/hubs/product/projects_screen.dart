@@ -22,6 +22,7 @@ import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
 import 'package:asa/core/tasks_reader.dart';
 import 'package:asa/hubs/product/inbox_panel.dart';
+import 'package:asa/hubs/product/instruction_for_ai_screen.dart';
 import 'package:asa/hubs/product/project_screen.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
@@ -35,7 +36,7 @@ import 'package:flutter/material.dart';
 /// 2026-09-07, after the toggle shipped ahead of it and showed the old
 /// flat list was never actually rebuilt to match that sketch. Renamed
 /// from "Bars" 2026-09-09 — "Bars" is a retired term (rule 12).
-enum _ViewMode { projects, tasks }
+enum _ViewMode { projects, tasks, instructionForAi }
 
 class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key, this.settingsPath, this.pickFolder});
@@ -504,7 +505,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               isError: true,
               child: Text(scan!.error!),
             ),
-          if (scan != null && scan.error == null) ...[
+          if (_folderChosen && _viewMode == _ViewMode.instructionForAi)
+            InstructionForAiScreen(settingsPath: widget.settingsPath)
+          else if (scan != null && scan.error == null) ...[
             if (_viewMode == _ViewMode.projects) ...[
               ProjectsView(
                 forest: buildProjectForest(scan.projects),
@@ -556,6 +559,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             icon: Icons.checklist,
             mode: _ViewMode.tasks,
             tooltip: 'Tasks view',
+          ),
+          _viewToggleButton(
+            icon: Icons.info_outline,
+            mode: _ViewMode.instructionForAi,
+            tooltip: 'Instruction for AI',
           ),
         ],
       ),

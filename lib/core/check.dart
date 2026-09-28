@@ -65,7 +65,7 @@ Future<List<Finding>> checkProject(
   final bossFile = File('$projectsRoot/BOSS.md');
   if (!bossFile.existsSync()) {
     findings.add(const Finding('BOSS.md is missing.'));
-  } else if (_isEmptyBossTemplate(await bossFile.readAsString())) {
+  } else if (isEmptyBossTemplate(await bossFile.readAsString())) {
     findings.add(const Finding('BOSS.md is still the empty template.'));
   }
 
@@ -182,7 +182,7 @@ Future<SessionFile?> _readSession(String projectFolder) async {
 /// `templates\BOSS.md`'s own five *Read this first* questions, each ending
 /// in a bare colon with nothing after it — the shape a fresh, never-filled
 /// copy has. One real answer anywhere is enough to call it filled in.
-bool _isEmptyBossTemplate(String text) {
+bool isEmptyBossTemplate(String text) {
   final section = RegExp(
     r'^#{2,3}\s*Read this first.*$',
     multiLine: true,
@@ -215,3 +215,19 @@ String _titleCase(String words) => words
     .split(' ')
     .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
     .join(' ');
+
+/// `templates\BOSS.md`'s own quoted prompt — *"Write my BOSS.md for
+/// Asa..."* — for the Instruction for AI screen's *Fill with your AI*
+/// button, which copies exactly this to the clipboard. Null when the
+/// template's own shape isn't there to find (an edited or missing
+/// template), never a guess at what the prompt might be.
+String? bossFillPrompt(String templateText) {
+  final match = RegExp(r'\*"(.+?)"\*', dotAll: true).firstMatch(templateText);
+  if (match == null) return null;
+  final raw = match.group(1)!;
+  return raw
+      .split('\n')
+      .map((line) => line.replaceFirst(RegExp(r'^>\s?'), '').trim())
+      .join(' ')
+      .trim();
+}

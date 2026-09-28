@@ -310,4 +310,18 @@ updated: 2026-09-28
       );
     });
   });
+
+  group('bossFillPrompt — cp6\'s own "Fill with your AI" button', () {
+    test('finds the real quoted prompt in the real templates/BOSS.md', () {
+      final text = File('templates/BOSS.md').readAsStringSync();
+      final prompt = bossFillPrompt(text);
+      expect(prompt, isNotNull);
+      expect(prompt, contains('Write my BOSS.md for Asa'));
+      expect(prompt, isNot(contains('>')));
+    });
+
+    test('null when the quote shape is not there at all', () {
+      expect(bossFillPrompt('# Nothing here'), isNull);
+    });
+  });
 }
