@@ -6,6 +6,7 @@
 /// `:root`, never approximated.
 library;
 
+import 'package:asa/core/status_words.dart';
 import 'package:flutter/material.dart';
 
 /// Every named colour this app draws with. A page never writes
@@ -61,19 +62,21 @@ extension AsaMeaningColors on AsaMeaning {
   };
 }
 
-/// ADR 0017's seven statuses (`idea · discovery-done · building · ongoing
-/// · shipped · paused · dropped`), mapped onto one meaning each. Never
+/// ADR 0041's seven statuses (`idea · discovery-done · in-progress ·
+/// ongoing · on-hold · done · canceled`), mapped onto one meaning each —
+/// an old word (`building`, `paused`, `shipped`, `dropped`) reads as
+/// whichever new one it means, via [canonicalStatus]. Never
 /// [AsaMeaning.needsYou] (reserved for a decision waiting on a call) or
 /// [AsaMeaning.area] (reserved for an area's own identity) — a project's
 /// status is only ever done, moving, or quiet.
 AsaMeaning meaningForStatus(String status) {
-  switch (status.toLowerCase().trim()) {
-    case 'shipped':
+  switch (canonicalStatus(status).toLowerCase().trim()) {
+    case 'done':
       return AsaMeaning.done;
-    case 'building':
+    case 'in-progress':
     case 'ongoing':
       return AsaMeaning.moving;
-    default: // idea, discovery-done, paused, dropped, or anything unknown
+    default: // idea, discovery-done, on-hold, canceled, or anything unknown
       return AsaMeaning.quiet;
   }
 }

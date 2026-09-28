@@ -16,6 +16,7 @@ library;
 import 'package:asa/core/area.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/status_words.dart';
 import 'package:asa/core/task.dart';
 
 /// The last `/`-separated segment of a Jira URL — `CRM-557` from
@@ -76,13 +77,14 @@ String? humanizeDeadline(String? deadline) {
 /// shape [humanizeDeadline] already parses is never overdue — same
 /// honest-absence handling, not a guess at a shape that isn't there.
 ///
-/// Suppressed for `shipped` and `dropped`: a project that finished or was
-/// dropped has no deadline left to miss. Every other status — `paused`
-/// included — still gets the signal; a paused project sitting past its
-/// own deadline is exactly what this exists to surface, not hide.
+/// Suppressed for `done` and `canceled` (ADR 0041; was `shipped` and
+/// `dropped`): a project that finished or was dropped has no deadline
+/// left to miss. Every other status — `on-hold` included — still gets
+/// the signal; an on-hold project sitting past its own deadline is
+/// exactly what this exists to surface, not hide.
 bool isPastDeadline(String? deadline, String status, DateTime now) {
-  final lowerStatus = status.toLowerCase();
-  if (lowerStatus == 'shipped' || lowerStatus == 'dropped') return false;
+  final canonical = canonicalStatus(status).toLowerCase();
+  if (canonical == 'done' || canonical == 'canceled') return false;
 
   if (deadline == null || deadline.trim().isEmpty) return false;
   final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(deadline.trim());

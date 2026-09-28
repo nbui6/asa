@@ -6,7 +6,7 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3.3, 2026-09-28.*
+Version 3.4, 2026-09-28.*
 
 **One place, one shape.** Everything about the user's projects lives in `projects\`, in the shapes below.
 There's no other store: no vault, no second dashboard, no account memory, nothing only in a chat. If you
@@ -165,7 +165,7 @@ The files are the only memory,** and the only way two sessions reach each other.
 ```
 ---
 project: Human-readable name
-status: building
+status: in-progress
 priority: medium
 parent: 
 deadline: 
@@ -185,8 +185,9 @@ One line: what this project is, in the user's words.
 - docs\2026-09-28-title.md — what it is, one line
 ```
 
-- **`status`** is exactly one of: `idea`, `discovery-done`, `building`, `ongoing`, `shipped`, `paused`,
-  `dropped`.
+- **`status`** is exactly one of: `idea`, `discovery-done`, `in-progress`, `ongoing`, `on-hold`,
+  `done`, `canceled` (ADR 0041). Older notes may still say `building`, `paused`, `shipped` or
+  `dropped` — Asa reads those the same way; write the new word next time you touch the file.
 - **`priority`** is `high`, `medium` or `low`.
 - **`parent`** is another folder's name; `other` folds the project away as not-work.
 - **`deadline`** is a month, `YYYY-MM`, or a period, `YYYY-MM/YYYY-MM` (from/to, ISO 8601). Asa shows

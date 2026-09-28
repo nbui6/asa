@@ -144,34 +144,42 @@ void main() {
       expect(find.text('DEMO-9 ↗'), findsOneWidget);
     });
 
-    testWidgets('Status: a picker, not free text — selecting a value '
-        'saves it', (tester) async {
-      await pumpScreen(tester);
-      expect(find.text('building'), findsOneWidget);
+    testWidgets(
+      'Status: a picker, not free text — selecting a value saves it, in '
+      'the new ADR 0041 word even though the file started on the old one',
+      (tester) async {
+        await pumpScreen(tester);
+        // The fixture's own `status: building` — an old word — reads and
+        // shows as its new label, "In progress".
+        expect(find.text('In progress'), findsOneWidget);
 
-      await tester.tap(
-        find.descendant(
-          of: find
-              .ancestor(of: find.text('Status'), matching: find.byType(Row))
-              .first,
-          matching: find.byIcon(Icons.edit),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(
+            of: find
+                .ancestor(of: find.text('Status'), matching: find.byType(Row))
+                .first,
+            matching: find.byIcon(Icons.edit),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButton<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('paused').last);
-      await tester.pumpAndSettle();
+        await tester.tap(find.byType(DropdownButton<String>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('On hold').last);
+        await tester.pumpAndSettle();
 
-      await pumpAndSettleReal(
-        tester,
-        () => tester.tap(find.byIcon(Icons.check)),
-      );
+        await pumpAndSettleReal(
+          tester,
+          () => tester.tap(find.byIcon(Icons.check)),
+        );
 
-      expect(find.text('paused'), findsOneWidget);
-      expect(File(projectFile).readAsStringSync(), contains('status: paused'));
-    });
+        expect(find.text('On hold'), findsOneWidget);
+        expect(
+          File(projectFile).readAsStringSync(),
+          contains('status: on-hold'),
+        );
+      },
+    );
 
     testWidgets('a value cleared by editing to nothing shows "not set"', (
       tester,

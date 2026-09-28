@@ -46,6 +46,7 @@ import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
+import 'package:asa/core/status_words.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
@@ -70,18 +71,15 @@ import 'package:flutter/material.dart';
 /// to do instead of disappearing.
 enum _Tab { plan, strategy, decisions, details }
 
-/// ADR 0017's own six values, in the order the ADR states them. No code
-/// defined this list before this round — the picker needs it to exist
-/// somewhere, and this screen is the only place that reads it today.
-const _statusValues = [
-  'idea',
-  'discovery-done',
-  'building',
-  'shipped',
-  'ongoing',
-  'paused',
-  'dropped',
-];
+/// ADR 0041's own seven values, in the order the ADR states them — the
+/// field writer writes only these; an old word (`building`, `paused`,
+/// `shipped`, `dropped`) is never written again once a project's status
+/// is next saved through this picker.
+final _statusValues = [for (final word in statusWords) word.stored];
+
+/// ADR 0041's *Means* column, keyed by the stored word — the picker's own
+/// grey hint, so *In progress* and *Ongoing* can't be mixed up.
+final _statusMeans = {for (final word in statusWords) word.stored: word.means};
 
 class ProjectScreen extends StatefulWidget {
   const ProjectScreen({
@@ -641,7 +639,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           project.status,
           picker: _statusValues,
           valueBuilder: (value) =>
-              Pill(value, meaning: meaningForStatus(value)),
+              Pill(statusLabel(value), meaning: meaningForStatus(value)),
         ),
         _editableField('Parent', 'parent', project.parent),
         _editableField('Priority', 'priority', project.priority),
@@ -906,13 +904,30 @@ class _EditableField extends StatelessWidget {
     if (picker != null) {
       final current = controller.text;
       return DropdownButton<String>(
-        value: picker!.contains(current) ? current : null,
-        hint: Text(current.isEmpty ? 'not set' : current),
+        value: picker!.contains(canonicalStatus(current))
+            ? canonicalStatus(current)
+            : null,
+        hint: Text(current.isEmpty ? 'not set' : statusLabel(current)),
         isExpanded: true,
         isDense: true,
         items: [
           for (final option in picker!)
-            DropdownMenuItem(value: option, child: Text(option)),
+            DropdownMenuItem(
+              value: option,
+              child: Row(
+                children: [
+                  Text(statusLabel(option)),
+                  const SizedBox(width: AsaSpace.sm),
+                  Expanded(
+                    child: Text(
+                      _statusMeans[option] ?? '',
+                      style: const TextStyle(color: AsaColors.ink3),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
         onChanged: saving
             ? null

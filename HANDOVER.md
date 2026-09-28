@@ -4432,3 +4432,64 @@ other template changes."
 
 **Next:** cp9b (the status words, ADR 0041) — "right after cp9," per the deciding session's own
 note above — then cp4.
+
+---
+
+### Round 39 cp9b — the status words (ADR 0041)
+
+**Built:** `lib\core\status_words.dart` (new, pure Dart) — `statusWords` (ADR 0041's own seven, in
+its own order, each with its stored word, on-screen label and grey *Means* hint), `canonicalStatus`
+(an old word or its loose unhyphenated shape reads as the new one it means; a new word or an unknown
+one passes through unchanged), `isOldStatusWord` (for `asa-check`, cp4, not built yet), `isHiddenStatus`
+(ADR 0036's hiding set in the new words — `on-hold`/`done`/`canceled` — no code reads this yet, the
+list itself isn't built either), `statusLabel`.
+
+**Wired in:** `ui/tokens.dart`'s `meaningForStatus` canonicalizes before switching, so an old word
+gets the same colour it always did. `project_row.dart`'s `isPastDeadline` now checks `done`/`canceled`
+through `canonicalStatus` — **kept its own deliberate exclusion of `on-hold`/`paused` from
+suppression** (an on-hold project past its deadline still gets the signal; that was already a
+considered choice, not touched). `project_screen.dart`'s status picker: the seven values are now
+built from `statusWords` directly (`[for (final word in statusWords) word.stored]`, never a
+hand-typed list to drift from the table again); the dropdown shows each word's label with its grey
+hint beside it; **a real bug caught while building, not after:** the dropdown's own "is this value
+selected" check compared the raw current status against the new-words-only list, so a project
+genuinely showing `status: building` would have opened the editor with nothing selected — fixed by
+comparing through `canonicalStatus` on both sides. The saved pill shows the label (`In progress`),
+never the raw stored word.
+
+**The field writer writes only the new words** — for free, not as separate work: the picker's own
+values are the seven new words already, so any save through it writes one of those, never an alias,
+whichever the file said before.
+
+**Deliberately not touched:** `statusEmphasis` (`project_row.dart`) — its substring check
+(`contains('progress')`) already matches `in-progress` by coincidence of spelling, and it's an
+already-documented "known gap, left alone per an earlier round's own scope," not something cp9b's
+own spec asked to fix.
+
+**Deliberately not done:** existing fixtures across ~20 other test files that use `building`/
+`paused`/`shipped`/`dropped` as status values were left exactly as they are, on purpose — they are
+now the empirical proof the alias mechanism works (all still pass, unchanged), and rewriting them to
+the new words would be pure churn with no behaviour to show for it. New, focused coverage instead:
+`test/status_words_test.dart` (19 cases — every alias, both directions, the unknown-word case, the
+hiding set, every label) and `test/project_screen_edit_test.dart`'s own status test, rewritten to
+prove the real regression (a `building` fixture opens the picker on *In progress*; picking *On hold*
+writes `status: on-hold`, never `status: paused`).
+
+**`templates\AGENTS.md` v3.4:** §7.1's status list and example frontmatter use the new words; the old
+ones are named as still-readable, not silently dropped from the manual. Pushed to the real
+`projects\AGENTS.md` with `sync-manual.ps1 -Force` — the manifest flagged it as "edited" because the
+deciding session had been hand-editing the installed copy in lockstep with the template rather than
+through this script, so the local manifest's own record was stale, not because of a real conflict;
+checked the diff first (exactly the intended v3.3→v3.4 delta, nothing else) before forcing.
+
+**Not done yet, per the round's own sequencing:** the `asa-check` finding ("old status word — write
+the new one instead") is cp4's own job, next; `isOldStatusWord`/`canonicalStatus` are already there
+for it to use. Telling the deciding session to update the real notes (`building` in 5, `paused` in 1,
+`in progress` in 1) is this paragraph, since there's no other channel — she reads this file.
+
+**Verified:** `flutter analyze --fatal-infos` clean, `flutter test` — 621 total, all green.
+
+**Commits:** `lib/core/status_words.dart`, `ui/tokens.dart`, `project_row.dart`,
+`project_screen.dart`, `templates/AGENTS.md` v3.4, and both test files, together.
+
+**Next:** cp4 — `asa-check`, the write guard.
