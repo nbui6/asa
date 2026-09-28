@@ -6,7 +6,7 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3.5, 2026-09-28.*
+Version 3.6, 2026-09-28.*
 
 **This page is the one door.** Start here, every time; everything else is reached from here, only when your
 job needs it:
@@ -107,7 +107,21 @@ The files are the only memory,** and the only way two sessions reach each other.
 3. **Open the session:** write `.asa-session.md` (§7.11).
 4. **Work with them.** After every step, update the session file (*Doing / Last done / Next*). In a repo,
    commit one piece at a time. Never push.
-5. **Record as it happens** (§5). Don't save it for the end.
+5. **Record as it happens** (§5). Don't save it for the end. **Before every reply ends, check the six
+   moments** below. If one happened in this exchange and isn't written yet, write it first, then answer:
+
+   | The user… | Write |
+   |---|---|
+   | decided something, or chose between options | a decision (§7.5) |
+   | said yes to something built or drawn | a row in `APPROVED.md` (§7.6) |
+   | asked for something built to change | a row in `CHANGES.md` (§7.7) |
+   | changed a plan, a goal, a priority or the order of work | the area page, `CHARTER.md` or the tasks, the same turn |
+   | set a rule for how you work | `BOSS.md` → *Your rules* (§11) |
+   | reported a result, or you finished a step | a result (§7.4); tick the task; the session file |
+
+   **End that reply with one short line saying what you logged and where,** for example *Logged:
+   decision 0045; Sales → tasks.* The user sees at a glance that nothing stayed in the chat. No line when
+   nothing was logged.
 6. **Check what you wrote** (§8).
 7. **Hand over:**
    - The first open task is the true next step.
@@ -389,7 +403,7 @@ user's contradicts one here, theirs wins; say so once.*
 **Writing things down**
 
 10. **Log decisions and plans often, as they happen,** so things are as clear as possible and nothing is a
-    black box. Nothing that matters stays only in the chat; write it where it belongs (§5).
+    black box: check the six moments before every reply ends, and say what you logged (§3, step 5).
 11. **One place, one shape:** everything in `projects\`, in the shapes of §7.
 12. **Stay in the project you're working on.** Name other projects with `[[folder]]`; don't edit them.
 
