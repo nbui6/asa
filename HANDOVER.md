@@ -4228,3 +4228,35 @@ match.
   Instruction for AI → Activity, cp6). **Build the data side so it can feed a timeline:** cp5's session log
   and cp8's history should expose entries with a date, a kind, the author and their links.
 
+### Round 39 cp2 — links Asa reads
+
+**Built:** `Decision` gains a `links` field (`DecisionLinks`: `area`, `objective`, `round`,
+`supersedes`, `scopeAlways`), parsed from an optional `**Links:** Area: Sales · Serves: Objective 2 ·
+Round: 38 · Supersedes: 0005 · Scope: always` line — any subset, any order, an unrecognised key
+ignored rather than guessed at. The existing status-text-based `supersedes` (`accepted (supersedes
+0005)`) and the new Links-based one merge into the one `Decision.supersedes` field — a caller never
+checks two places. `lib\core\round_file.dart` (new) reads a round spec file's own `**Area:**` line,
+looked for in the first 20 lines only — "near the top," not a mention anywhere in the body.
+
+**Consolidated, not just added:** `areasNamingDecision` (new, `area.dart`) replaces three private,
+near-identical `_areasNaming` methods (`project_screen.dart`, `plan_view.dart`, `strategy_view.dart`)
+with one shared function — and extends what they did: an area is now found **both** the old way (its
+own page names the ADR, in `decisionNumbers`) **and** the new way (the decision's own `Links: Area:`
+line names it), deduplicated, so a decision doesn't need its area's page to mention it back.
+
+**Tests:** `decision_test.dart` (7 new cases — the worked example, `Scope: always`, no-Links-line,
+a subset of fields, the merge-vs-status-wins-first case, the `Serves: Objective N` number
+extraction), `round_file_test.dart` (new, 4 cases), `area_test.dart` (5 new cases for
+`areasNamingDecision`, both directions, deduped, case-insensitive, null-safe). 565 total, all green.
+
+**Not done, on purpose:** the deciding session backfills Asa's own 29 decisions with `Links:` lines
+herself once this reader lands — content edits in `projects\asa\decisions\`, not Code's to make.
+Reading a round's own decisions/test/finish-line beyond its `**Area:**` line is `asa-brief`'s own job
+(cp3), not duplicated here.
+
+**Commits:** landed inside `a01651d` (bundled with an unrelated small `templates\AGENTS.md` addition
+that arrived while cp2 was staged — same pattern as cp1, named here rather than silently left
+unexplained).
+
+**Next:** cp3 — `asa-brief`, the routing.
+
