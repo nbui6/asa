@@ -239,8 +239,7 @@ Future<String> _areaSlice(
         (d) =>
             (d.number != null && a.decisionNumbers.contains(d.number)) ||
             (d.links.area ?? '').toLowerCase() == areaName.toLowerCase() ||
-            (a.objectiveNumbers.contains(d.links.objective ?? '') &&
-                (d.links.objective ?? '').isNotEmpty),
+            d.links.objectives.any(a.objectiveNumbers.contains),
       )
       .toList();
   if (linked.isNotEmpty) {
@@ -315,7 +314,7 @@ Future<String> _roundSlice(
 
   final linked = decisions
       .where(_current)
-      .where((d) => (d.links.round ?? '') == round)
+      .where((d) => d.links.rounds.contains(round))
       .toList();
   if (linked.isNotEmpty) {
     buffer.writeln('- Decisions:');

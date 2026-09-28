@@ -49,21 +49,37 @@ class Verdict {
 class DecisionLinks {
   const DecisionLinks({
     this.area,
-    this.objective,
-    this.round,
+    this.objectives = const [],
+    this.rounds = const [],
     this.supersedes,
     this.scopeAlways = false,
   });
 
   final String? area;
 
-  /// The bare objective number (`"2"`), the same shape `area.dart`'s own
-  /// `objectiveNumbers` already uses — parsed out of `Serves: Objective 2`
-  /// (or kept as the raw value when it isn't that exact shape).
-  final String? objective;
-  final String? round;
+  /// Every bare objective number (`["2"]`, or `["2", "3"]`) — the same
+  /// shape `area.dart`'s own `objectiveNumbers` already uses — parsed out
+  /// of one or more `Serves: Objective N` segments, and/or a
+  /// comma-separated `Serves: Objective 2, Objective 3`. Real data found
+  /// both shapes: a repeated key (0034) and a comma list. Empty, never
+  /// null, when the decision serves none.
+  final List<String> objectives;
+
+  /// Every round this decision links to — same repeated-key-or-comma-list
+  /// tolerance as [objectives]; real data has both (0032: `Round: 39 ·
+  /// Round: 38`).
+  final List<String> rounds;
   final String? supersedes;
   final bool scopeAlways;
+
+  /// The first objective, when there's exactly one — the common case,
+  /// and the shape most callers only ever need. Null when there are none
+  /// *or* more than one: a caller that only checks "the" objective must
+  /// not silently pick one of several.
+  String? get objective => objectives.length == 1 ? objectives.first : null;
+
+  /// Same reasoning as [objective], for [rounds].
+  String? get round => rounds.length == 1 ? rounds.first : null;
 
   static const DecisionLinks none = DecisionLinks();
 }
@@ -295,8 +311,8 @@ DecisionLinks _parseLinks(String afterHeading) {
   if (raw == null) return DecisionLinks.none;
 
   String? area;
-  String? objective;
-  String? round;
+  final objectives = <String>[];
+  final rounds = <String>[];
   String? supersedes;
   var scopeAlways = false;
 
@@ -304,6 +320,10 @@ DecisionLinks _parseLinks(String afterHeading) {
   // spans what `_inlineLabel` already cut off at the next field/heading.
   final firstLine = raw.split('\n').first;
 
+  // Real data has both a repeated key (`Round: 39 · Round: 38`, ADR 0032)
+  // and a comma list (`Serves: Objective 2, Objective 3`, ADR 0034) — a
+  // segment's own value is split on comma too, so either shape becomes
+  // the same list.
   for (final part in firstLine.split('·')) {
     final segment = part.trim();
     if (segment.isEmpty) continue;
@@ -317,9 +337,18 @@ DecisionLinks _parseLinks(String afterHeading) {
       case 'area':
         area = value;
       case 'serves':
-        objective = _objectiveInServes.firstMatch(value)?.group(1) ?? value;
+        for (final piece in value.split(',')) {
+          final trimmed = piece.trim();
+          if (trimmed.isEmpty) continue;
+          objectives.add(
+            _objectiveInServes.firstMatch(trimmed)?.group(1) ?? trimmed,
+          );
+        }
       case 'round':
-        round = value;
+        for (final piece in value.split(',')) {
+          final trimmed = piece.trim();
+          if (trimmed.isNotEmpty) rounds.add(trimmed);
+        }
       case 'supersedes':
         supersedes = value;
       case 'scope':
@@ -329,8 +358,8 @@ DecisionLinks _parseLinks(String afterHeading) {
 
   return DecisionLinks(
     area: area,
-    objective: objective,
-    round: round,
+    objectives: objectives,
+    rounds: rounds,
     supersedes: supersedes,
     scopeAlways: scopeAlways,
   );

@@ -603,5 +603,50 @@ void main() {
       );
       expect(result.decision!.links.objective, '2');
     });
+
+    test("a repeated key (real data: ADR 0032's Round: 39 · Round: 38) "
+        'keeps every value, not just the last one', () {
+      final result = parseDecision(
+        '# ADR 0032 - Title\n\n**Status:** accepted\n**Links:** '
+            'Round: 39 · Round: 38\n\n## Decision\nSomething.\n',
+        '0032.md',
+      );
+      final links = result.decision!.links;
+      expect(links.rounds, ['39', '38']);
+      // Two values: the single-value getter refuses to guess which one.
+      expect(links.round, isNull);
+    });
+
+    test('a comma list (Round: 38, 39) reads the same as a repeated key', () {
+      final result = parseDecision(
+        '# ADR 0033 - Title\n\n**Status:** accepted\n**Links:** '
+            'Round: 38, 39\n\n## Decision\nSomething.\n',
+        '0033.md',
+      );
+      expect(result.decision!.links.rounds, ['38', '39']);
+    });
+
+    test("real data: ADR 0034's two Serves: lines keep both objectives", () {
+      final result = parseDecision(
+        '# ADR 0034 - Title\n\n**Status:** accepted\n**Links:** '
+            'Serves: Objective 2 · Serves: Objective 3\n\n## Decision\n'
+            'Something.\n',
+        '0034.md',
+      );
+      final links = result.decision!.links;
+      expect(links.objectives, ['2', '3']);
+      expect(links.objective, isNull);
+    });
+
+    test('exactly one value still reads through the singular getter, the '
+        'common case', () {
+      final result = parseDecision(
+        '# ADR 0009 - Title\n\n**Status:** accepted\n**Links:** '
+            'Round: 38\n\n## Decision\nSomething.\n',
+        '0009.md',
+      );
+      expect(result.decision!.links.round, '38');
+      expect(result.decision!.links.rounds, ['38']);
+    });
   });
 }
