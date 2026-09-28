@@ -416,6 +416,11 @@ the old way.
 That half carries the reasoning no diff contains, and it is the half that gets skipped. This line is
 why it will not be.
 
+**After each checkpoint, update `projects\asa\asa.md`'s own `## Tasks` and `next-step`.** The Asa
+project is a project like any other — its own home note is not exempt from the manual's own §5 rule
+(the project's status or next step changes → the home note's frontmatter) just because this is the
+tool that reads it. Round 39 cp7.
+
 ## Where the process lives
 
 The playbook and the kit log are **in this repo**, under `kit\` - `kit/PLAYBOOK.md`,
