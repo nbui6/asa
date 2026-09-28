@@ -4026,3 +4026,125 @@ not change under him.
 
 **Round 38 is specced** (`projects\asa\rounds\round-38.md`: switching between Claude accounts).
 **Don't start it until the deciding session writes here that Nico's test is done.**
+
+### 2026-09-28 — deciding session → Code: Nico tested; Round 38 is specced, **waits for his yes**; the old Round 38 is now Round 39
+
+**Nico tested Rounds 36/37 on the real app.** He hasn't given the approval yet; he'll give it on the
+screen Round 38 builds. His feedback became **`projects\asa\rounds\round-38.md`**: Strategy first; areas
+as tabs under Plan, with + Add area; "waiting for your yes" going to Decisions and a round *Your call*
+screen. It **waits for his yes on `projects\asa\sketches\asa-project-tabs-v1.html`**. The deciding session
+writes it here.
+
+**The switching spec you may have read as `round-38.md` is now `round-39.md`**, with a new §G (the `asa`
+skill, workspace `CLAUDE.md`/`AGENTS.md`, "note behind the work", the size budget). It comes after 38.
+
+**Until Nico's yes: build nothing.**
+
+### 2026-09-28 — deciding session → Code: Nico said yes. **Build Rounds 38 and 39 as one delivery**
+
+**Nico approved `projects\asa\sketches\asa-project-tabs-v1.html`** (*"yes all look good"*). ADR 0021 and
+ADR 0026 are amended for the three new writes. **Read, in order:**
+
+1. `projects\asa\rounds\round-38.md`
+2. `projects\asa\rounds\round-39.md`
+3. ADR 0021's 2026-09-28 amendment
+
+**His words, which set the bar:** *"test to make sure they link together before giving me to test. Asa
+should be able to record these decisions and clear those items waiting for me. We need to focus in making
+Asa working well with Claude automatically. Otherwise Asa just become work for me."*
+
+**What that means for you:**
+
+- **Order:** Round 38 cp0–cp4, then Round 39 in the order its spec gives: skills, then **§G, the automatic
+  loop**, then the rest.
+- **Before "ready":** every link test green (L1–L24); the click-through twice; **the automatic-loop drill
+  passed** (a fresh session in a project folder, no opener, does the right thing by itself). Write down what
+  happened, step by step.
+- **Changed since the sketch:** *Needs changes* writes to the new `projects\asa\rounds\CHANGES.md`, not
+  `FEEDBACK.md`. It already exists, with its first row.
+- **New real data:** Asa has areas now (`projects\asa\plan\1-app.md`, `2-skills-and-agents.md`,
+  `3-sketches.md`), next to its `PLAN.md`. Use it as the real-data case.
+- **As always:** commit as often as possible, `Round 38 cpN:` then `Round 39 cpN:`. Never push. One entry
+  here per checkpoint.
+
+### 2026-09-28 13:00 — deciding session → Code: **order changed — Round 39 FIRST, whole; Round 38 after**
+
+Nico: *"I want it to work with Claude automatically 1st, and everything else after. The decisions should
+also be updated by Asa (manually is an option for me, but I dont have to). Basically, any claude accounts
+should be able to start with Asa and pick up what was left, understand all plans and decisions made, to
+continue working with me."*
+
+- **Read `projects\asa\rounds\round-39.md` again.** It has two new sections:
+  - **§H:** the session records decisions, yeses and change requests as they happen. Asa's buttons become
+    the optional manual way.
+  - **§I:** `asa-brief`, a ≤80-line briefing built from `lib\core\`, so every account starts from the same
+    picture.
+- **The drill is extended:** pick up and understand; record a decision unasked; record a yes unasked. It
+  must pass before Round 38 starts.
+- **The skill is drafted:** `kit\skills\asa\SKILL.md`, by the deciding session. Commit it as it is
+  first, in its own commit. Then tune it, mainly its description, until the drill passes.
+- **Your order:**
+  1. Round 39 cp0 (skills from one source).
+  2. cp3, cp3b and cp3c (§G–§I, the automatic loop).
+  3. The drill.
+  4. Round 39's remaining cp1, cp2, cp4.
+  5. Round 38, whole.
+- **Keep one HANDOVER entry per checkpoint,** and commit as often as possible. Never push.
+
+### 2026-09-28 13:20 — deciding session → Code: **hold Round 39 §G–§I**; cp0 may go ahead
+
+Nico is reshaping how Asa is taught to AI agents. **The instructions will live in Asa's own files** (a
+manual any AI reads, at the projects-folder root), not mainly in a Claude skill. Decisions will be found
+**by their links** to strategy, areas and rounds, not by rereading all of them. The spec for §G–§I is
+being rewritten. **Round 39 cp0 (skills from one source) is unaffected: go ahead with it.** Don't build
+§G, §H or §I, and don't commit `kit\skills\asa\SKILL.md` yet. The deciding session writes here when the
+new spec is ready.
+
+### 2026-09-28 14:00 — deciding session → Code: **Round 39 rewritten — build it now** (Asa HR waits for a yes)
+
+**Read `projects\asa\rounds\round-39.md` again, end to end.** It was rewritten after Nico's analysis round.
+The earlier version is kept beside it as `round-39-superseded-2026-09-28.md`. The hold from 13:20 is lifted.
+
+**Three files the deciding session wrote are already in your tree. Commit them first, as they are, in one
+commit:**
+
+- `templates\AGENTS.md`: the manual every AI reads.
+- `templates\CLAUDE.md`: points Claude Code at it.
+- `kit\skills\asa\SKILL.md`: a pointer only.
+
+Their installed copies are already in `projects\` (`AGENTS.md`, `CLAUDE.md`). From now on, change the
+templates only; `sync-manual` copies them across.
+
+**Order:**
+
+1. cp0: skills from one source.
+2. cp1: sync the manual, and turn `HOW-ASA-WORKS.md` into a pointer.
+3. cp2: links.
+4. cp3: `asa-brief`.
+5. cp4: `asa-check`.
+6. cp5: the session log.
+7. **The drill.**
+8. cp7: Resume, logins, archives.
+9. **cp6, Asa HR, only after Nico's yes on `projects\asa\sketches\asa-hr-v4.html`.** The deciding
+   session writes it here.
+10. Then Round 38.
+
+**Nico's bar for this:** *"AI will reads a file not because it exists, but because we create the system
+for it to read the files that are relevant."* **The drill proves the system does that.** Commit as often
+as possible, never push, one entry here per checkpoint.
+
+### 2026-09-28 15:00 — deciding session → Code: renamed **Instruction for AI**; the instruction is now version 2; Round 39 gains cp8
+
+- **The screen is called *Instruction for AI*,** not Asa HR. The sketch is now
+  `projects\asa\sketches\asa-instruction-for-ai-v4.html`; the old `asa-hr-v4.html` stays, superseded.
+  Nico's yes on it is still to come.
+- **`templates\AGENTS.md` is version 2** (307 lines). It was rewritten after a persona check with an AI as
+  the persona (`projects\asa\docs\2026-09-28-persona-check-instruction-for-ai.md`). Commit it with the
+  other two files in that first commit. `templates\CLAUDE.md` and `kit\skills\asa\SKILL.md` were also
+  touched: the new name only.
+- **`round-39.md` was updated:**
+  - cp3 `asa-brief` also takes `--all` and `--since <date>`;
+  - **new cp8, Asa's local change history** (`%APPDATA%\Asa\history\`), so a change with no log line
+    shows as *changed, not logged*;
+  - the drill gains step 6 (arrive after 3 days) and step 7 (the Claude desktop app).
+- **Order:** cp0, cp1, cp2, cp3, cp4, cp5, cp8, the drill, cp7. cp6 (the screen) waits for the yes.
