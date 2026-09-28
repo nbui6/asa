@@ -4,6 +4,11 @@
 markdown briefing — the manual's own §4 table, in one command instead of a human following it
 by hand.
 
+`asa-check` (Round 39 cp4) checks one project against the manual's own §7/§13 shapes and prints
+*OK*, or one line per problem — never a stack trace, always something a person could act on.
+Exits 0 (`OK`) or 1 (a real finding), so `check-notes.ps1` can run it over every project and
+report only the ones with something to say.
+
 ## Put it on PATH, once per laptop
 
 PowerShell, once, as yourself (not as admin — this only changes your own user PATH):
@@ -27,6 +32,7 @@ asa-brief --since 2026-09-25
 asa-brief "northwind"
 asa-brief "northwind" --area Sales
 asa-brief "northwind" --round 38
+asa-check "northwind"
 ```
 
 It reads the projects folder from the same `%APPDATA%\Asa\settings.json` the app itself writes —

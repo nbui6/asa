@@ -4557,3 +4557,55 @@ asserting both parts print together under the renamed heading.
 between cp6 and the drill. Noted, not built — cp4 is still next per the standing order.
 
 **Next:** cp4 — `asa-check`, the write guard.
+
+## From the deciding session — 2026-09-28 · cp10 changed: the Stop check uses no AI
+
+Nico has no API budget, and whether a `"type": "prompt"` hook bills separately on a subscription login isn't documented. **cp10's Stop hook is a plain command** (word match + "anything written? a Logged: line?"); see `round-39.md`. In the drill, test once whether a prompt hook runs on the subscription login and whether it appears as API usage; write down what you saw. Template: §3 step 5 now lists the six moments and the *Logged:* line.
+
+---
+
+### Round 39 cp4 — `asa-check`, the write guard
+
+**Built:** `lib\core\check.dart` (pure Dart) + `bin\check.dart`/`asa-check.cmd` (`asa-check
+"<project>"`, prints *OK* or one line per finding, exits 0/1) + `check-notes.ps1` at the repo root
+(same convention as `collect-feedback.ps1`: the projects folder is the fixed sibling of this repo,
+never read from `settings.json`, since this runs from a shell, not the app) — sweeps every real
+project, prints only the ones with something to say, exits 1 if any do.
+
+**Every check named in round-39.md's own cp4 section, plus the 2026-09-28 additions:** *Asa isn't
+set up here* (`.asa-setup.md` missing at the projects root); *BOSS.md is missing* or *still the
+empty template* (checked against the real, unfilled `templates\BOSS.md` in a test, not invented —
+a numbered line's own parenthetical hint, e.g. `(how often, how long...)`, doesn't count as a real
+answer either, a real bug in the first pass caught by writing that test before trusting the logic);
+*old status word* / *unknown status word* (via cp9b's own `isOldStatusWord`/`statusWords`); *not in
+Asa's shape yet* (an old §13-retired heading still present, or no `## Tasks` section — `status`'s
+own unknown-word case is reported separately, not doubled here); *note behind the work* and *over
+budget* (skipped for `on-hold`/`done`/`canceled` projects, ADR 0036 — a quiet project has nothing
+left to be behind on); *session probably cut off* (`.asa-session.md`, cp5's own `isCutOff`);
+*waiting on `<name>` since `<date>` — over 14 days* (a task's own `(waiting: …)` marker, from the
+2026-09-28 cp4 note, not the original spec).
+
+**"The newest handover entry" (over-budget's own third input) is not counted** — no per-project
+convention for that exists in the manual's own §7 shapes; a project's `HANDOVER.md` is an
+Asa-repo-specific thing, not a general one. Over budget is the note plus `.asa-session.md` only.
+Named here as a real interpretation gap, not silently narrowed.
+
+**Verified against every real project, not only the fixture:** ran `check-notes.ps1` against the
+real 13-project folder. Every one of them has something real to report — mostly the §13 shaping
+pass HANDOVER.md already said was still pending (old sections, old status words, no `## Tasks`),
+plus `asa` itself: `building`, a leftover `## Where it stands`, and 424 lines over the ~300 budget.
+None of it invented; each line points at something a person could actually go fix.
+
+**Tests:** `test/check_test.dart`, 16 cases — every finding, both directions where it matters (an
+on-hold project never flagged; a wait under 14 days not yet a finding; a closed session never
+cut off), plus the unreadable-project case.
+
+**Verified:** `flutter analyze --fatal-infos` clean, `flutter test` — 637 total, all green.
+
+**Not done, per the round's own sequencing:** cp10's own hooks (SessionStart/Stop/etc.) call
+`asa-check` too, per the newest note above — that's cp10's build, not this one's.
+
+**Commits:** `lib/core/check.dart`, `bin/check.dart`, `bin/asa-check.cmd`, `bin/README.md`,
+`check-notes.ps1`, `test/check_test.dart`, together.
+
+**Next:** cp5 — sessions and their log.
