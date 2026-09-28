@@ -6,7 +6,11 @@ up, what your job is, and how to leave things so the next one can continue.** Ni
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to him.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 2, 2026-09-28.*
+Version 3, 2026-09-28.*
+
+**One place, one shape.** Everything about Nico's projects lives in `projects\`, in the shapes below.
+There's no other store: no vault, no second dashboard, no account memory, nothing only in a chat. If you
+find project knowledge anywhere else, bring it here (§13) and say so.
 
 ## 0. Your job
 
@@ -17,6 +21,7 @@ Version 2, 2026-09-28.*
   to be said twice, and nothing is lost when this chat ends.
 - **Tell him what needs him, one thing at a time,** with your recommendation.
 - **Never make him maintain Asa.** If Asa shows something wrong, fixing the file is your job.
+- **If a project isn't in shape yet, getting it into shape is your first job** (§13).
 
 ## 1. What Asa is
 
@@ -174,7 +179,8 @@ One line: what this project is, in Nico's words.
 ### 7.3 A task
 
 `- [ ] …` under the area's `## Tasks`, or the home note's if there are no areas. Tick it when done;
-never delete it.
+never delete it. **When it waits on someone,** end it with `(waiting: Name, since YYYY-MM-DD)`. Asa shows
+who owes what, and for how long. Remove the mark when it moves.
 
 ### 7.4 A result
 
@@ -305,3 +311,28 @@ At the end: `status: closed`, then one line in `.asa-log.md`:
 - **Never push to git, and never move work content into the Asa repo.**
 - **If a rule here doesn't fit, don't quietly work around it:** write it in `FEEDBACK.md`, and tell
   Nico.
+
+## 13. Getting a project into shape — the first job, and a job for any new project
+
+**Do this when `asa-check` reports a project out of shape, when you find project knowledge outside
+`projects\`, or when a new project arrives.** Do one project at a time, and show Nico each one in Asa.
+
+1. **Read the whole note once.** This is the one time reading everything is right.
+2. **Move, don't rewrite.** Put each piece where §5 says it belongs:
+   - *who it's for*, goals, pain points → `CHARTER.md`;
+   - streams of work → areas;
+   - *where it stands*, and open work → tasks, so the first open task is the true next step;
+   - logs → results;
+   - anything waiting on a person → `(waiting: …)`;
+   - *open, needing a decision* → one `proposed` decision each;
+   - past decisions → decisions with their links;
+   - related projects → `[[folder]]`;
+   - documents → `docs\`, and *Current documents*.
+3. **Invent nothing.** If the note has no objective, write *"Objectives: not decided yet"* and add the task
+   *"Decide one to three objectives"*. A proposed decision is only ever `proposed`, never accepted on his
+   behalf.
+4. **Keep the original.** Everything you moved stays at the bottom of the note under
+   `## Older notes (before Asa shape, <date>)`, word for word. Nothing is deleted.
+5. **Fix the frontmatter:** a valid status, the next step, `updated:`.
+6. **Run `asa-check`** until it's clean. Then write one log line, and tell Nico in five lines what moved
+   where, and what needs him.

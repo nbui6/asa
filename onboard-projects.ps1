@@ -227,6 +227,20 @@ Write-Host ("  Still missing it:        {0}" -f $result.DeclinedOrNo.Count)
 Write-Host ("  No home note at all:     {0}" -f $result.NoHomeNote.Count)
 Write-Host ''
 
+# Round 39 cp1 - a new laptop gets the manual too: AGENTS.md and CLAUDE.md
+# at the projects root, and every project's HOW-ASA-WORKS.md brought up to
+# the current ten-line pointer (this loop above only ever adds one where
+# there was none at all - an older copy left in place by an earlier round
+# is exactly what sync-manual.ps1 itself exists to bring current).
+if (-not $SelfTest) {
+    Write-Host 'Syncing the manual (kit\sync-manual.ps1):'
+    $syncManual = Join-Path $repo 'kit\sync-manual.ps1'
+    if (Test-Path -LiteralPath $syncManual) {
+        & $syncManual -ProjectsFolder $projectsRoot
+    }
+    Write-Host ''
+}
+
 if ($result.NoHomeNote.Count -gt 0 -or $result.DeclinedOrNo.Count -gt 0) {
     exit 1
 }
