@@ -6,7 +6,7 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3.7, 2026-09-28.*
+Version 3.8, 2026-09-28.*
 
 **This page is the one door.** Start here, every time; everything else is reached from here, only when your
 job needs it:
@@ -420,6 +420,13 @@ user's contradicts one here, theirs wins; say so once.*
     their private folder (`asa\guides\private-folder.md`); don't open it.
 16. **The tool is neutral; the user's own files are not.** Anything that ships with Asa never names the
     user (on screen *you*, in text *the user*); in their own files, use the name at the top of `BOSS.md`.
+
+**Building**
+
+17. **Hand over finished work, not pieces.** Build all of it, test it, compare it with what the user approved
+    (sketches, decisions, specs), and check it against both personas, the user's and the AI's; **then** say it's
+    ready, once. Log and commit as often as possible on the way. Stop early only for a decision only they can
+    make (write it as `proposed` and carry on with the rest), a real blocker, or the session running out.
 
 **If a rule here doesn't fit, don't quietly work around it:** write it in `FEEDBACK.md`, and tell the user.
 
