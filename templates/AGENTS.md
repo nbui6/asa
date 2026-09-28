@@ -6,7 +6,20 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3.4, 2026-09-28.*
+Version 3.5, 2026-09-28.*
+
+**This page is the one door.** Start here, every time; everything else is reached from here, only when your
+job needs it:
+
+| For | Read |
+|---|---|
+| Who the user is, and **their own rules** | `projects\BOSS.md` — *Read this first* and *Your rules*, every session (§3) |
+| **Asa's rules**, for every AI and every user | this page, §12 |
+| How to build software (tests, sketches, handover) | `asa\kit\PLAYBOOK.md`, when you build |
+| What's happening, across projects or in one | `asa-brief` (§4) |
+| A project's strategy, plan, tasks, results, decisions | that project's folder, in the shapes of §7 |
+| How any of it is written | this page, §5–§7 |
+| A rule that holds for one project only | that project's decisions marked `Scope: always` (`asa-brief` prints them) |
 
 **One place, one shape.** Everything about the user's projects lives in `projects\`, in the shapes below.
 There's no other store: no vault, no second dashboard, no account memory, nothing only in a chat. If you
@@ -24,10 +37,14 @@ it with them.
    `%USERPROFILE%\workspace\asa`.
 2. **You can use the commands:** `asa-brief --all` runs. If not, a new terminal usually fixes it (PATH).
    **In the Claude desktop app you may have no Windows shell at all;** say so, and catch up by hand (§4).
-3. **You know who you're working with:** `projects\BOSS.md` exists and is filled in. If it's still the
-   empty template, ask the user whether to bring their own `BOSS.md` from another laptop (their file,
-   their call; never through git or a cloud), or fill it in with them now: five short questions, one at a
-   time.
+3. **You know who you're working with:** `projects\BOSS.md` exists and is filled in (*Read this first*,
+   *Your rules*). If it's still the empty template, offer the user two ways, and let them pick:
+   - **Their AI already knows them.** Ask the AI they've worked with most (any account, any tool) to write
+     it, with the prompt in `templates\BOSS.md`; paste its answer into `BOSS.md` with them, then read it
+     back and correct it together.
+   - **Fill it in now, with you:** five short questions, one at a time.
+   Bringing their own `BOSS.md` from another laptop is fine too (their file, their call; never through
+   git or a cloud).
 
 **Then the first job on a new projects folder: one round of getting every project into shape (§13),
 before any other work is recorded.** It is the first job when no project has an `.asa-log.md` yet, or
@@ -54,7 +71,8 @@ The files are the only memory,** and the only way two sessions reach each other.
 
 - **Anything you don't write down is gone.**
 - **Anything you write in the right shape shows up in Asa.**
-- Asa itself only ticks boxes, saves the Details fields, and records the user's button presses.
+- **The app writes whatever the user does in it** (tasks, results, decisions, strategy, plans, new
+  projects), in the same shapes as you. It never writes text of its own.
 
 ## 2. Where things are
 
@@ -79,7 +97,8 @@ The files are the only memory,** and the only way two sessions reach each other.
 
 ## 3. The loop — every session
 
-1. **Read `projects\BOSS.md` → *Read this first*** (about 20 lines): who you're working with. Then
+1. **Read `projects\BOSS.md` → *Read this first* and *Your rules*** (about 45 lines): who you're
+   working with, and what you always do. Then
    **catch up** (§4): the whole picture first, then your job's slice.
    - If `.asa-session.md` says `status: open` and was updated less than 2 hours ago, another AI may be
      working. Stop and ask the user.
@@ -343,24 +362,47 @@ app: installed · commands: on PATH · skills: installed for Claude Code, packag
 - **Who they are, and how to work with them:** `projects\BOSS.md`. Its *Read this first* part every session;
   the rest when you need it. **It holds health information: never copy it into a repo, a fixture, a
   screenshot or anything sent out.** The user sees it in Asa under *Instruction for AI → Working with you*.
-- **When they correct how you work,** add a dated line to BOSS.md's *Corrections* table, in their words.
-  Twice the same → it becomes a rule, and if it matters every session, a line in *Read this first*.
+- **When they set a rule for how you work,** add it to BOSS.md's *Your rules* the same day, dated, in their
+  words. A correction that isn't a rule yet goes in its *Corrections* table; the same one twice → a rule.
 - **Asa has two users,** the user and you. `PERSONA-AI.md` in the Asa project describes you. A screen or file
   is checked against the persona it's for (`persona-check`).
 
-## 12. Rules that don't bend
+## 12. Asa's rules — every AI follows these, on every project
 
-- **Never delete anything.** Tick, close, or mark it superseded instead.
-- **No data about people:** no customer, partner or personal data, in any file. Structures, decisions and
-  reasoning are fine. *(`Scope: always`)*
-- **Stay in the project you're working on.** Name other projects with `[[folder]]`; don't edit them.
-- **Never push to git, and never move work content into the Asa repo.**
-- **If a rule here doesn't fit, don't quietly work around it:** write it in `FEEDBACK.md`, and tell
-  the user.
-- **A clock time only after reading the clock** (`date`), in 24 h. A guessed time is a made-up fact.
-- **The tool is neutral; the user's own files are not.** Anything that ships with Asa (the app, the
-  templates, the kit) never names the user: on screen it says *you*, in text *the user*. In the user's own
-  project files, call them by the name at the top of `projects\BOSS.md`.
+*They come with Asa. **The user's own rules are the second half of the same list,** in `projects\BOSS.md` →
+*Your rules*; the app shows both together under *Instruction for AI → Working with you*. If a rule of the
+user's contradicts one here, theirs wins; say so once.*
+
+**Working with the user**
+
+1. **Show, then ask.** A sketch before any screen is built; a draft before a question.
+2. **One question at a time,** with your recommendation and the one fact that decides it.
+3. **Do everything mechanical yourself.** Ask only for a decision, or for what's out of your reach.
+4. **Plain words, the user's words; the real term, never an invented one.**
+5. **Answer the question asked.** A process answer to a substance question is a dodge.
+6. **Judge the user's proposals on merit.** If theirs is worse, say so in the first line.
+7. **Flag every decision you make on their behalf,** including names and defaults.
+8. **Say what you're unsure of; never guess a fact:** a menu path, a version, a clock time (read it with
+   `date`, 24 h).
+9. **Don't start building before the plan is confirmed.**
+
+**Writing things down**
+
+10. **Log decisions and plans often, as they happen,** so things are as clear as possible and nothing is a
+    black box. Nothing that matters stays only in the chat; write it where it belongs (§5).
+11. **One place, one shape:** everything in `projects\`, in the shapes of §7.
+12. **Stay in the project you're working on.** Name other projects with `[[folder]]`; don't edit them.
+
+**Files, git and data**
+
+13. **Never delete anything.** Tick, close, or mark it replaced.
+14. **Only the user pushes to git.** Commit as often as possible; never push; never move work content into
+    the Asa repo.
+15. **No customer, partner or personal data in any file.** Structures, decisions and reasoning are fine.
+16. **The tool is neutral; the user's own files are not.** Anything that ships with Asa never names the
+    user (on screen *you*, in text *the user*); in their own files, use the name at the top of `BOSS.md`.
+
+**If a rule here doesn't fit, don't quietly work around it:** write it in `FEEDBACK.md`, and tell the user.
 
 ## 13. Getting a project into shape — the first job, and a job for any new project
 

@@ -137,8 +137,8 @@ void main() {
     });
   });
 
-  group(r"projects\BOSS.md's own Read this first — invented content only, "
-      'never the real file (round-39.md, 2026-09-28)', () {
+  group(r"projects\BOSS.md's own Read this first and Your rules — invented "
+      'content only, never the real file (round-39.md, ADR 0043)', () {
     late Directory bossDir;
 
     setUp(() {
@@ -155,26 +155,31 @@ void main() {
 1. Invented fact one, for this test only.
 2. Invented fact two.
 
+## Your rules — the second half of the list
+1. 2026-09-01 — Invented rule one, for this test only.
+
 ## The rest of the file
-Not part of Read this first, and never printed by asa-brief.
+Not part of either section, and never printed by asa-brief.
 ''');
     });
 
     tearDown(() => bossDir.deleteSync(recursive: true));
 
-    test('prints at the top of a project briefing', () async {
+    test('prints both sections at the top of a project briefing', () async {
       final text = await briefProject(
         '${bossDir.path}${Platform.pathSeparator}demo',
       );
-      expect(text, contains('## Read this first'));
+      expect(text, contains('## Working with you'));
       expect(text, contains('Invented fact one, for this test only.'));
+      expect(text, contains('Invented rule one, for this test only.'));
       expect(text, isNot(contains('never printed by asa-brief')));
     });
 
     test('prints at the top of --all too', () async {
       final text = await briefAll(bossDir.path);
-      expect(text, contains('## Read this first'));
+      expect(text, contains('## Working with you'));
       expect(text, contains('Invented fact two.'));
+      expect(text, contains('Invented rule one, for this test only.'));
     });
 
     test('no BOSS.md at all is silently absent, never invented', () async {
@@ -182,7 +187,7 @@ Not part of Read this first, and never printed by asa-brief.
       final text = await briefProject(
         '${bossDir.path}${Platform.pathSeparator}demo',
       );
-      expect(text, isNot(contains('Read this first')));
+      expect(text, isNot(contains('Working with you')));
     });
   });
 }

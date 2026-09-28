@@ -4493,3 +4493,67 @@ for it to use. Telling the deciding session to update the real notes (`building`
 `project_screen.dart`, `templates/AGENTS.md` v3.4, and both test files, together.
 
 **Next:** cp4 — `asa-check`, the write guard.
+
+## From the deciding session — 2026-09-28 · cp9 and cp9b checked; two notes
+
+- **cp9 and cp9b read against the commits; thank you.** Keeping the old fixtures as alias proof is right.
+- **Rebuild the release exe at the end of cp4** (`flutter build windows --release`) and say so: the notes' `status:` words get updated after that, so the app Nico runs never meets a word it doesn't know.
+- **Round 43** (`projects\asa\rounds\round-43.md`, sketch approved): working without AI, built into the work. **After Round 42.** Order now: … Round 38 → Round 42 → Round 43.
+
+## From the deciding session — 2026-09-28 · two rules in `CLAUDE.md` now contradict accepted decisions
+
+- **Rules 4 and 13** (*Asa writes only structured fields, never prose*; *Asa never becomes a text editor*) are amended by **ADR 0039** (tasks: add, edit, reorder, move) and **ADR 0042** (results, decisions, strategy and plan lines edited in place, new projects). Rewrite both rules to say what the app may write now (only what the user typed, in the fixed shapes, every change in the history) in your next commit to `CLAUDE.md`; Rounds 42 and 43 build on them.
+- `templates\AGENTS.md` step 1 now reads BOSS.md's *Rules for every AI* too (ADR 0043, proposed). Commit with the other template changes; cp3's `asa-brief` should print that section after *Read this first*.
+
+## From the deciding session — 2026-09-28 · ADR 0044; files changed for you to commit
+
+- **ADR 0044 (accepted):** the app writes whatever the user does in it; ADR 0007 is superseded. The deciding session rewrote `CLAUDE.md` rules 4 and 13 and the paragraph in `AGENTS.md` (repo root). Commit them.
+- **`templates\AGENTS.md`:** a new top block, *This page is the one door* (where everything is, when to read it); §1's bullet on what the app writes; step 1 reads BOSS.md's *Your rules*; §11's rule-adding line. Commit with the other template changes, then `sync-manual.ps1`. `asa-brief` prints *Read this first* and then *Your rules* (the section heading changed from the earlier draft).
+
+## From the deciding session — 2026-09-28 · ADR 0043 accepted; template v3.5
+
+- **`templates\AGENTS.md` v3.5:** §12 is now *Asa's rules* (16, three groups); step 3 of *Before anything else* offers the user's own AI to fill BOSS.md; the door's table lists Asa's rules and the user's rules. **`templates\BOSS.md`** opens with the prompt. Commit both, then `sync-manual.ps1`.
+- **cp6** shows the two halves as one list, and *Fill with your AI* when BOSS.md is still the template (round-39.md). **`asa-brief`** prints BOSS.md's *Read this first*, then *Your rules*; §12 is on the page the AI already reads.
+- **Round 41** `setup.ps1` step 5 says where the prompt is.
+
+## From the deciding session — 2026-09-28 · Round 39 cp10: recording happens by itself (hooks)
+
+New checkpoint **cp10**, after cp6 and before the drill (`round-39.md`): user-level hooks for `projects\` sessions — SessionStart runs `asa-brief`, PostToolUse keeps `.asa-session.md`, a `"type": "prompt"` Stop hook blocks when a decision/approval/change/plan/rule/result wasn't written, `asa-check` at Stop, SessionEnd closes the session. Same pattern as the repo's own hooks. The drill's step 2 now types nothing but the decision; step 7 records whether hooks run in the desktop app. Template: §12 rule 10 reworded (logging often).
+
+---
+
+### Round 39 — ADR 0043/0044: committed the deciding session's rewrite; `asa-brief` gains *Your rules*
+
+**Committed as written, in two commits** (root files carry the working-notes exception, so they're a
+separate concern from what ships): `AGENTS.md`/`CLAUDE.md` (root) for ADR 0044 — hard rule 4 restated
+as "Asa writes whatever the user does in it," rule 13 as "Asa edits in place, where the thing is
+read." Then `templates\AGENTS.md` v3.5 (*This page is the one door* table; §12 renamed *Asa's rules*,
+16 rules in three groups; step 3 of *Before anything else* offers the *their AI already knows them*
+path) and `templates\BOSS.md` (opens with the exact prompt to hand that other AI; a new *Your rules*
+section, the second half of the same list).
+
+**One real code change, not just docs:** `asa-brief` (`lib\core\brief.dart`) now reads BOSS.md's *Your
+rules* section too, not only *Read this first* — `_readBossIntro` replaces `_readBossReadThisFirst`,
+concatenating both under one `## Working with you` heading (renamed from `## Read this first`, since
+it's no longer just that one section). Same honesty rule as before: absent when the file or a section
+isn't there, never invented; still never printed anywhere but stdout.
+
+**Checked, not assumed, that this actually changes something real:** the real `projects\BOSS.md` does
+not have a `## Your rules` heading yet (it predates ADR 0043 — still `## Corrections I made`), so
+`asa-brief` on the real folder today prints *Read this first* only, correctly and honestly. Migrating
+the real file to the new shape is a content edit in `projects\`, not this commit's to make.
+
+**`sync-manual.ps1`** run for real afterward — `templates\AGENTS.md` v3.5 pushed to the real
+`projects\AGENTS.md` cleanly (no `-Force` needed this time, the manifest already matched what v3.4
+had installed). `templates\BOSS.md` is still deliberately not a sync target (named reasoning: cp3's
+own commit) — a blind template-sync would risk overwriting the real, hand-filled file.
+
+**Tests:** `test/brief_test.dart`'s BOSS.md group extended with an invented *Your rules* section,
+asserting both parts print together under the renamed heading.
+
+**Verified:** `flutter analyze --fatal-infos` clean, `flutter test` — 621 total, all green.
+
+**Not yet started:** cp10 (recording happens by itself — user-level hooks), added just above,
+between cp6 and the drill. Noted, not built — cp4 is still next per the standing order.
+
+**Next:** cp4 — `asa-check`, the write guard.

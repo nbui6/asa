@@ -49,19 +49,30 @@ Future<SessionFile?> _readSession(String projectFolder) async {
   return parseSessionFile(await file.readAsString());
 }
 
-/// `projects\BOSS.md`'s own *Read this first* part — about 20 lines,
-/// printed at the top of every briefing (round-39.md, added 2026-09-28: "so
-/// every AI reads its *Read this first* part at step 1 of the loop"). Null
-/// when the file, or that section, isn't there — a fixture or a test never
-/// has the real one, and that is not an error.
+/// `projects\BOSS.md`'s own *Read this first* and *Your rules* parts —
+/// about 45 lines together, printed at the top of every briefing
+/// (round-39.md, ADR 0043: "every AI reads its *Read this first* and
+/// *Your rules* parts at step 1 of the loop"). Null when the file, or
+/// neither section, is there — a fixture or a test never has the real
+/// one, and that is not an error.
 ///
 /// **Never printed into a repo file, a fixture or a screenshot** — the
 /// real file holds health information about the user. This only ever
 /// writes it to stdout, for the person or AI running the command to read.
-Future<String?> _readBossReadThisFirst(String projectsRoot) async {
+Future<String?> _readBossIntro(String projectsRoot) async {
   final file = File('$projectsRoot/BOSS.md');
   if (!file.existsSync()) return null;
-  return sectionTextContaining(await file.readAsString(), 'read this first');
+  final text = await file.readAsString();
+  final readThisFirst = sectionTextContaining(text, 'read this first');
+  final yourRules = sectionTextContaining(text, 'your rules');
+
+  final buffer = StringBuffer();
+  if (readThisFirst != null) buffer.writeln(readThisFirst);
+  if (yourRules != null) {
+    if (buffer.isNotEmpty) buffer.writeln();
+    buffer.writeln(yourRules);
+  }
+  return buffer.isEmpty ? null : buffer.toString().trim();
 }
 
 String _sessionLine(SessionFile? session, DateTime now) {
@@ -93,12 +104,12 @@ Future<String> briefProject(
   final buffer = StringBuffer();
 
   final projectsRoot = Directory(projectFolder).parent.path;
-  final readThisFirst = await _readBossReadThisFirst(projectsRoot);
-  if (readThisFirst != null) {
+  final bossIntro = await _readBossIntro(projectsRoot);
+  if (bossIntro != null) {
     buffer
-      ..writeln('## Read this first')
+      ..writeln('## Working with you')
       ..writeln()
-      ..writeln(readThisFirst)
+      ..writeln(bossIntro)
       ..writeln();
   }
 
@@ -333,13 +344,13 @@ Future<String> briefAll(String projectsRoot, {DateTime? now}) async {
   final scan = await scanProjects(projectsRoot);
   final buffer = StringBuffer('# asa-brief --all\n');
 
-  final readThisFirst = await _readBossReadThisFirst(projectsRoot);
-  if (readThisFirst != null) {
+  final bossIntro = await _readBossIntro(projectsRoot);
+  if (bossIntro != null) {
     buffer
       ..writeln()
-      ..writeln('## Read this first')
+      ..writeln('## Working with you')
       ..writeln()
-      ..writeln(readThisFirst);
+      ..writeln(bossIntro);
   }
 
   if (scan.error != null) {
@@ -417,13 +428,13 @@ Future<String> briefSince(String projectsRoot, DateTime since) async {
           'simply not be visible here.',
         );
 
-  final readThisFirst = await _readBossReadThisFirst(projectsRoot);
-  if (readThisFirst != null) {
+  final bossIntro = await _readBossIntro(projectsRoot);
+  if (bossIntro != null) {
     buffer
       ..writeln()
-      ..writeln('## Read this first')
+      ..writeln('## Working with you')
       ..writeln()
-      ..writeln(readThisFirst);
+      ..writeln(bossIntro);
   }
 
   var foundAnything = false;
