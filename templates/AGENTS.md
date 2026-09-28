@@ -6,11 +6,34 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3, 2026-09-28.*
+Version 3.2, 2026-09-28.*
 
 **One place, one shape.** Everything about the user's projects lives in `projects\`, in the shapes below.
 There's no other store: no vault, no second dashboard, no account memory, nothing only in a chat. If you
 find project knowledge anywhere else, bring it here (§13) and say so.
+
+## Before anything else — is this laptop set up?
+
+Check three things, in this order. **Stop at the first one that fails,** tell the user in one line, and fix
+it with them.
+
+1. **Asa is set up here:** `projects\.asa-setup.md` exists (§7.12). If not, the user runs
+   `asa\setup.ps1` once (PowerShell, no admin needed): it installs the app, the commands, the skills and
+   this page (if that script isn't there yet, `asa\README.md` → *On a new machine*). **If there's no
+   `asa\` folder yet,** the first step is cloning the Asa repo into
+   `%USERPROFILE%\workspace\asa`.
+2. **You can use the commands:** `asa-brief --all` runs. If not, a new terminal usually fixes it (PATH).
+   **In the Claude desktop app you may have no Windows shell at all;** say so, and catch up by hand (§4).
+3. **You know who you're working with:** `projects\BOSS.md` exists and is filled in. If it's still the
+   empty template, ask the user whether to bring their own `BOSS.md` from another laptop (their file,
+   their call; never through git or a cloud), or fill it in with them now: five short questions, one at a
+   time.
+
+**Then the first job on a new projects folder: one round of getting every project into shape (§13),
+before any other work is recorded.** It is the first job when no project has an `.asa-log.md` yet, or
+`asa-check` says projects are out of shape. One project at a time, with the user's yes on each. If the
+user needs one project now, shape that one first and carry on with it; the others follow. When every
+project is done, write it in `.asa-setup.md`.
 
 ## 0. Your job
 
@@ -257,6 +280,20 @@ Next: …
 At the end: `status: closed`, then one line in `.asa-log.md`:
 `- 2026-09-28 14:02–14:40 · Claude Code, account B · what you did, one line · files you wrote`.
 
+### 7.12 The setup record, `projects\.asa-setup.md`
+
+Written by `asa\setup.ps1`; the AI adds the last line.
+
+```
+---
+set-up: 2026-09-28
+asa-version: <commit>
+app: installed · commands: on PATH · skills: installed for Claude Code, packaged for accounts
+---
+- 2026-09-28 — set up on this laptop
+- 2026-09-30 — every project in Asa's shape (the first round)
+```
+
 ## 8. The check
 
 **Run `asa-check "<project>"` after you write.** If it isn't installed, check by hand:
@@ -303,7 +340,7 @@ At the end: `status: closed`, then one line in `.asa-log.md`:
   ask.
 - **Who they are, and how to work with them:** `projects\BOSS.md`. Its *Read this first* part every session;
   the rest when you need it. **It holds health information: never copy it into a repo, a fixture, a
-  screenshot or anything sent out.** The user sees it in Asa under *Instruction for AI → Working with the user*.
+  screenshot or anything sent out.** The user sees it in Asa under *Instruction for AI → Working with you*.
 - **When they correct how you work,** add a dated line to BOSS.md's *Corrections* table, in their words.
   Twice the same → it becomes a rule, and if it matters every session, a line in *Read this first*.
 - **Asa has two users,** the user and you. `PERSONA-AI.md` in the Asa project describes you. A screen or file
@@ -319,7 +356,9 @@ At the end: `status: closed`, then one line in `.asa-log.md`:
 - **If a rule here doesn't fit, don't quietly work around it:** write it in `FEEDBACK.md`, and tell
   the user.
 - **A clock time only after reading the clock** (`date`), in 24 h. A guessed time is a made-up fact.
-- **Never write the user's name.** In files: *the user*; on screen: *you*.
+- **The tool is neutral; the user's own files are not.** Anything that ships with Asa (the app, the
+  templates, the kit) never names the user: on screen it says *you*, in text *the user*. In the user's own
+  project files, call them by the name at the top of `projects\BOSS.md`.
 
 ## 13. Getting a project into shape — the first job, and a job for any new project
 
