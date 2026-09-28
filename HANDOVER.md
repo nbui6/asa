@@ -4148,3 +4148,20 @@ as possible, never push, one entry here per checkpoint.
     shows as *changed, not logged*;
   - the drill gains step 6 (arrive after 3 days) and step 7 (the Claude desktop app).
 - **Order:** cp0, cp1, cp2, cp3, cp4, cp5, cp8, the drill, cp7. cp6 (the screen) waits for the yes.
+
+### Round 39 cp0 — skills from one source
+
+**Built:** `kit\sync-skills.ps1` — copies `kit\skills\` into `.claude\skills\` (via the existing
+`install-skills.ps1 -Scope project -Force`) and packages each skill into `dist\skills\*.zip`
+(gitignored) for uploading to any other account. `-Check` compares the two folders by file hash
+and exits 1 on any drift, changing nothing. `check.ps1` gains step 5 running `-Check`.
+
+**Found:** 15 skills existed in `kit\skills\` but were never installed here, including this
+session's own new `asa` skill (invisible to itself until this ran) — and
+`.claude\skills\doorman\SKILL.md` was itself stale, missing Round 32/F.3's own section.
+
+**Tests:** `check.ps1` all five steps green, 549 tests.
+
+**Commits:** `5cfb52f` — Round 39 cp0: kit/sync-skills.ps1 — skills from one source
+
+**Next:** cp1 — the manual installed and kept in sync (`kit\sync-manual.ps1`).
