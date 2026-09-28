@@ -25,7 +25,10 @@ void main() {
       expect(meaningForDecisionStatus('proposed'), AsaMeaning.needsYou);
     });
     test('a written-in "waiting on" needs a call too', () {
-      expect(meaningForDecisionStatus('waiting on Nico'), AsaMeaning.needsYou);
+      expect(
+        meaningForDecisionStatus('waiting on the user'),
+        AsaMeaning.needsYou,
+      );
     });
     test('accepted, superseded and rejected are done', () {
       for (final status in [

@@ -11,7 +11,7 @@
 /// Found while building this: the spec said all five (`parent`, `status`,
 /// `priority`, `deadline`, `jira`) were "already shown" here — only
 /// `status` was; the other four render on `ProjectsView`'s row instead,
-/// and `parent` was not displayed anywhere at all. Asked Nico directly
+/// and `parent` was not displayed anywhere at all. Asked the user directly
 /// rather than guess; his answer: add the missing four as plain rows
 /// here too, then make all five editable in this one place. `status`
 /// gets a picker over ADR 0017's own six-value enum (hardcoded here —
@@ -101,7 +101,7 @@ class ProjectScreen extends StatefulWidget {
   /// `setProjectField` without touching `%APPDATA%\Asa\write-log.jsonl`.
   final String? writeLogPath;
 
-  /// Round 27's navigation fix — Nico: *"we should still be able to
+  /// Round 27's navigation fix — the user: *"we should still be able to
   /// navigate there, with the tasks of this project on top for easy
   /// work."* Null in a test that does not need it. In the real app this
   /// pops back to `ProjectsScreen` and switches it to the Tasks view with
@@ -593,7 +593,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   });
 
   /// A short canonical word, not the raw parsed status text (which can
-  /// run to a whole sentence, e.g. asa/0007's "proposed - needs Nico's
+  /// run to a whole sentence, e.g. asa/0007's "proposed - needs the user's
   /// decision") — the full text is one tap away, on the detail screen.
   /// Uses `displayStatus`, not the raw header field — ADR 0011: a
   /// recorded verdict overrides a stale `proposed` header. Round 37 cp6 —

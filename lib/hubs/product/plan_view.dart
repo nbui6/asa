@@ -7,7 +7,7 @@
 /// onto the shared `ui/` parts — its own layout is unchanged.
 ///
 /// Sketch history: `asa-plan-v2.html` was drawn straight from Round 26's
-/// data and Nico found it overwhelming — *"the sections in Plan + derived
+/// data and the user found it overwhelming — *"the sections in Plan + derived
 /// links parts are just very overwhelmed for me."* v3 fixed it by
 /// collapsing everything by default and showing only what a real heading
 /// says, never a paraphrase of it.

@@ -52,7 +52,7 @@ void main() {
     ) async {
       const strategy = Strategy(
         origin: 'o',
-        whoItsFor: 'Nico',
+        whoItsFor: 'the user',
         painPoints: '1. a pain',
         objectives: [
           Objective(
@@ -82,7 +82,7 @@ void main() {
         'collapsed', (tester) async {
       const strategy = Strategy(
         origin: 'o',
-        whoItsFor: 'Nico',
+        whoItsFor: 'the user',
         painPoints: '1. a pain',
         objectives: [
           Objective(
@@ -110,7 +110,7 @@ void main() {
         'shown once expanded', (tester) async {
       const strategy = Strategy(
         origin: 'o',
-        whoItsFor: 'Nico',
+        whoItsFor: 'the user',
         painPoints: '1. a pain',
         objectives: [
           Objective(
@@ -140,7 +140,7 @@ void main() {
         'and the waiting pill disappears', (tester) async {
       const strategy = Strategy(
         origin: 'o',
-        whoItsFor: 'Nico',
+        whoItsFor: 'the user',
         painPoints: '1. a pain',
         objectives: [
           Objective(
@@ -173,7 +173,7 @@ void main() {
       (tester) async {
         const strategy = Strategy(
           origin: 'o',
-          whoItsFor: '**Nico**, alone — see `PERSONA.md`.',
+          whoItsFor: '**the user**, alone — see `PERSONA.md`.',
           painPoints: '1. A **bold** pain, with `code` in it.',
           objectives: [
             Objective(
@@ -194,7 +194,7 @@ void main() {
 
         expect(find.textContaining('**'), findsNothing);
         expect(find.textContaining('`'), findsNothing);
-        expect(find.text('Nico, alone — see PERSONA.md.'), findsOneWidget);
+        expect(find.text('the user, alone — see PERSONA.md.'), findsOneWidget);
         expect(find.text('1. A bold pain, with code in it.'), findsOneWidget);
         expect(find.text('Ship the thing'), findsOneWidget);
       },
@@ -204,11 +204,11 @@ void main() {
       'Round 35/G — the evidence sentence and its word-only chip are both '
       'visible collapsed, under the title, as asa-strategy-v3 draws them '
       "— reversing an earlier persona-check's own overwhelm worry, "
-      "Nico's call once he approved the sketch",
+      "the user's call once he approved the sketch",
       (tester) async {
         const strategy = Strategy(
           origin: 'o',
-          whoItsFor: 'Nico',
+          whoItsFor: 'the user',
           painPoints: '1. a pain',
           objectives: [
             Objective(
@@ -243,7 +243,7 @@ void main() {
     ) async {
       const strategy = Strategy(
         origin: 'o',
-        whoItsFor: 'Nico',
+        whoItsFor: 'the user',
         painPoints: '1. a pain',
         objectives: [
           Objective(
@@ -268,7 +268,7 @@ void main() {
       'arrival', () {
     const strategy = Strategy(
       origin: 'o',
-      whoItsFor: 'Nico',
+      whoItsFor: 'the user',
       painPoints: '1. a pain',
       objectives: [
         Objective(
@@ -326,7 +326,7 @@ void main() {
 
     const strategy = Strategy(
       origin: 'o',
-      whoItsFor: 'Nico',
+      whoItsFor: 'the user',
       painPoints: '1. a pain',
       objectives: [
         Objective(

@@ -454,7 +454,7 @@ void main() {
 
       await tapAndSettle(tester, find.byIcon(Icons.arrow_back));
       // A plain pop does not itself re-scan — the same reload button
-      // Nico would press for real, not an app-wide auto-refresh this
+      // the user would press for real, not an app-wide auto-refresh this
       // round never asked for.
       await tapAndSettle(tester, find.byIcon(Icons.refresh));
 
@@ -515,7 +515,7 @@ updated: 2026-09-26
 Why this project exists.
 
 ## Who it's for
-Nico.
+The user.
 
 ## Pain points
 1. Manual account matching wastes time.

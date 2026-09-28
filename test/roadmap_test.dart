@@ -62,7 +62,7 @@ Round 6 below, "Foundation."
 
 ## Tasks
 
-- [x] Show Nico the accept/reject fix, get a yes
+- [x] Show the user the accept/reject fix, get a yes
 ''';
 
 const _partnerTrialRoadmap = '''
@@ -225,7 +225,7 @@ void main() {
         'milestones. The file has since grown (12 rounds, 3 done, not the '
         '7/1 the spec described) — this is the algorithm run honestly '
         'against what the file says today, not a guess reverse-engineered '
-        'to match a since-stale example. Flagged back to Nico/Cowork rather '
+        'to match a since-stale example. Flagged back to the user/Cowork rather '
         'than silently building to match the old example.', () {
       final milestones = parseRoadmap(_asaRoadmap);
       expect(

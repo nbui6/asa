@@ -435,7 +435,7 @@ typedef ReviewGroups = ({
 /// `proposed` half is built — an accepted decision with a fired condition
 /// has no data source yet, and guessing one from `whatWouldChangeThis`'s
 /// raw prose was already rejected once, for the row-7 flag this reuses
-/// (`asa-v01b-NOT-IN-V0.1.md`). Confirmed with Nico, 2026-09-07: ship the
+/// (`asa-v01b-NOT-IN-V0.1.md`). Confirmed with the user, 2026-09-07: ship the
 /// half that is real; the other half waits for its own decision on how a
 /// decision file states a fired condition in a form a parser can read.
 ///

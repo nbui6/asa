@@ -51,7 +51,7 @@ dormancy rate of the scaling skills added by argument on 2026-08-23.
 ### 2026-08-22 — the kit itself — building and first use
 
 - **Slowed me down:** nothing in the process. The *volume* was the problem — 60 files produced in
-  one day, and Nico said plainly: *"I am a bit lost in the details right now."*
+  one day, and the Boss said plainly: *"I am a bit lost in the details right now."*
 - **Skipped:** the five session stages were never run on the kit's own work. It was built without
   using itself.
 - **Missing:** (1) a door — one entry point per project, now `templates/PROJECT-HOME.md`.
@@ -71,7 +71,7 @@ dormancy rate of the scaling skills added by argument on 2026-08-23.
 
 - **Slowed me down:** nothing. Five stages on a setup round took minutes, which is the right cost.
 - **Skipped:** **the evidence rule, twice.** Acceptance criteria asked for pasted command output;
-  Nico replied "done" and "it works". Round 0 is recorded as *reported, not evidenced*.
+  the Boss replied "done" and "it works". Round 0 is recorded as *reported, not evidenced*.
 - **Missing:** nothing new.
 - **Skills that fired:** `roadmap` · `kit-feedback` · `explain-as-we-go`
 - **Worked well:** naming five hubs and building none of them. The scope stayed at one round.
@@ -98,9 +98,9 @@ dormancy rate of the scaling skills added by argument on 2026-08-23.
 - **Slowed me down:** nothing in the process. **Delivery** was the problem: the round's code was
   sent as a zip that was never extracted, so two exchanges were spent debugging an app that had
   never received the new files. Fixed by sending a script that writes the files itself.
-- **Skipped:** the round was never verified against its criteria — Nico stopped it, correctly, to
+- **Skipped:** the round was never verified against its criteria — the Boss stopped it, correctly, to
   ask a bigger question.
-- **Missing — the real finding.** Nico: *"we should show me the big idea, big picture UI at the
+- **Missing — the real finding.** The Boss: *"we should show me the big idea, big picture UI at the
   end, something roughly. So we both understand each other, and not spending so much time
   building small features, but at the end the big picture isnt what I want."*
 
@@ -244,7 +244,7 @@ the question, and that is the next candidate after the agent decision.
 
 ### 2026-08-25 — stage 0 was skipped on the first real product
 
-**What happened.** Nico said "continue" on the assistant app. The assistant went straight to
+**What happened.** The Boss said "continue" on the assistant app. The assistant went straight to
 round 2 — goal, ten files, four acceptance criteria — for a product that had **never been
 sketched**. He stopped it: *"I dont know how it should look like, what is the plan, roadmap ect.
 I need to know the big picture before I say go."*
@@ -283,7 +283,7 @@ description → template field.
 
 **What happened.** Across one conversation the assistant offered to start building **three
 times** before any plan existed: a round note with ten files, a Claude skill, and a two-tier
-build option. Nico stopped all three. The last time he named the actual defect:
+build option. The Boss stopped all three. The last time he named the actual defect:
 
 > *"you need to build this in our kit, the plan needed to be confirmed before building anything"*
 
@@ -331,7 +331,7 @@ level. Rewording has never once worked; changing the material has worked every t
 **What happened.** One hour after stage 0b was added, a plan was written for the German memory
 layer and handed over for signature. Its sketch still showed **two screens the plan had cut**. The
 assistant noticed, wrote the contradiction into the plan as a parenthetical, and asked for
-confirmation anyway. Nico:
+confirmation anyway. The Boss:
 
 > *"give me the sketch pls, written is not enough"*
 
@@ -372,7 +372,7 @@ changing what the rule is *made of*, never by restating it.
 ### 2026-08-25 — the mockup was published blank
 
 **What happened.** The third sketch was written, published, described screen by screen in chat,
-and offered for signature. Nico opened it:
+and offered for signature. The Boss opened it:
 
 > *"I see nothing in the mockup screen."*
 
@@ -415,7 +415,7 @@ whoever made it**, before the three questions.
 | **Looking at the artefact** | **a rule aimed only at the human** | **a completion condition on whoever makes it** |
 
 **The general sentence, and it is the one to keep:** every rule in this kit that says "verify"
-silently assumes the verifier is Nico. Wherever the assistant produces something that runs, the
+silently assumes the verifier is the Boss. Wherever the assistant produces something that runs, the
 same rule binds the assistant — and there is no reason it should have taken five instances in one
 day to notice.
 
@@ -431,7 +431,7 @@ The first session in which the kit was used end to end on something that was not
 - **Slowed us down:** nothing in the process. What cost time was **instructions written from
   documentation instead of from the machine** — an obsolete `--android-licenses` step, and the NDK
   called optional when Flutter 3.47 pins an exact version. One failed 10-minute build.
-- **Skipped:** stage 0 (recovered when Nico asked for it), and plan approval three times.
+- **Skipped:** stage 0 (recovered when the Boss asked for it), and plan approval three times.
 - **Skills that fired:** `research` ×3 · `sketch-the-product` ×3 · `roadmap` · `debugging` ·
   `explain-as-we-go` continuously · `kit-feedback`.
 - **Never fired and should have:** `persona-check`. Six screens were designed and the fit check was
@@ -460,7 +460,7 @@ one"* — the five-row table that explains every failure of this session, and th
 
 ### 2026-08-25 — why the analysis was not acted on
 
-Nico, after `persona-check` failed to fire on three sketches: *"why we had the analysis but didnt
+The Boss, after `persona-check` failed to fire on three sketches: *"why we had the analysis but didnt
 act on it?"*
 
 **Two causes, both structural, neither of them anyone's memory.**
@@ -551,7 +551,7 @@ zero instructions to him. The previous attempt took a zip, two failed commands a
 
 Minutes after §15 was written, the assistant applied it badly. Having gained write access to the
 repo, it copied the hook scripts into `.claude\hooks\` **by hand** instead of letting
-`install-hooks.ps1` place them. Nico then ran the installer — from that folder — and it died:
+`install-hooks.ps1` place them. The Boss then ran the installer — from that folder — and it died:
 
 ```
 Copy-Item : Cannot overwrite the item ...\.claude\hooks\orient.ps1 with itself.
@@ -575,7 +575,7 @@ was a copy error; the actual damage was that no hook was installed and nothing s
 > capability to write files is not permission to skip the thing that knows the order.
 
 Second install defect the same hour: `-Project` was a mandatory parameter, so PowerShell prompted
-with a bare `Project:` and Nico read it — reasonably — as a request for a project *name*. Now it
+with a bare `Project:` and the Boss read it — reasonably — as a request for a project *name*. Now it
 defaults to the current folder, prints the resolved path before acting, and refuses outright if the
 folder is not a git repo.
 
@@ -629,13 +629,13 @@ Third instance of one pattern, now with a name: *people agree with prose and arg
 
 ### 2026-08-25 — "screenshot above" when nothing had been sent
 
-**Twice in a row**, Nico said *"I dont see it."* Both times the assistant guessed at a cause and
+**Twice in a row**, the Boss said *"I dont see it."* Both times the assistant guessed at a cause and
 fixed something — a marker that was too small, then the same marker again. **Both diagnoses were
 wrong.**
 
 The actual cause: the assistant **rendered screenshots, opened them to check its own work, and then
 wrote "screenshots above"** — while never sending them. Viewing a file is not delivering it. From
-Nico's side there was nothing above.
+the Boss's side there was nothing above.
 
 **Two separate defects, and the second is the worse one.**
 
@@ -659,7 +659,7 @@ something, the first hypothesis is *it was never sent*, not *it was too small*.
 
 ### 2026-08-25 — ten decisions agreed after signing, none of them written down
 
-Nico, cutting off a design conversation that was running away:
+The Boss, cutting off a design conversation that was running away:
 
 > *"let's not build the details now, park that in the process... we are testing the vibe kit now,
 > dont get distracted, focus on the goal. Did the process document things we agree on in the
@@ -717,7 +717,7 @@ is not the same as added up.**
 **2. Naming a problem as hard got it solved. Twice.**
 
 The assistant declared two things unsolvable-as-designed: *"practice for grammar you avoid has
-nowhere to come from"* and *"card count cannot map to a CEFR level"*. Nico removed both in one
+nowhere to come from"* and *"card count cannot map to a CEFR level"*. The Boss removed both in one
 sentence each — prebuilt drills generated at **build time**, and counting words he *used* rather
 than words that got carded.
 
@@ -734,7 +734,7 @@ chart. **Eight, all his.**
 What the kit contributed instead: research that killed three products, the honest caveats, the
 persona check, and the arithmetic.
 
-> **Corrected by Nico immediately, and he is right:** *"You did propose a mockup, which helped me
+> **Corrected by the Boss immediately, and he is right:** *"You did propose a mockup, which helped me
 > think and give feedback for improvement."*
 >
 > **The mockup is not a design proposal. It is the instrument the design is done with.** Eight ideas
@@ -1705,7 +1705,7 @@ fifth line is the right repair rather than a new rule elsewhere.
 
 **Bucket: how we build. Second instance, so it is acted on.**
 
-`CLAUDE.md` hard rule 8 says every `git` command is run by Nico in PowerShell, never through an
+`CLAUDE.md` hard rule 8 says every `git` command is run by the Boss in PowerShell, never through an
 assistant's device bridge. It was written on 2026-08-26 after a bridge session left a stale
 `.git/index.lock`. **On 2026-09-02 the same rule was broken the same way, and left the same file.**
 
@@ -1716,7 +1716,7 @@ it takes the lock like any write. A command that only prints is not the same thi
 that only reads.
 
 **The bridge cannot delete files**, so the lock could not be cleaned up from the same place it was
-created. It had to be handed to Nico as a `del` line — a chore created for him by a command run to
+created. It had to be handed to the Boss as a `del` line — a chore created for him by a command run to
 save him one.
 
 **The repair, and why it is a scope fix rather than a new rule** (`PLAYBOOK.md` §14, *when a rule
@@ -1738,7 +1738,7 @@ as modified. Afterwards they did not. The command had **rewritten their index en
 normalise line endings — a real change to the repository, made by the command whose defence was
 that it only prints.
 
-*And the lock was not the problem it was reported as:* by the time Nico ran the `del`, the file was
+*And the lock was not the problem it was reported as:* by the time the Boss ran the `del`, the file was
 already gone — a later git invocation had cleaned it up. **The bridge could not remove it; Windows
 had no trouble.** The chore handed over was unnecessary, and "I cannot delete this" was true only
 of the tool in hand. **Say which tool cannot do a thing, not that the thing cannot be done** —
@@ -2283,7 +2283,7 @@ still has to happen on the read side, per session, every time, or the write was 
 ## 2026-09-08 — the read-fresh rule covers handing a file over, not only editing one
 
 Third time this exact failure shape showed up in one day (see the two entries above): a sketch
-file sent to Nico for approval was a copy staged into the assisting session earlier in the
+file sent to the Boss for approval was a copy staged into the assisting session earlier in the
 conversation, before the on-disk file had already been corrected. The on-disk file was right; what
 got sent was not, and it was approved anyway because there was no way to tell from the outside.
 **Generalised rule:** "read a decision's current text before touching it" now reads "read
@@ -2291,3 +2291,59 @@ anything's current text before touching it OR handing it to someone" — a file 
 a session is not proof of its current content the moment it becomes deliverable, because something
 else (a person, a build, an earlier step of the same session) may have changed it since. Re-read
 immediately before the handoff, every time, whatever kind of file it is.
+
+
+## 2026-09-22 — the feedback channel ran once, on the day it was built, and not since
+
+**Rule 18's channel is real, self-tested, and had not moved anything for three weeks.**
+`kit\FEEDBACK.md` was last written on 2026-09-01 and holds exactly one collected line. A read-only
+re-run of `collect-feedback.ps1`'s own logic today finds **eight clean lines waiting** in five
+project folders — one from `asa`, five from `learning`, one from `license-commerce-integration`,
+one from `partner-trial-process` — all dated 2026-09-02 or 2026-09-03. **Nothing was held back**;
+every one of them has been publishable the whole time. They are not lost and nothing is broken:
+they simply never travelled, because the rule says *run it before a commit* and nothing enforces
+that, and the two people who would notice are the two people who would have had to run it.
+
+**All eight route here rather than to the operating layer's log.** Each names something a change
+to the build process could have prevented — a question asked in the wrong vocabulary, options
+described instead of drawn, an analysis delivered in a format shorter-lived than the thing it
+described, a reference document maintained by appending corrections until its reader gave up, a
+rule with no check behind it. None of them is a retrieval failure.
+
+**The second finding, and it is the same shape one level down: a check was written and nothing
+ever fires it.** `check-notes.ps1` was written on 2026-09-02, the same hour as the finding that
+demanded it, with a self-test and an honest header about what it cannot detect. Three weeks later
+it is named in exactly one place in the whole workspace — the `FEEDBACK.md` line that records
+writing it. It is in no hard rule, no playbook section, no hook, no other script. **A check nobody
+runs is the same artefact as a check nobody wrote**, and this kit has now produced that shape at
+least three times (`install-skills.ps1`'s `$coreSkills` gap, the doorman with no session type that
+could fire it, and this). *Read-only re-run today across every project note: zero hits. Nothing is
+leaking; the gap is the firing, not the finding.*
+
+**Recorded, not fixed.** Both belong to whoever decides the next kit version.
+
+
+## 2026-09-23 — the collector reads one shape, and two findings were written in the other
+
+**`collect-feedback.ps1` copies pipe-table rows and nothing else.** One project's `FEEDBACK.md`
+carries its two findings, both dated 2026-09-08, as bullet points under the table rather than as
+rows in it. The template invites both readings: it ships a table with an empty seed row, and its own
+prose says *"one line per finding, dated, newest at the bottom"*, which a bullet satisfies. The
+collected block the script writes into `kit\FEEDBACK.md` is itself a bullet list, so the one worked
+example in the workspace of what a collected finding looks like is the shape the collector cannot
+read.
+
+**The result is not a lost file; it is a silent count.** Those two lines have sat publishable and
+uncollectable for three weeks, and every count of waiting findings made since — including
+yesterday's eight-in-five-folders — excluded them without saying so. The script's report has no
+way to say *I skipped a file I could not read*: it prints the number it collected and the number
+held back, and a finding in the wrong shape is neither. **A checker that cannot distinguish nothing
+to report from nothing I can read reports the wrong thing confidently**, which is the same failure
+this log already records for `install-skills.ps1`, the doorman, and `check-notes.ps1` — except
+those three never fired at all, and this one fires and returns a clean answer.
+
+**Routed here, not to the operating layer's log, because a change to the build process prevents
+it:** either the script reads both shapes, or it names the files it skipped, or the template stops
+offering two. Any of the three is a kit change. **Recorded, not fixed — and nothing was
+hand-copied out of any project folder to find it.** The rows stay where they are until the vetted
+collector carries them.

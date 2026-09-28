@@ -190,7 +190,7 @@ String decisionChipLabel(String? number, String title, {int maxLength = 40}) {
 
 /// The short, canonical status word a `Pill` shows, never the raw parsed
 /// status text (which can run to a whole sentence, e.g. asa/0007's
-/// "proposed - needs Nico's decision") — round 37 cp6, shared by the
+/// "proposed - needs the user's decision") — round 37 cp6, shared by the
 /// Decisions tab and decision detail rather than each deriving its own.
 String decisionStatusLabel(String displayStatus, {required bool isProposed}) {
   final lower = displayStatus.toLowerCase();

@@ -137,10 +137,10 @@ repo-path: C:\Users\test\workspace\asa
         "reads — Round 7's fork seam, FOR-YOUR-FORK.md", () {
       final project = projectFromFields({
         'project': 'Asa',
-        'owner': 'nico',
+        'owner': 'jamie',
       }, 'asa.md');
 
-      expect(project.extra['owner'], 'nico');
+      expect(project.extra['owner'], 'jamie');
       expect(project.name, 'Asa');
     });
 

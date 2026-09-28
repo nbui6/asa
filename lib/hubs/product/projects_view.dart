@@ -380,7 +380,7 @@ class _ProjectsViewState extends State<ProjectsView> {
   /// more than one is the "rule of two" — a stronger, filled treatment so
   /// the pile-up reads as something to notice, not something to miss at a
   /// glance. Deciding that two parked items are really the same subject,
-  /// and acting on it, stays Nico's own judgement — this only makes the
+  /// and acting on it, stays the user's own judgement — this only makes the
   /// count impossible to overlook.
   Widget _parkedBadge(int count) {
     final message = count == 1 ? '1 task parked' : '$count tasks parked';

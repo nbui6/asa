@@ -14,7 +14,7 @@
 ///
 /// **Fixed 2026-09-13:** the status line below the capture box only
 /// rendered once at least one task existed — at zero it vanished
-/// entirely, which is exactly what made this panel invisible in Nico's
+/// entirely, which is exactly what made this panel invisible in the user's
 /// own screenshots. It now always shows a line, empty or not, so the
 /// inbox's presence is never in question.
 library;

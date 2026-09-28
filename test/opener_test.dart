@@ -8,12 +8,12 @@ void main() {
     test('the exact real shape from the round spec', () {
       final text = openerText(
         projectName: 'Asa',
-        projectFolder: r'C:\Users\nico.bui\workspace\projects\asa',
+        projectFolder: r'C:\Users\test\workspace\projects\asa',
       );
       expect(
         text,
         'Working on Asa. Project folder: '
-        r'C:\Users\nico.bui\workspace\projects\asa.'
+        r'C:\Users\test\workspace\projects\asa.'
         '\nRead asa.md and HOW-ASA-WORKS.md there first. Before you '
         'finish, update the note the way\nHOW-ASA-WORKS.md says.',
       );

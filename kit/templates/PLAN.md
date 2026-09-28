@@ -18,7 +18,7 @@ Confirmed by: ______________  on ____________
 >
 > Added the same day, an hour later, for the same reason in a different costume: a plan was
 > delivered whose sketch still showed two screens the plan had cut. The contradiction was
-> *documented in a footnote* and confirmation was requested anyway. Nico: **"written is not
+> *documented in a footnote* and confirmation was requested anyway. the Boss: **"written is not
 > enough."**
 >
 > Text and a picture are not two formats of one thing. People agree with prose and argue with

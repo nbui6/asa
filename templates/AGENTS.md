@@ -6,7 +6,7 @@ up, what your job is, and how to leave things so the next one can continue.** Th
 in Asa (*Instruction for AI*), so write nothing here you wouldn't say to them.
 
 *Source: `asa\templates\AGENTS.md` in the Asa repo; this copy sits at the top of the projects folder.
-Version 3.2, 2026-09-28.*
+Version 3.3, 2026-09-28.*
 
 **One place, one shape.** Everything about the user's projects lives in `projects\`, in the shapes below.
 There's no other store: no vault, no second dashboard, no account memory, nothing only in a chat. If you
@@ -189,7 +189,8 @@ One line: what this project is, in the user's words.
   `dropped`.
 - **`priority`** is `high`, `medium` or `low`.
 - **`parent`** is another folder's name; `other` folds the project away as not-work.
-- **`deadline`** is `YYYY-MM`. **An empty value is nothing after the colon,** never "(not set)".
+- **`deadline`** is a month, `YYYY-MM`, or a period, `YYYY-MM/YYYY-MM` (from/to, ISO 8601). Asa shows
+  it as `03.27` or `02.27–03.27`. **An empty value is nothing after the colon,** never "(not set)".
 - **The first open task is the next step.** `(Code)` after a task marks it for the builder, and
   `(parked)` parks it.
 - **The description line says what the project is,** never how the note was made.

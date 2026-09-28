@@ -46,7 +46,7 @@ void main() {
       final result = parseDecision(
         '## 0001 - The first option, not the second\n\n'
             '**Date:** 2026-09-01 - **Status:** accepted - **Decided by:** '
-            'Nico\n',
+            'the user\n',
         'decisions.md',
       );
       expect(result.decision!.number, '0001');
@@ -100,12 +100,12 @@ void main() {
     test('separated by " - ", status value plain — asa/0007', () {
       final result = parseDecision(
         '# ADR 0007 - Title\n\n'
-            "**Date:** 2026-09-01 - **Status:** proposed - needs Nico's "
+            "**Date:** 2026-09-01 - **Status:** proposed - needs the user's "
             'decision\n',
         '0007.md',
       );
       expect(result.decision!.date, '2026-09-01');
-      expect(result.decision!.status, "proposed - needs Nico's decision");
+      expect(result.decision!.status, "proposed - needs the user's decision");
     });
 
     test('status value unbolded, no separator around it — asa/0006', () {
@@ -121,7 +121,7 @@ void main() {
     test('a log line that also carries Decided by — real log 0001', () {
       final result = parseDecision(
         '## 0001 - Title\n\n**Date:** 2026-09-01 - **Status:** accepted - '
-            '**Decided by:** Nico\n',
+            '**Decided by:** the user\n',
         'decisions.md',
       );
       expect(result.decision!.date, '2026-09-01');
@@ -134,7 +134,7 @@ void main() {
       final result = parseDecision(
         '## 0005 - The earlier approach\n\n**Date:** '
             '2026-09-01 - **Status:** superseded by 0008 - **Decided by:** '
-            'Nico\n',
+            'the user\n',
         'decisions.md',
       );
       expect(result.decision!.supersededBy, '0008');
@@ -145,7 +145,7 @@ void main() {
       final result = parseDecision(
         '## 0008 - Reuse what is already there\n\n**Date:** '
             '2026-09-01 - **Status:** accepted (supersedes 0005) - '
-            '**Decided by:** Nico\n',
+            '**Decided by:** the user\n',
         'decisions.md',
       );
       expect(result.decision!.supersedes, '0005');
@@ -186,7 +186,7 @@ void main() {
       final result = parseDecision(
         '## 0001 - The first option, not the second\n\n'
             '**Date:** 2026-09-01 - **Status:** accepted - **Decided by:** '
-            'Nico\n\n**Decision:** The first option is used '
+            'the user\n\n**Decision:** The first option is used '
             'everywhere.\n\n**Why:** "It already works this way." '
             'Confirmed in practice.\n\n**Update '
             '2026-09-01:** Confirmed nothing else depends on it.'
@@ -280,7 +280,7 @@ void main() {
     test('an inline label in a log, stopping before the next entry', () {
       final result = parseDecision(
         '## 0008 - Title\n\n**Date:** 2026-09-01 - **Status:** accepted '
-            '(supersedes 0005) - **Decided by:** Nico\n\n**Decision:** '
+            '(supersedes 0005) - **Decided by:** the user\n\n**Decision:** '
             'The existing field is reused.\n\n**Why:** Simpler '
             'than adding something new.\n\n**What would change this:** '
             'A later project may collide with this.\n',
@@ -313,7 +313,7 @@ void main() {
     test('true for status text longer than the one word — real shape', () {
       final result = parseDecision(
         '# ADR 0007 - Title\n\n**Date:** 2026-09-01 - **Status:** proposed '
-            "- needs Nico's decision\n",
+            "- needs the user's decision\n",
         '0007.md',
       );
       expect(result.decision!.isProposed, isTrue);
@@ -443,7 +443,7 @@ void main() {
         'reason in the paragraph after', () {
       final result = parseDecision(
         '# ADR 0021 - Title\n\n**Date:** 2026-09-14 · **Status:** '
-            'accepted\n\n## Your call\n\n**Accepted — 2026-09-14.** Nico '
+            'accepted\n\n## Your call\n\n**Accepted — 2026-09-14.** The user '
             'said so.\n',
         '0021.md',
       );

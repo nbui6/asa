@@ -33,7 +33,7 @@ class Task {
   final bool done;
 
   /// True when the line ends in a trailing `(Code)` marker — this task is
-  /// not Nico's. Anchored to the end of the line on purpose: a task that
+  /// not the user's. Anchored to the end of the line on purpose: a task that
   /// merely mentions the word "code" elsewhere in its text is not this.
   final bool isCode;
 

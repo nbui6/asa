@@ -6,9 +6,7 @@ void main() {
   testWidgets('shows only the file name, never the full path', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: SourceLine(
-          r'C:\Users\nico.bui\workspace\projects\asa\northwind.md',
-        ),
+        home: SourceLine(r'C:\Users\test\workspace\projects\asa\northwind.md'),
       ),
     );
     expect(find.text('Read from: northwind.md'), findsOneWidget);

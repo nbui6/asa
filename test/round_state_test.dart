@@ -139,7 +139,7 @@ void main() {
         },
         files: {
           'proj/rounds/APPROVED.md':
-              "| Date | Round | Nico's words | The result, one line |\n"
+              "| Date | Round | the user's words | The result, one line |\n"
               '|---|---|---|---|\n'
               '| | | | |\n',
         },
@@ -157,7 +157,7 @@ void main() {
           },
           files: {
             'proj/rounds/APPROVED.md':
-                "| Date | Round | Nico's words | The result, one line |\n"
+                "| Date | Round | the user's words | The result, one line |\n"
                 '|---|---|---|---|\n'
                 '| 2026-09-15 | Round 26 | yes it works | The plan reads real '
                 'data |\n',

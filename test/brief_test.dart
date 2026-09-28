@@ -10,17 +10,20 @@ import 'dart:io';
 import 'package:asa/core/brief.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _pristineFixture =
-    r'C:\Users\nico.bui\workspace\asa\test\fixtures\round-36';
-
 void main() {
   late Directory tempDir;
   late String root;
 
   setUpAll(() {
+    // Relative to the repo root, which is `flutter test`'s own working
+    // directory — portable across machines, unlike a hardcoded absolute
+    // path baked in with one contributor's own username.
+    final pristineFixture = Directory(
+      '${Directory.current.path}/test/fixtures/round-36',
+    );
     tempDir = Directory.systemTemp.createTempSync('asa-brief-test-');
     root = tempDir.path;
-    _copyDir(Directory(_pristineFixture), Directory(root));
+    _copyDir(pristineFixture, Directory(root));
   });
 
   tearDownAll(() {

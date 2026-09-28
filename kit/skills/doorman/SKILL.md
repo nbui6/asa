@@ -95,7 +95,7 @@ Only inside `workspace\projects\<name>\` and, for cross-references, `workspace\a
    **Corrected the same day this was added, on its very first real run.** The instruction first
    written here said to read the `**Status:**` header line. **Run against the real folder it
    produced three false positives immediately** — ADRs 0012, 0014 and 0015 all still say `proposed
-   — needs Nico's decision` in their headers and were all accepted on 2026-09-08 by appended
+   — needs the Boss's decision` in their headers and were all accepted on 2026-09-08 by appended
    verdicts, exactly as ADR 0011 specifies. A check that reads the header would have reported the
    doorman's own founding ADR as undecided. **Read the appended verdict.**
 
@@ -171,6 +171,6 @@ close, same as everywhere else in this file (see "What this is not," above).
   or, for a session that never starts a fresh one, on its own inside a continuing one — and at
   least once catches one real stale or settled thing a session would otherwise have missed or
   assumed. **Corrected 2026-09-09:** "a fresh conversation" assumed a usage pattern that
-  turned out not to be Nico's real one — see `projects\asa\HOW-ASA-WORKS.md` and
+  turned out not to be the Boss's real one — see `projects\asa\HOW-ASA-WORKS.md` and
   `ASA-LOG.md`, same date, for the mechanism that makes "unprompted, inside a continuing
   session" actually possible.

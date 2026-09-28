@@ -31,13 +31,13 @@ const _approved = r'''
 
 | Date | By | Image | Source | Covers | What it must look like, in one line |
 |---|---|---|---|---|---|
-| 2026-09-07 | Nico | `projects\proj\sketches\x.png` | `projects\proj\sketches\x.html` | The thing | *"yes looks good, go."* |
+| 2026-09-07 | the user | `projects\proj\sketches\x.png` | `projects\proj\sketches\x.html` | The thing | *"yes looks good, go."* |
 
 ## Trial builds — authorised to build, not yet approved
 
 | Date | Image | Source | Covers | Authorised by | What happens next |
 |---|---|---|---|---|---|
-| 2026-09-08 | `projects\proj\sketches\y.png` | `projects\proj\sketches\y.html` | The other thing | Nico | Try it live, then judge |
+| 2026-09-08 | `projects\proj\sketches\y.png` | `projects\proj\sketches\y.html` | The other thing | the user | Try it live, then judge |
 
 ## Rejected, kept on purpose
 

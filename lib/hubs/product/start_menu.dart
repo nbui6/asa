@@ -4,7 +4,7 @@
 /// the project screen's own header.
 ///
 /// **Why opener text rather than a `cd … && claude` terminal command:** it
-/// works in any Claude surface Nico uses, desktop included, not only a
+/// works in any Claude surface the user uses, desktop included, not only a
 /// terminal — `RESEARCH-SIMILAR-TOOLS-2026-09-25.md`, lesson 3.
 library;
 

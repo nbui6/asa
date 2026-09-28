@@ -1,11 +1,11 @@
 # Northwind partnership — Strategy
 
 ## Origin
-Nico wanted a bigger partner without the recruiting and running cost of a channel program.
+The user wanted a bigger partner without the recruiting and running cost of a channel program.
 Northwind approached us first, already selling to the same buyers.
 
 ## Who it's for
-Nico, checking in on the partnership roughly once a week.
+The user, checking in on the partnership roughly once a week.
 
 ## Pain points
 1. Deals discussed by email go unrecorded and get renegotiated later.

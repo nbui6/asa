@@ -236,7 +236,7 @@ foreach ($t in $targets) {
         continue
     } elseif ($wasHash -and $dstHash -ne $wasHash) {
         # On disk, and different from both what we installed last time and what we'd install
-        # now: somebody (Nico, or an AI on his behalf) edited it. Not ours to overwrite.
+        # now: somebody (the Boss, or an AI on their behalf) edited it. Not ours to overwrite.
         $editedFiles.Add($t.Key)
         if (-not $Force) { continue }
     } else {

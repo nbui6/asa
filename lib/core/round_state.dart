@@ -1,6 +1,6 @@
 /// A Round's state — ADR 0026: "a round is planned, in progress, waiting
 /// for approval, or completed. One checkbox cannot hold that, and today it
-/// is lying." Five values, Nico's own words, four of them derived from
+/// is lying." Five values, the user's own words, four of them derived from
 /// files that already exist; nothing here is typed or maintained.
 library;
 

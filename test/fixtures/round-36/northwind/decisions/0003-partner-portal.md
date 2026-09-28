@@ -8,7 +8,7 @@ Every deal is routed through the partner portal, never by email.
 
 ## Why
 
-Email negotiation history was already getting lost once, before this ever went to Nico.
+Email negotiation history was already getting lost once, before this ever went to the user.
 
 ## What would change this
 

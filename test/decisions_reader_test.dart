@@ -201,7 +201,7 @@ void main() {
 
     test('an accepted decision never goes to needsALook, even one that '
         'would show a fired-condition flag if this build had one — the '
-        'narrowed rule, confirmed with Nico 2026-09-07', () {
+        'narrowed rule, confirmed with the user 2026-09-07', () {
       final groups = groupForReview([withStatus('accepted one', 'accepted')]);
       expect(groups.needsALook, isEmpty);
       expect(groups.settled, hasLength(1));

@@ -1,6 +1,6 @@
 /// Round 32/D — Round 3, the handoff, finally built. The text
 /// "Start → Copy opener" puts on the clipboard, so a fresh Claude session
-/// anywhere Nico works (desktop included, not only a terminal) can pick a
+/// anywhere the user works (desktop included, not only a terminal) can pick a
 /// project up without him typing the same four sentences by hand every
 /// time. Pure text-building; the clipboard write itself lives in
 /// `hubs/product/start_menu.dart`.

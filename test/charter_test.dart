@@ -15,7 +15,7 @@ const _realShaped = '''
 
 ## Who it's for
 
-Nico, alone.
+The user, alone.
 
 ## Pain points
 
@@ -54,7 +54,7 @@ void main() {
 
       expect(strategy.isEmpty, isFalse);
       expect(strategy.origin, contains('Points at §1'));
-      expect(strategy.whoItsFor, 'Nico, alone.');
+      expect(strategy.whoItsFor, 'The user, alone.');
       expect(strategy.painPoints, contains('Decisions get lost.'));
       expect(strategy.objectives, hasLength(2));
     });
@@ -106,7 +106,7 @@ Something.
 
 ## Who it's for
 
-Nico.
+The user.
 
 ## Pain points
 
@@ -138,7 +138,7 @@ Something.
 
 ## Who it's for
 
-Nico.
+The user.
 
 ## Pain points
 

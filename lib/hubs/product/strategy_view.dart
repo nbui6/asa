@@ -1,5 +1,5 @@
 /// Product Hub — the Strategy tab. Round 16, built against
-/// `sketches\asa-strategy-v3.html`, after Nico rejected two Plan-tab
+/// `sketches\asa-strategy-v3.html`, after the user rejected two Plan-tab
 /// drafts on the same grounds — *"how is this helping me understand the
 /// plan? Which part of the plan is done, I dont have the big picture."*
 /// ADR 0025 (the strategy layer) and ADR 0026 (a round has a state, not a
@@ -262,7 +262,7 @@ class _StrategyViewState extends State<StrategyView> {
           // state chip and the "Would show: …" sentence under the title,
           // visible while collapsed — this had moved the chip into the
           // header row and hidden the sentence behind the expand arrow, on
-          // an earlier persona-check's own overwhelm worry. Nico's call
+          // an earlier persona-check's own overwhelm worry. The user's call
           // when he approved the sketch, not the builder's: visible.
           const SizedBox(height: AsaSpace.xs),
           Padding(

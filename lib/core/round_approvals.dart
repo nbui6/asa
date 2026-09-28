@@ -3,13 +3,13 @@
 /// `sketches\APPROVED.md` reader, structurally simpler — one table, not
 /// three.
 ///
-/// Written by Nico, never by Asa — ADR 0026 rule 5, unchanged. This file
+/// Written by the user, never by Asa — ADR 0026 rule 5, unchanged. This file
 /// only reads it.
 library;
 
 import 'package:asa/core/decisions_reader.dart' show FileAccess;
 
-/// One row: Nico's own words and the one-line result, dated. Never derived
+/// One row: the user's own words and the one-line result, dated. Never derived
 /// — `RoundState.completed` depends on a row existing, and inventing one
 /// would be exactly the thing ADR 0026 exists to stop.
 typedef RoundApproval = ({String date, String words, String result});

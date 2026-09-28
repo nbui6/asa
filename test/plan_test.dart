@@ -86,7 +86,7 @@ if you want to open it.
     test('a filename date is not mistaken for an ADR number', () {
       const text =
           'Written after `RESEARCH-PLANNING-LAYER-2026-09-14.md`, '
-          "at Nico's instruction.";
+          "at the user's instruction.";
       final adrLinks = deriveLinks(text)
           .where((l) => l.kind == PlanLinkKind.adr);
       expect(adrLinks, isEmpty);

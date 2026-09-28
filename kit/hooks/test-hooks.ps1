@@ -359,15 +359,15 @@ Check 'flags an unsigned plan' ($out -match 'NOT confirmed') 'an unsigned plan w
 Set-Content -LiteralPath (Join-Path $sandbox 'PLAN.md') -Encoding ASCII -Value @'
 # Plan - something
 
-Confirmed by: Nico Bui       on 2026-08-25
+Confirmed by: the Boss       on 2026-08-25
 
 ## What it is
 A thing.
 '@
 $code = Invoke-Hook 'orient.ps1' '{"hook_event_name":"SessionStart","how":"startup"}' $sandbox
 $out = Get-HookStdout $sandbox
-Check 'reports a signed plan with who and when' (($out -match 'confirmed by Nico Bui') -and ($out -match '2026-08-25')) 'the signature was not read back'
-Check 'does not call a signed plan unconfirmed' (($out -match 'confirmed by Nico Bui') -and (-not ($out -match 'NOT confirmed'))) 'it said nothing about the plan, or called a signed plan unsigned'
+Check 'reports a signed plan with who and when' (($out -match 'confirmed by the Boss') -and ($out -match '2026-08-25')) 'the signature was not read back'
+Check 'does not call a signed plan unconfirmed' (($out -match 'confirmed by the Boss') -and (-not ($out -match 'NOT confirmed'))) 'it said nothing about the plan, or called a signed plan unsigned'
 
 Remove-Item -LiteralPath (Join-Path $sandbox 'PLAN.md') -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $sandbox 'ROADMAP.md') -Force -ErrorAction SilentlyContinue

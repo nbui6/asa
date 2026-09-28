@@ -4331,3 +4331,104 @@ own commit.
 checkpoint, before cp4. The repeated-`Links:`-key fix above folds in there.
 
 - **Links backfilled** on decisions 0001–0029 (content, in `projects\`). Found while doing it: the reader keeps only the **last** value when a key repeats (0032 has `Round: 39 · Round: 38`, 0034 has two `Serves:`). Please accept a repeated key or `Round: 38, 39` as a list, with a test. Small; fold into cp4 or cp9.
+
+## From the deciding session — 2026-09-28 · cp9 corrected
+
+**Round 39 cp9 is rewritten; read it again before starting it.** Only what ships goes neutral (screens, output, `lib\`, `bin\`, `test\`, `templates\`, `kit\`). `CLAUDE.md`, `AGENTS.md`, `ARCHITECTURE.md` and the handovers keep Nico's name. The Instruction for AI screen's part is called **Working with you**. Asa writes *in Asa*, never a name, into `APPROVED.md`.
+
+
+## From the deciding session — 2026-09-28 · Round 41 specced, three files to commit
+
+- **Commit, in their own commit:** `templates\AGENTS.md` (v3.2: *Before anything else*, §7.12, the neutral-tool rule), `templates\BOSS.md` (new), `kit\skills\asa\SKILL.md` (description and step 3). Then `kit\sync-skills.ps1`.
+- **Round 41** (`projects\asa\rounds\round-41.md`): a ready-built app zip, `setup.ps1`, the setup sentence, a rehearsal. **After Round 39, before Round 38.**
+
+## From the deciding session — 2026-09-28 15:08 · next for Code, in this order
+
+**cp0–cp3 checked against the commits and your cp3 entry; the repeated-key fix too. Thank you.** Next:
+
+1. **Commit the deciding session's files**, in their own commit: `templates\AGENTS.md` (v3.2: *Before anything else*, §7.12, the neutral-tool rule), `templates\BOSS.md` (new), `kit\skills\asa\SKILL.md`. Then `kit\sync-skills.ps1` and `kit\sync-manual.ps1 -Check`.
+2. **Round 39 cp9, rewritten** (read it again): only what ships is neutral (screens, output, `lib\`, `bin\`, `test\`, `templates\`, `kit\`), plus the guard test. Nico's name stays in `CLAUDE.md`, `AGENTS.md`, `ARCHITECTURE.md`, the handovers.
+3. **cp4** `asa-check`, **with the additions** at the top of `round-39.md` (setup missing, BOSS.md empty, not in shape, put-away skipped, `asa-brief --all` counts put-away as one line).
+4. **cp5** sessions and their log → **cp8** local history → **cp7** Resume, logins, archives (this file is over 4,300 lines) → **cp6** the Instruction for AI screen (`asa-instruction-for-ai-v5`, approved; *Working with you*; no Activity).
+5. **The drill** (all 8 steps), then one `HANDOVER.md` entry: *Round 39 ready*.
+6. **Round 41** (`round-41.md`): the ready-built zip, `setup.ps1` (the other laptop has admin rights; `winget` allowed there), the setup sentence, the rehearsal.
+7. **Round 38** §A–§E; **§F put away only after Nico's yes on `sketches\asa-put-away-v1.html`**.
+
+Commit as often as possible (ADR 0028). Never push. Say *ready* at the end of 5 and of 6; the deciding session checks before Nico's test.
+
+## From the deciding session — 2026-09-28 · two corrections to the order above
+
+- **Step 7, Round 38 §F, is rewritten and approved** (`asa-status-v2`): no *Put away* button; the existing Status field does it. Read §F again. In cp4, `asa-brief --all --inactive` (not `--put-away`).
+- **Round 41 gains checkpoint E, the automatic local backup** (ADR 0037, accepted): the 2026-09-14 spec in this file, unchanged, scheduled by `setup.ps1`.
+
+## From the deciding session — 2026-09-28 · Round 42 added; Round 38 gains §G; templates v3.3
+
+- **`templates\AGENTS.md` v3.3:** `deadline:` may be `YYYY-MM/YYYY-MM`. Commit with the other template changes.
+- **Round 38 §G** (approved, `asa-tasks-v3` §1): the title *Project Management*; row: deadline (period) · status · 🚀; no *last changed* date. `asa-check` (cp4) must accept both deadline shapes.
+- **Round 42** (`projects\asa\rounds\round-42.md`): Tasks like a task list, writes under ADR 0039. **After Round 38.**
+
+## From the deciding session — 2026-09-28 · Round 39 cp9b, the status words (ADR 0041)
+
+**Right after cp9.** New stored words `in-progress`, `on-hold`, `done`, `canceled` (plus `idea`, `discovery-done`, `ongoing`); the old ones read as aliases; labels and hints on screen; `templates\AGENTS.md` §7.1 changed by you in the same commit. Spec: `round-39.md` cp9b. **Tell the deciding session when it lands:** it updates the real notes that hour.
+
+---
+
+### Round 39 cp9 — the tool is neutral: no personal name in what ships
+
+**Corrected scope, read again before starting** (the deciding session's own note): only what ships
+goes neutral — `lib\`, `bin\`, `test\` and its fixtures, `templates\`, `kit\`. `CLAUDE.md`,
+`AGENTS.md`, `ARCHITECTURE.md` and the handovers keep the name; that's the repo's own working notes
+about how the person behind it actually works, not something that ships. `templates\AGENTS.md`,
+`CLAUDE.md` and `HOW-ASA-WORKS.md` were already neutral (committed earlier this session).
+
+**Built:** `test/no_personal_name_test.dart`, next to `one_look_test.dart` — scans the five named
+folders as plain text for the whole word, any case, and fails the build the moment it reappears.
+Proven to actually catch something before trusting it (this repo's own standing discipline): added
+one throwaway violating line to `lib/core/brief.dart`, watched the test fail with the exact
+file:line:content, reverted with `git checkout --`.
+
+**The purge itself, by file count:** 12 files in `lib\` (doc comments — attribution only, every
+quote of what he actually said kept verbatim), 16 in `test\` (fixture values and their matching
+assertions kept consistent — `owner: 'nico'` became an invented `'jamie'`, not `'the user'`, since
+it's an arbitrary fork-seam test value, not a reference to him), 8 in `kit\` (kit's own docs already
+had an established neutral term, **the Boss** — from `workshop\BOSS.md`'s own naming and confirmed
+by an existing, untouched line in `KIT-LOG.md` — used instead of importing `templates\`'s "the
+user" into a different layer).
+
+**Two real fixes made along the way, not just replaced:**
+- `test/opener_test.dart` and `test/ui/source_line_test.dart` had `C:\Users\nico.bui\...` fixture
+  paths — swapped for the `test` placeholder this repo already uses everywhere else (`CLAUDE.md`'s
+  own retired-waiver note).
+- `test/brief_test.dart`'s own `_pristineFixture` was a second hardcoded absolute path with the same
+  problem, but couldn't just take a placeholder — it has to resolve to a real directory. Rewrote it
+  as `${Directory.current.path}/test/fixtures/round-36`, portable across machines instead of pinned
+  to one contributor's own folder, and it no longer needs an exception at all.
+
+**Four named exceptions, not silently skipped** (same discipline as `check-shareable.ps1`'s own
+waiver): three quotes of a written rule exactly as it read at the time (`kit\PLAYBOOK.md`,
+`kit\CHANGELOG.md`, `kit\KIT-LOG.md`), and one historical bug capture showing exactly what a real
+file said (`kit\KIT-LOG.md`, illustrating the parser bug that predates ADR 0007). Rewriting a
+quotation to sanitize it is what hard rule 9 already exists to stop. Plus one whole-file exception,
+`kit\package-for-tester.ps1` — the existing script whose entire job is scrubbing this exact name out
+of a packaged copy; its own source has to contain the word to search for.
+
+**Not done, by design:** Round 38 §C's "Asa writes *in Asa*, never a name" isn't applicable yet — no
+code writes `APPROVED.md`'s *By* column today (ADR 0026 rule 5: written by hand, never by Asa).
+Flagged for whenever that's built.
+
+**Bundled, named rather than silently left unexplained:** `kit/KIT-LOG.md` and `kit/ROADMAP.md` each
+carried pre-existing, unrelated uncommitted content from before this session started (the
+2026-09-22/23 feedback-channel findings, the ROADMAP items they produced) — this commit necessarily
+includes that alongside the name-purge edits to the same files, since `check.ps1` runs against
+whatever is really on disk regardless of git history.
+
+**Verified:** `flutter analyze --fatal-infos` clean, `flutter test` — 602 total, all green,
+`.claude/hooks/test-hooks.ps1` — 42 passed (confirms the `Confirmed by:` fixture rename didn't break
+`orient.ps1`'s real parsing regex).
+
+**Commits:** the purge itself, plus `templates\AGENTS.md` v3.3 (`deadline:` may be
+`YYYY-MM/YYYY-MM`) bundled in per the deciding session's own instruction to commit it "with the
+other template changes."
+
+**Next:** cp9b (the status words, ADR 0041) — "right after cp9," per the deciding session's own
+note above — then cp4.
