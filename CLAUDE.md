@@ -257,7 +257,9 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
    cannot be a machine line, write `Machine: none, because <reason>`.
 2. **`core/` never imports Flutter.** The tests import `core/` directly to keep it that way.
 3. **`hubs/` may import `core/`** - never the reverse, and never each other.
-4. **Asa writes only structured fields, never prose.**
+4. **Asa writes whatever the user does in it** (ADR 0044): tasks, results, decisions, strategy, plans, new
+   projects, fields, approvals, in the same shapes an AI writes; every change in the history and the Log.
+   It never writes text the user didn't type or choose.
 5. **Show the raw data at every boundary.** This rule has already found a bug with no code run.
 6. **Show every failure with its reason.** A folder that cannot be read is listed and
    explained; a folder that vanishes from a list is indistinguishable from one that never was.
@@ -272,7 +274,8 @@ Written as what to do. Cap is about 20; adding one asks which one retires.
 11. **Update `ARCHITECTURE.md` in the same commit** as any change that adds, moves or removes
     a part.
 12. **A retired term is a banned term.**
-13. **Asa never becomes a text editor.** That is the line.
+13. **Asa edits in place, where the thing is read** (ADR 0042, 0044): a line, a section, never a whole-file
+    editor view.
 14. **Read the repo before proposing anything for it.** Not the notes about it - the repo:
     `ARCHITECTURE.md`, this file, and the vault's `CHARTER.md`. On 2026-08-31 an assistant
     proposed "Asa, day one" - a fresh charter, roadmap and CLAUDE.md - for this repo, after an

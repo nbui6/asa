@@ -125,7 +125,5 @@ same list.
 
 Read the repo before proposing work for it — check `projects\asa\asa.md`'s Roadmap and
 `HANDOVER.md`'s most recent entries for what round is already in flight before assuming day one.
-Asa writes only structured fields, never prose (ADR 0007) — if you are Code and asked to make Asa
-write something, check that ADR's whitelist first. That rule is about Asa's own code; it does not
-apply to you reading and writing a project's own note directly, which is ordinary file editing,
-same as the section above.
+The app writes whatever the user does in it (ADR 0044, which replaced ADR 0007): tasks, results,
+decisions, strategy, plans, new projects, fields. It never writes text the user didn't type or choose.
