@@ -3921,3 +3921,95 @@ theme colour), and the "next" pill sits at the far right edge (`Expanded`).
 **Do cp8's equivalent here: `projects\asa\rounds\round-37.md`, "Checkpoint 6", ten rows plus your own
 chip-separator point, plus two additions to the check so they can't come back.** Nothing needs Nico.
 Commit as often as possible, `Round 37 cp6:`, then say ready.
+
+### Round 37 cp6 — ready
+
+**Built:** all ten rows of the deciding session's own table, plus the cp4 chip-separator finding,
+plus both check additions.
+
+- **1 — Tasks:** the expand/collapse triangle sat in its own `IconButton`, a `Column` sibling below
+  the heading row — an empty-looking row with a lone chevron before the tasks. Folded into the
+  heading row itself in both `_areaGroupTile` and `_notInAnAreaTile`, the same compact
+  `InkWell`+`Icon` shape `AsaGroup`'s own header already uses.
+- **2 — Tasks:** "Not in an area" only means something once a project has areas to be "not in" one
+  of. A project with none (Kundenakte, Legacy app, Legacy app docs in the fixture) now shows its own
+  tasks straight under its name via the new `_directTaskRows` — no heading, no collapse state of its
+  own, shown and hidden by the project's own `AsaGroup` toggle.
+- **3 — Tasks, Plan:** `TaskRow`'s own text was `Expanded`, pinning the "next" pill to the row's far
+  edge; `Flexible` (loose fit) so the pill follows the text.
+- **4 — Plan, decision detail:** a bare `Checkbox` and a bare `OutlinedButton` (Reject) both took the
+  Theme's own purple seed colour. `TaskRow` sets `activeColor: AsaColors.green`; Reject gets a
+  neutral `ink2`/`line` style — it isn't one of the five meanings, and green is Accept's own.
+- **5 — Plan:** an opened area's own task list computed `isNext` for the closed row's summary but
+  never passed it to the expanded `TaskRow`s themselves. Same first-open-unparked-task rule now
+  threaded through, for both an area's own tasks and "Not in an area"'s.
+- **6 — Plan:** the Next box was tinted with `AsaMeaning.area`'s own background — violet means an
+  area, and this box isn't one. Plain `AsaColors.panel`, no tint.
+- **7 — Overview:** the rocket sat in the name's own row, whose height a Material icon button's tap
+  target set, taller than a line of text — a visible gap above the pills. Restructured: name+jira and
+  pills+next-step now stack in their own column, with the freshness label and rocket centred beside
+  that whole block instead.
+- **8 — Strategy:** traced to its real cause rather than patched at the widget level.
+  `CHARTER.md`'s own objectives wrap across physical lines in the source file; `charter.dart`'s
+  `_evidenceIn` only `.trim()`ed the ends, leaving the source's own line break — and the next line's
+  leading indent — literally inside the extracted string. `_collapseWhitespace` folds every internal
+  run of whitespace to one space; `_evidenceRow`'s now-pointless `softWrap: true` and stale "matches
+  the bar's 480px" comment (never true — the string carried the break, not the width) are gone.
+- **9 — Details:** `(not set)`, `(no code yet)`, `(not checked)`, `no next step` and `unknown` all
+  read as their own bracket-or-not wording on the same page. `_Field` now renders any of them via
+  `EmptyLine`, one style, word unchanged (that's `core/`'s own derivation, out of scope here); "Note
+  updated by hand" now shows `asaDetailDate` ("24 Sep 2026"), not the raw ISO string.
+- **10 — Decision detail:** the date and status showed as plain grey text ("2026-09-24", "proposed").
+  Now `asaDetailDate` and a `Pill` by meaning, the same convention the Decisions tab already uses.
+  `decisionStatusLabel(status, {isProposed})` added to `tokens.dart` — the canonical short word
+  `project_screen.dart`'s own `_statusPill` already computed inline, now shared by both.
+- **The cp4 finding:** "What changed"'s `Round N` chips ran together with only a bare space between
+  them; a visible ` · ` separator between consecutive chips now, the same one the ADR chips already
+  carry inside their own label.
+- **The two check additions:** `one_look_test.dart` fails the build if any file under
+  `lib/hubs/product/` other than `ui/task_row.dart` itself builds its own `Checkbox(`.
+  `task_row_test.dart` gained two cases: a done `TaskRow`'s checkbox paints `AsaColors.green`
+  directly, and the "next" pill sits within 16px of the text's own end.
+
+**Every finish-line item, checked directly:**
+- `check.ps1` — all four steps green in one run (format needed one rewrite pass, the documented
+  "first run fails after rewriting, second run passes" shape, not a flake).
+- `click_through_test.dart` — green twice this checkpoint (once inside `check.ps1`'s own step 4,
+  once more explicitly after), both passes each time.
+- Release exe rebuilt and confirmed starting outside the IDE — launched as its own process, still
+  running three seconds later, closed cleanly.
+- The fixture screenshots re-generated and reviewed directly (not from memory) against every one of
+  the ten rows — all ten confirmed fixed by looking at the actual pixels, including a new
+  no-area-project screenshot added specifically to show item 2.
+- `round-37-compare.html` updated with the ten-row table, the new no-area screenshot, and a
+  corrected "what changed from Round 36's own list" section — the checkbox-colour theme leak named
+  there is now resolved too, one more than counted at cp4.
+
+**Tests (count):** 549 unit/widget tests (up from 525 — the new per-file `Checkbox` check across the
+page files, plus two new `TaskRow` cases), `app_test.dart` and `click_through_test.dart` both green.
+
+**Commits (hashes, one line each):**
+- `850abec` — Round 37: HANDOVER entry — deciding session's cp6 check-in
+- `e1e8a98` — Round 37 cp6 (1/8): TaskRow — done-green checkbox, pill follows the text; Checkbox( banned everywhere else
+- `110c720` — Round 37 cp6 (2/8): decision detail — Reject button and status line off the theme; canonical status word shared
+- `25987e4` — Round 37 cp6 (3/8): Tasks view — no lone-chevron row; "Not in an area" only when there are areas
+- `a30605e` — Round 37 cp6 (4/8): Plan tab — Next box loses its violet tint, an opened area's own next task gets its pill, chip separator
+- `d23733f` — Round 37 cp6 (5/8): Strategy — the real bug behind "Would show" wrapping with a stray indent
+- `92323bf` — Round 37 cp6 (6/8): Overview — the rocket no longer sets the name row's own height
+- `827199c` — Round 37 cp6 (7/8): dart format
+
+**Screenshots:** `projects\asa\screenshots\round-37\` regenerated (16 + 1 new no-area-project shot),
+`round-37-compare.html` updated with checkpoint 6's own ten-row table.
+
+**Calls I made:** none of the ten were judgement calls — each is a real, verifiable defect (a
+misplaced widget, a raw theme colour, a literal newline surviving parsing) with the fix the deciding
+session's own table already named. The one thing I did decide: where exactly the chevron and dot
+land within the folded heading row (chevron first, then dot+name+count, mirroring `AsaGroup`'s own
+triangle-then-content order) — cosmetic, not named in the table, and consistent with the one part
+this app already uses for the same shape.
+
+**Open questions for Nico:** none.
+
+**Next:** none queued. Ready for Nico's test — round-36.md §8's seven steps plus one question per
+page: *does it look like the same app as the page before?* Round 28 and the rest stay parked until
+that yes, per `CLAUDE.md`'s own "Where we are."
