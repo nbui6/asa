@@ -12,11 +12,12 @@
 # and without it a cold clone fails in step 2 with an error about the
 # analyser rather than about its missing dependencies.
 #
-# Four checks, in this order - the order is load-bearing (HANDOVER.md):
-# formatting, then analysis, then unit tests, then the feature test.
-# Analysis runs before tests because a sibling project once had 25 green
-# tests over code that could not compile - a green suite is not proof the
-# app builds.
+# Five checks, in this order - the order is load-bearing (HANDOVER.md):
+# formatting, then analysis, then unit tests, then the feature test, then
+# the skills-in-sync check. Analysis runs before tests because a sibling
+# project once had 25 green tests over code that could not compile - a
+# green suite is not proof the app builds. The skills check runs last:
+# cheap, and unrelated to whether the app itself builds or passes.
 #
 # "Mostly passing" is failing. Nothing here lowers the bar to reach PASS.
 #
@@ -44,39 +45,39 @@ Set-Location $root
 function Stop-Here {
     param([int]$Step, [string]$What)
     Write-Host ''
-    Write-Host ("FAILED at step {0} of 4 - {1}" -f $Step, $What)
+    Write-Host ("FAILED at step {0} of 5 - {1}" -f $Step, $What)
     Write-Host '  Nothing after this step ran. Fix this, then run the whole script again.'
     exit 1
 }
 
 if ($Fresh) {
-    Write-Host '[0/4] flutter clean'
+    Write-Host '[0/5] flutter clean'
     flutter clean
     if ($LASTEXITCODE) { Stop-Here 0 'flutter clean' }
     Write-Host ''
 }
 
-Write-Host '[0/4] flutter pub get'
+Write-Host '[0/5] flutter pub get'
 flutter pub get
 if ($LASTEXITCODE) { Stop-Here 0 'resolving dependencies. Nothing was checked.' }
 
 Write-Host ''
-Write-Host '[1/4] dart format --set-exit-if-changed .'
+Write-Host '[1/5] dart format --set-exit-if-changed .'
 dart format --set-exit-if-changed .
 if ($LASTEXITCODE) { Stop-Here 1 'formatting. The files above have just been rewritten - run this script again and step 1 will pass.' }
 
 Write-Host ''
-Write-Host '[2/4] flutter analyze --fatal-infos'
+Write-Host '[2/5] flutter analyze --fatal-infos'
 flutter analyze --fatal-infos
 if ($LASTEXITCODE) { Stop-Here 2 'static analysis' }
 
 Write-Host ''
-Write-Host '[3/4] flutter test --coverage'
+Write-Host '[3/5] flutter test --coverage'
 flutter test --coverage
 if ($LASTEXITCODE) { Stop-Here 3 'unit tests' }
 
 Write-Host ''
-Write-Host '[4/4] flutter test integration_test -d windows, one file at a time'
+Write-Host '[4/5] flutter test integration_test -d windows, one file at a time'
 # Round 36 cp7 - found the day click_through_test.dart joined app_test.dart
 # as a second file in this folder: `flutter test integration_test -d windows`
 # launches each file's own app in the SAME process, back to back, and on
@@ -95,4 +96,12 @@ foreach ($file in $integrationTestFiles) {
 }
 
 Write-Host ''
-Write-Host 'PASS - all four.'
+Write-Host '[5/5] kit\sync-skills.ps1 -Check'
+# Round 39 cp0 - kit\skills\ is the one source; .claude\skills\ (loaded by
+# this very session) and dist\skills\*.zip (uploaded to any other account)
+# are both generated from it. This only checks; it changes nothing.
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'kit\sync-skills.ps1') -Check
+if ($LASTEXITCODE) { Stop-Here 5 'skills out of sync — run kit\sync-skills.ps1, then this again' }
+
+Write-Host ''
+Write-Host 'PASS - all five.'

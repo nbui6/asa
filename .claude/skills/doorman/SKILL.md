@@ -142,6 +142,14 @@ its one job.
 If none of the above has anything to say — a quiet, current project — say that in one line and
 stop. **A doorman that pads a quiet project with filler trains the person to stop reading it.**
 
+## The other end of a session
+
+**Round 32/F.3.** Doorman only covers the start — nothing here fires at the end, and nothing
+should. **The end has its own step, and it already exists: `HOW-ASA-WORKS.md`'s own "Before you
+finish" section, in the project's own folder.** Point a session there rather than repeating it
+here — doorman does not re-fire to check it, does not remind, and does not write anything at
+close, same as everywhere else in this file (see "What this is not," above).
+
 ## Rules
 
 - **Read-only, always.** If something looks wrong while reading (a stale date, a settled decision
