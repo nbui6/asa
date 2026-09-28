@@ -4165,3 +4165,47 @@ session's own new `asa` skill (invisible to itself until this ran) — and
 **Commits:** `5cfb52f` — Round 39 cp0: kit/sync-skills.ps1 — skills from one source
 
 **Next:** cp1 — the manual installed and kept in sync (`kit\sync-manual.ps1`).
+
+### 2026-09-28 16:10 — deciding session → Code: the Instruction for AI is **version 3**; Round 40 is the deciding session's, not yours
+
+- **`templates\AGENTS.md` is version 3** (338 lines). It adds "one place, one shape", `(waiting: Name,
+  since date)` on tasks, and **§13, getting a project into shape**. Commit it with the other two files, if
+  that first commit hasn't happened yet; otherwise as its own commit.
+- **For Round 39's `asa-check` (cp4):**
+  - a project is **out of shape** when its note still has sections the instruction moves elsewhere
+    (`Who it is for`, `Open, needing a decision`, `Log`, `Related project`, `Where it stands` without
+    tasks);
+  - `(waiting: …)` parses, and a wait over 14 days is flagged.
+- **`asa-brief --all`** lists waiting items across projects.
+- **Round 40** (`projects\asa\rounds\round-40.md`) is content work in `projects\`, done by the deciding
+  session. **Nothing to build for it.**
+
+### Round 39 cp1 — the manual, installed and kept in sync
+
+**Built:** `kit\sync-manual.ps1` — installs `templates\AGENTS.md`/`CLAUDE.md` at the projects root and
+every project's `HOW-ASA-WORKS.md` (now the ten-line pointer at `templates\HOW-ASA-WORKS.md`, not the
+old 200-line copy), all from the projects folder in `settings.json`. Same edit-protection as
+`install-skills.ps1`: a three-way hash diff (source / installed / installed-last-time, its own manifest
+at `%APPDATA%\Asa\.manual-manifest.json`) means a hand-edited installed copy is kept, not silently
+overwritten, unless `-Force`. `-Check` changes nothing and fails the moment any installed copy drifts —
+`check.ps1` gains step 6. `onboard-projects.ps1` now calls it too, so a new laptop gets the manual as
+well as its own existing per-folder onboarding. Own `-SelfTest`: new/unchanged/edited-kept/forced-
+overwrite, and `-Check` passing/failing at each stage — all real, sandboxed, not asserted from memory.
+
+**Ran for real** against the real projects folder (`C:\Users\nico.bui\workspace\projects`): 13 projects'
+`HOW-ASA-WORKS.md` updated to the new pointer; the root `AGENTS.md`/`CLAUDE.md` were already there
+(hand-installed earlier) and matched.
+
+**Also landed in this same commit, unplanned:** the deciding session's own `templates\AGENTS.md` version
+3 arrived mid-checkpoint (16:10 entry above) — committed separately as its own commit
+(`9626bdb`), then `sync-manual.ps1` re-run to push it out; `-Check` confirms all 15 installed files
+match.
+
+**Tests:** `check.ps1` all six steps green, 549 tests, `sync-manual.ps1 -SelfTest` green.
+
+**Commits:**
+- `9626bdb` — bundles cp1's own files (`kit\sync-manual.ps1`, the new `templates\HOW-ASA-WORKS.md`,
+  `onboard-projects.ps1`, `check.ps1` step 6) together with `templates\AGENTS.md` v3, which arrived
+  while cp1 was still staged — not a clean split, named here rather than silently left unexplained.
+
+**Next:** cp2 — links Asa reads (`decision.dart`'s `**Links:**` line, a round's `**Area:**` line).
