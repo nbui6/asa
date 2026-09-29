@@ -38,6 +38,7 @@ import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
+import 'package:asa/core/log_entries.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
@@ -47,10 +48,13 @@ import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
+import 'package:asa/core/round_call_writer.dart';
+import 'package:asa/core/round_file.dart';
+import 'package:asa/core/round_state.dart';
 import 'package:asa/core/status_words.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
-import 'package:asa/hubs/product/decision_detail_screen.dart';
+import 'package:asa/hubs/product/log_view.dart';
 import 'package:asa/hubs/product/plan_view.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/strategy_view.dart';
@@ -70,7 +74,7 @@ import 'package:flutter/material.dart';
 /// approved 2026-09-26. Round 37 §D2 — every one of these four always
 /// shows, in this order, on every project; an empty one says why and what
 /// to do instead of disappearing.
-enum _Tab { plan, strategy, decisions, details }
+enum _Tab { plan, strategy, log, details }
 
 /// ADR 0041's own seven values, in the order the ADR states them — the
 /// field writer writes only these; an old word (`building`, `paused`,
@@ -132,6 +136,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   List<DecisionReadResult>? _decisions;
   Plan? _plan;
   List<Area> _areas = const [];
+  List<LogEntry> _logEntries = const [];
 
   /// Round 34/D — an area chip on a decision row sets this, then switches
   /// to the Plan tab. Round 38 §B — this is now the area *tab* strip's own
@@ -268,6 +273,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
       widget.folder,
       const DiskFileAccess(),
     );
+    final logEntries = await readLogEntries(
+      widget.folder,
+      const DiskFileAccess(),
+    );
 
     if (!mounted) return;
     setState(() {
@@ -278,6 +287,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _areas = areas;
       _strategy = strategy;
       _approvals = approvals;
+      _logEntries = logEntries;
       _loading = false;
     });
   }
@@ -289,7 +299,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// work — see `_activeTab`'s own initial value). A tab with nothing to
   /// show yet still shows, explaining why and what to do, rather than
   /// disappearing (`_tabBody`'s own empty-state bodies).
-  static const _tabs = [_Tab.strategy, _Tab.plan, _Tab.decisions, _Tab.details];
+  static const _tabs = [_Tab.strategy, _Tab.plan, _Tab.log, _Tab.details];
 
   @override
   Widget build(BuildContext context) {
@@ -381,19 +391,30 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// ([AsaText.rowName]) regardless of which is active, so becoming
   /// active never widens a label and shifts its neighbours — round-37
   /// §D2's "reserve width"; only the colour and the underline change.
+  /// Round 38 §E — "the tab shows a dot, not a count, when something
+  /// needs [the user]" (§A's own amber count goes once this exists): a
+  /// proposed decision, or a round waiting for approval — the same two
+  /// sources `LogView`'s own *Needs your yes* panel cycles through.
+  bool get _logNeedsYou {
+    final hasProposedDecision = (_decisions ?? const []).any(
+      (r) => r.decision?.isProposed ?? false,
+    );
+    if (hasProposedDecision) return true;
+    final roadmap = (_read?.isSuccess ?? false)
+        ? _read!.project!.roadmap
+        : const <Milestone>[];
+    return roadmap.any(
+      (m) => roundStateOf(m, _approvals) == RoundState.waitingForApproval,
+    );
+  }
+
   Widget _tabRow() {
     const labels = {
       _Tab.plan: 'Plan',
       _Tab.strategy: 'Strategy',
-      _Tab.decisions: 'Decisions',
+      _Tab.log: 'Log',
       _Tab.details: 'Details',
     };
-    // Round 38 §A — a small amber count of what needs your yes, only
-    // when it's more than 0. cp0's own scope: the Decisions tab's
-    // existing "Needs a look" group (proposed decisions); §C later folds
-    // rounds waiting for approval into the same count.
-    final needsYouCount =
-        groupForReview(_decisions ?? const []).needsALook.length;
     return Row(
       children: [
         for (final tab in _tabs) ...[
@@ -401,16 +422,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
           _tabLabel(
             labels[tab]!,
             tab,
-            count: tab == _Tab.decisions && needsYouCount > 0
-                ? needsYouCount
-                : null,
+            showDot: tab == _Tab.log && _logNeedsYou,
           ),
         ],
       ],
     );
   }
 
-  Widget _tabLabel(String label, _Tab tab, {int? count}) {
+  Widget _tabLabel(String label, _Tab tab, {bool showDot = false}) {
     final active = _activeTab == tab;
     return InkWell(
       onTap: () => setState(() => _activeTab = tab),
@@ -433,13 +452,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 color: active ? AsaColors.ink : AsaColors.ink3,
               ),
             ),
-            if (count != null) ...[
+            if (showDot) ...[
               const SizedBox(width: AsaSpace.xs),
-              Text(
-                '$count',
-                style: AsaText.meta.copyWith(
-                  color: AsaMeaning.needsYou.fg,
-                  fontWeight: FontWeight.bold,
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AsaColors.amber,
+                  shape: BoxShape.circle,
                 ),
               ),
             ],
@@ -593,125 +613,46 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ? read.project!.sourceFile
               : widget.folder,
         );
-      case _Tab.decisions:
-        return _decisionsTab(read);
+      case _Tab.log:
+        return _logTab(read);
       case _Tab.details:
         return _detailsTab(read);
     }
   }
 
-  /// 2026-09-07 trial (`asa-decisions-v2.png`): split into "Needs a look"
-  /// and "Settled" when there is anything to put in the first group. A
-  /// healthy project — nothing proposed — falls back to exactly the flat
-  /// list, so a group header is never shown empty.
-  Widget _decisionsTab(ProjectReadResult read) {
-    final decisions = _decisions ?? [];
-
-    if (decisions.isEmpty) {
-      return const EmptyLine('Nothing decided yet.');
-    }
-
-    final groups = groupForReview(decisions);
-    if (groups.needsALook.isEmpty) {
-      return Column(
-        children: [for (final result in decisions) _decisionRow(result)],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionLabel('Needs a look · ${groups.needsALook.length}'),
-        const SizedBox(height: AsaSpace.xs),
-        for (final result in groups.needsALook) _decisionRow(result),
-        const SizedBox(height: AsaSpace.lg),
-        SectionLabel('Settled · ${groups.settled.length}'),
-        const SizedBox(height: AsaSpace.xs),
-        for (final result in groups.settled) _decisionRow(result),
-      ],
-    );
-  }
-
-  /// A flat list, one row per decision, a hairline between — not a
-  /// `Card`: no shadow, no per-row container.
-  Widget _decisionRow(DecisionReadResult result) {
-    if (!result.isSuccess) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AsaColors.soft)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Unreadable — ${result.sourceFile}',
-              style: AsaText.rowName.copyWith(color: AsaMeaning.needsYou.fg),
-            ),
-            const SizedBox(height: AsaSpace.xs),
-            Text(result.error ?? 'Unknown problem', style: AsaText.body),
-            const SizedBox(height: AsaSpace.sm),
-            _RawBlock(title: 'Raw text', body: result.rawText),
-          ],
-        ),
-      );
-    }
-
-    final decision = result.decision!;
-
-    return InkWell(
-      onTap: () async {
-        final changed = await Navigator.of(context).push<bool>(
-          MaterialPageRoute<bool>(
-            builder: (_) => DecisionDetailScreen(
-              decision: decision,
-              areasNaming: areasNamingDecision(decision, _areas),
-              onOpenArea: _openArea,
-            ),
-          ),
-        );
-        // Round 36 cp6 — a verdict recorded on that screen changed the
-        // file this tab's own cached `_decisions` list was built from;
-        // without this, coming back showed the decision exactly as it was
-        // before Accept/Reject, until something unrelated reloaded.
-        if (changed ?? false) await _load();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AsaColors.soft)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AsaSpace.sm,
-                runSpacing: AsaSpace.xs,
-                children: [
-                  Text(decision.title, style: AsaText.rowName),
-                  if (decision.status != null) _statusPill(decision),
-                  // Round 34/D — the areas that name this ADR (ADR number
-                  // match, or Round 39's own **Links:** line). Tapping one
-                  // opens the Plan tab with that area already open.
-                  for (final area in areasNamingDecision(decision, _areas))
-                    AreaChip(area.name, onTap: () => _openArea(area)),
-                  // The pill alone would drop "names what replaced it" —
-                  // still required (HANDOVER.md §5b), so it stays as a
-                  // small note next to the pill rather than inside it.
-                  if (decision.supersededBy != null)
-                    Text(
-                      '→ replaced by ${decision.supersededBy}',
-                      style: AsaText.meta,
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AsaSpace.md),
-            Text(asaListDate(decision.date) ?? '', style: AsaText.meta),
-          ],
-        ),
+  /// Round 38 §E (ADR 0034) — the Log tab, replacing the old flat
+  /// Decisions list in the same place. `LogView` owns its own rendering;
+  /// this just wires it to real data and real writers.
+  Widget _logTab(ProjectReadResult read) {
+    return LogView(
+      projectFolder: widget.folder,
+      entries: _logEntries,
+      decisions: _decisions ?? const [],
+      roadmap: read.isSuccess ? read.project!.roadmap : const [],
+      approvals: _approvals,
+      areas: _areas,
+      onOpenArea: _openArea,
+      onDataChanged: _load,
+      loadRoundText: (roundNumber) => readRoundFileText(
+        widget.folder,
+        roundNumber,
+        const DiskFileAccess(),
       ),
+      onApproveRound: (roundNumber, {required roundTitle, feedback}) =>
+          approveRound(
+            widget.folder,
+            roundNumber,
+            roundTitle: roundTitle,
+            feedback: feedback,
+            writeLogPath: widget.writeLogPath,
+          ),
+      onRequestRoundChanges: (roundNumber, {required what}) =>
+          requestRoundChanges(
+            widget.folder,
+            roundNumber,
+            what: what,
+            writeLogPath: widget.writeLogPath,
+          ),
     );
   }
 
@@ -722,21 +663,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _activeTab = _Tab.plan;
     _selectedAreaTab = area.sourceFile;
   });
-
-  /// A short canonical word, not the raw parsed status text (which can
-  /// run to a whole sentence, e.g. asa/0007's "proposed - needs the user's
-  /// decision") — the full text is one tap away, on the detail screen.
-  /// Uses `displayStatus`, not the raw header field — ADR 0011: a
-  /// recorded verdict overrides a stale `proposed` header. Round 37 cp6 —
-  /// the same canonical-word rule `decision_detail_screen.dart`'s own
-  /// status line now uses too, one shared function rather than two.
-  Widget _statusPill(Decision decision) {
-    final status = decision.displayStatus;
-    return Pill(
-      decisionStatusLabel(status, isProposed: decision.isProposed),
-      meaning: meaningForDecisionStatus(status),
-    );
-  }
 
   Widget _detailsTab(ProjectReadResult read) {
     if (!read.isSuccess) {

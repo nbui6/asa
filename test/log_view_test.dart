@@ -7,6 +7,7 @@
 
 import 'dart:io';
 
+import 'package:asa/core/area.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/log_entries.dart';
 import 'package:asa/core/round_approvals.dart';
@@ -50,6 +51,7 @@ void main() {
     WidgetTester tester, {
     List<LogEntry> entries = const [],
     List<DecisionReadResult> decisions = const [],
+    List<Area> areas = const [],
     Future<void> Function(
       String, {
       required String roundTitle,
@@ -68,6 +70,7 @@ void main() {
             decisions: decisions,
             roadmap: const [],
             approvals: const RoundApprovals({}),
+            areas: areas,
             loadRoundText: (_) async => null,
             onApproveRound:
                 onApproveRound ?? (_, {required roundTitle, feedback}) async {},
@@ -182,6 +185,16 @@ void main() {
     await pump(
       tester,
       decisions: [_decision(title: 'A settled call', area: 'Sales')],
+      areas: const [
+        Area(
+          name: 'Sales',
+          sourceFile: 'plan/sales.md',
+          tasks: [],
+          results: [],
+          decisionNumbers: [],
+          objectiveNumbers: [],
+        ),
+      ],
     );
 
     await tester.tap(find.text('Decisions in force'));

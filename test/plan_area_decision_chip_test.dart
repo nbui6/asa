@@ -1,6 +1,9 @@
-// Round 34/D — an area chip on a decision row, real files: a decision
-// that an area names, opened through the real ProjectScreen, not an
-// in-memory fixture.
+// Round 34/D, updated for Round 38 §E — an area naming a decision, real
+// files: a decision that an area names, opened through the real
+// ProjectScreen, not an in-memory fixture. The Log's own "Decisions in
+// force" view groups by every area naming a decision (its own area
+// heading is now the tap target, not a per-row chip the old flat list
+// had one of).
 
 import 'dart:io';
 
@@ -74,8 +77,8 @@ void main() {
   tearDown(() => tempDir.deleteSync(recursive: true));
 
   testWidgets(
-    'the area chip on a decision row switches to Plan, with that area '
-    'already open',
+    "Decisions in force, tapping an area's own heading switches to Plan, "
+    'with that area already open',
     (tester) async {
       await tester.runAsync(() async {
         await tester.pumpWidget(
@@ -85,11 +88,16 @@ void main() {
       });
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Decisions'));
+      await tester.tap(find.text('Log'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Decisions in force'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sales'), findsOneWidget);
-      await tester.tap(find.text('Sales'));
+      // Round 38 §E — grouped by area already; the area's own heading
+      // (SectionLabel, rendered uppercase) is the tap target now, not a
+      // per-row chip.
+      expect(find.text('SALES'), findsOneWidget);
+      await tester.tap(find.text('SALES'));
       await tester.pumpAndSettle();
 
       // Landed on Plan, and the area is already open — its Goal/Tasks
@@ -105,7 +113,8 @@ void main() {
     },
   );
 
-  testWidgets('one decision named by two areas gets two chips, one per area, '
+  testWidgets(
+      'one decision named by two areas appears grouped under both, '
       'neither merged nor dropped', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(MaterialApp(home: ProjectScreen(folder: folder)));
@@ -113,10 +122,12 @@ void main() {
     });
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Decisions'));
+    await tester.tap(find.text('Log'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Decisions in force'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sales'), findsOneWidget);
-    expect(find.text('Finance'), findsOneWidget);
+    expect(find.text('SALES'), findsOneWidget);
+    expect(find.text('FINANCE'), findsOneWidget);
   });
 }

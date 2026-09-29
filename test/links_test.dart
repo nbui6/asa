@@ -379,12 +379,15 @@ void main() {
     },
   );
 
-  testWidgets('L16 — Decisions tab, a row, decision detail; back → Decisions', (
-    tester,
-  ) async {
+  testWidgets('L16 — Log tab, Decisions in force, decision detail; back → '
+      'Decisions in force', (tester) async {
     await pumpAndLoad(tester);
     await tapAndSettle(tester, find.text('Northwind partnership'));
-    await tapAndSettle(tester, find.text('Decisions'));
+    await tapAndSettle(tester, find.text('Log'));
+    // Round 38 §E — the Log opens on "What happened"; a decision's own
+    // row only navigates straight to its detail screen in "Decisions in
+    // force" (the timeline's own row expands in place instead).
+    await tapAndSettle(tester, find.text('Decisions in force'));
 
     await tapAndSettle(
       tester,
@@ -401,12 +404,13 @@ void main() {
   });
 
   testWidgets(
-    "L17 — Decisions tab, a decision's own area chip, Plan tab with that "
-    'area already open',
+    "L17 — Log tab, Decisions in force, a decision's own area chip, Plan "
+    'tab with that area already open',
     (tester) async {
       await pumpAndLoad(tester);
       await tapAndSettle(tester, find.text('Northwind partnership'));
-      await tapAndSettle(tester, find.text('Decisions'));
+      await tapAndSettle(tester, find.text('Log'));
+      await tapAndSettle(tester, find.text('Decisions in force'));
 
       await tapAndSettle(
         tester,
@@ -425,7 +429,7 @@ void main() {
       await pumpAndLoad(tester);
       await tapAndSettle(tester, find.text('Northwind partnership'));
 
-      for (final tab in ['Strategy', 'Decisions', 'Details', 'Plan']) {
+      for (final tab in ['Strategy', 'Log', 'Details', 'Plan']) {
         await tapAndSettle(tester, find.text(tab));
         expect(find.text('Northwind partnership'), findsOneWidget);
       }

@@ -296,15 +296,7 @@ class _LogViewState extends State<LogView> {
   }
 
   List<Area> _areasNaming(Decision decision) {
-    return widget.areas
-        .where(
-          (area) =>
-              area.decisionNumbers.contains(decision.number) ||
-              (decision.links.area != null &&
-                  area.name.toLowerCase() ==
-                      decision.links.area!.toLowerCase()),
-        )
-        .toList();
+    return areasNamingDecision(decision, widget.areas);
   }
 
   // --- What happened -------------------------------------------------
@@ -471,15 +463,23 @@ class _LogViewState extends State<LogView> {
         .where((r) => (r.decision!.supersededBy ?? '').isEmpty)
         .toList();
     final everywhere = current.where((r) => r.decision!.links.scopeAlways);
+    // Grouped by every area that names it — its own `**Links:**` line, or
+    // an area page's own `## Decisions` naming the number back
+    // (`areasNamingDecision`, the same either-direction match the old
+    // flat list's own chips used) — never just one area picked
+    // arbitrarily, since a real decision can be named by more than one
+    // (Round 34's own self-test case).
     final byArea = <String, List<DecisionReadResult>>{};
     final unscoped = <DecisionReadResult>[];
     for (final result in current) {
       if (result.decision!.links.scopeAlways) continue;
-      final area = result.decision!.links.area;
-      if (area == null) {
+      final areas = areasNamingDecision(result.decision, widget.areas);
+      if (areas.isEmpty) {
         unscoped.add(result);
       } else {
-        byArea.putIfAbsent(area, () => []).add(result);
+        for (final area in areas) {
+          byArea.putIfAbsent(area.name, () => []).add(result);
+        }
       }
     }
     final replaced = widget.decisions
@@ -497,7 +497,7 @@ class _LogViewState extends State<LogView> {
           const SizedBox(height: AsaSpace.md),
         ],
         for (final area in byArea.keys) ...[
-          SectionLabel(area),
+          _areaSectionLabel(area),
           const SizedBox(height: AsaSpace.xs),
           for (final r in byArea[area]!) _decisionInForceRow(r),
           const SizedBox(height: AsaSpace.md),
@@ -523,6 +523,22 @@ class _LogViewState extends State<LogView> {
           ],
         ],
       ],
+    );
+  }
+
+  /// Grouped by area already (round-38.md §E's own shape), so there's no
+  /// per-row chip the way the old flat list had one — this area heading
+  /// is the equivalent tap target instead, same `onOpenArea` navigation.
+  Widget _areaSectionLabel(String areaName) {
+    final match = widget.areas
+        .where((a) => a.name.toLowerCase() == areaName.toLowerCase())
+        .firstOrNull;
+    if (match == null || widget.onOpenArea == null) {
+      return SectionLabel(areaName);
+    }
+    return InkWell(
+      onTap: () => widget.onOpenArea!(match),
+      child: SectionLabel(areaName),
     );
   }
 
