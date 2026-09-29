@@ -24,6 +24,11 @@ class RoundApprovals {
 
   RoundApproval? approvalFor(String? roundNumber) =>
       roundNumber == null ? null : _byRound[roundNumber];
+
+  /// Every round number with a real approval row — Round 38 §E's own Log
+  /// needs to enumerate all of them, not just check one at a time the way
+  /// `hasApprovalFor`/`approvalFor` were first built for.
+  Iterable<String> get rounds => _byRound.keys;
 }
 
 /// Reads every real row of `rounds\APPROVED.md`. No file, or a file with
