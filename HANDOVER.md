@@ -789,4 +789,20 @@ writers).
 
 **Commit:** `d524b13`.
 
-**Round 38 is now fully built, §A through §G.** Next: Round 42 (Tasks), per delivery-v1.md's own order.
+**Round 38 is now fully built, §A through §G.**
+
+---
+
+### Delivery v1, item 2 — Round 38: links_test.dart's own L19–L29, then check.ps1 run for real, both real gaps closed
+
+**round-38.md's own done-when line for item 2 names L19-L29 explicitly** ("its tests and links L19–L29 green") — checked directly against `links_test.dart` rather than assumed done alongside the checkpoints above, and found three real, unbuilt pieces of §C/§E despite HANDOVER already marking those checkpoints finished: the Strategy tab's own per-objective "waiting" pill was inert text, not a link (L19); a round's own row always opened the raw project note via `openUrl`, never its own *Your call* screen (L20/L22); the overview's own row marker (*N new*/*changed without a note*) rode the whole row's tap, landing on Plan, not the Log tab it's supposed to open (L25); and the Log tab's own "What happened" area chip (`AreaChip(entry.area!)`) had no `onTap` at all (L27). All four fixed: `round_call_screen.dart` gains a shared `openRoundCall` helper (used by both `LogView` and now `StrategyView`, one place this navigation happens instead of two that could drift); `project_screen.dart`'s three round-call writer closures became shared instance methods for the same reason; the overview's news marker gets its own nested `InkWell` (`openTarget(..., openLog: true)`), same nested-tap pattern the Start-menu icon already used; the Log's area chip resolves the area by name (same lookup `_areaSectionLabel` already used) and wires `onOpenArea`. **L21 and L23 were already built** (Round 38 §B/§A) — checked directly, not assumed, and given their own dedicated tests rather than left to ride on other rows' coverage.
+
+**All eleven new rows (L19–L29) now have real, end-to-end tests in `links_test.dart`**, against a second, purpose-built fixture (`_buildRound38Fixture`) kept separate from the L1–L18 one — adding a waiting round to the existing `northwind` fixture put the global Needs-you card on the overview, which shifted `northwind`'s own text-match counts in nearly every L1–L18 test. L24 ("Yes on the Needs-your-yes card settles the round on Strategy too") is explicitly named as an adaptation of the round's own original "Yes to selected" wording, which cp3b already retired in favour of the one-at-a-time card — the test says so in its own title rather than silently reinterpreting the spec.
+
+**Then `check.ps1` was run for the first time since §A began** — every checkpoint this round used `flutter analyze`/`flutter test` alone, and three of `check.ps1`'s own six steps had quietly drifted as a result: `dart format` (29 files, pure reformatting), `kit\sync-skills.ps1` (`doorman/SKILL.md` had fallen behind, from the concurrent session's own kit work), and both real integration test files. `integration_test\app_test.dart` and `click_through_test.dart` still called the tab "Decisions" (retired by §E's own rename to Log, rule 12), and `click_through_test.dart` additionally predated §B's area tabs and §F's status-hides-a-project entirely — both fixed properly (every "Decisions" reference → "Log", `Kundenakte`/`Legacy app` reached through the overview's own hidden line now that they're `on-hold`, area names asserted twice where §B's own tab strip really does duplicate them, Sales' own tick/untick step corrected for §F's done-tasks fold with a new `waitForFileChange` helper standing in for the "N / 5" text that never existed on the area's own dedicated tab). None of it papers over a real regression — every fix is either an intended behaviour change this round already made that the test hadn't caught up to, or a genuine UI element that moved.
+
+**`check.ps1` is now green end to end** — dart format, `flutter analyze`/`test` (770 unit tests), both integration test files (first and second pass each), skill sync, manual sync. The release exe was rebuilt (`flutter build windows --release`) and confirmed starting outside the IDE, then stopped.
+
+**Commits:** `4ee5016` (the three link gaps), `27cde87` (links_test.dart's L19-L29), `53be98a` (check.ps1 green).
+
+Next: Round 42 (Tasks), per delivery-v1.md's own order.
