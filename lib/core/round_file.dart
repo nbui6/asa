@@ -71,3 +71,31 @@ String? parseRoundFinishLine(String roundFileText) =>
 /// mentions testing first, in file order, is the one asa-brief shows.
 String? parseRoundTest(String roundFileText) =>
     sectionTextContaining(roundFileText, 'test');
+
+final RegExp _h1 = RegExp(r'^#\s+(.+)$', multiLine: true);
+
+/// Round 38 §C — the round's own `# Round N — …` heading, markers
+/// stripped by the caller if needed. Used by the "Your call" screen's own
+/// title and by `round_call_writer.dart`'s `approveRound`, which reuses
+/// it verbatim as `APPROVED.md`'s own "result" column when Asa itself
+/// writes the row — a derived fact, never an invented summary of what
+/// changed. [fallback] when the file has no top-level heading at all.
+String parseRoundTitle(String roundFileText, {required String fallback}) {
+  final match = _h1.firstMatch(roundFileText);
+  if (match == null) return fallback;
+  return match.group(1)!.trim();
+}
+
+/// The first [maxLines] non-empty lines of [text] — "cut to about five
+/// lines," round-38.md §C's own words for the finish line and the test
+/// section on the "Your call" screen — with an honest count of what's
+/// left, never a silent truncation. Null in, null out: nothing to cut is
+/// not the same as an empty section.
+String? cutToLines(String? text, int maxLines) {
+  if (text == null) return null;
+  final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+  if (lines.length <= maxLines) return lines.join('\n');
+  final shown = lines.take(maxLines).join('\n');
+  final more = lines.length - maxLines;
+  return '$shown\n… $more more line${more == 1 ? '' : 's'}, see the round file';
+}
