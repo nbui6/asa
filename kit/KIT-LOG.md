@@ -2347,3 +2347,32 @@ it:** either the script reads both shapes, or it names the files it skipped, or 
 offering two. Any of the three is a kit change. **Recorded, not fixed — and nothing was
 hand-copied out of any project folder to find it.** The rows stay where they are until the vetted
 collector carries them.
+
+
+## 2026-09-29 — the collection cannot run in the session that was scheduled to run it
+
+**Rule 18's collector has still moved nothing since 2026-09-01, and today the reason turned up.**
+`ROADMAP.md` items 9 and 9b have named the silence since 2026-09-22 and 2026-09-23. What neither
+said is why the one thing meant to fix it — a scheduled daily run whose first instruction is
+`powershell -NoProfile -ExecutionPolicy Bypass -File collect-feedback.ps1` — has never carried a
+single line. **That session reaches this machine through a device bridge whose shell is Linux.**
+`which powershell pwsh` returns nothing. The routine's step 1 is a command it structurally cannot
+execute, and the failure is silent: every later step reads *no new lines* and ends politely.
+
+**Fourth appearance of this shape in this log, second with the same cause.** On 2026-09-08 the
+doorman's own *"fires unprompted"* bar was found solved for a local Claude Code session and never
+for a cloud/bridge one. This is the same thing one level down: **a `.ps1` gate is a gate only for a
+session running on Windows**, and both the check (`check-notes.ps1`, item 8) and the collector are
+`.ps1`. The kit keeps writing its enforcement in a language only one of its session types speaks.
+`install-skills.ps1`'s `$coreSkills` gap and `check-notes.ps1` are the other two entries in the row;
+what is new here is that the *remedy* inherited the defect.
+
+**Not fixed, and nothing hand-copied.** A read-only reading of the project tables finds **15 clean
+rows waiting in 7 folders** — Pet, asa, data-retention, learning, license-commerce-integration,
+marketing-system-roadmap, partner-trial-process — and **no row matching either of the collector's
+two patterns**, though that count is this session's own reading, not the script's, and is not
+evidence the way the script's output would be. The rows stay where they are. **Re-implementing the
+machine-path and email checks in another language to get them moved would put an unverified copy of
+the only thing standing between a project folder and a shared repository into the path it guards** —
+the exact trade `check-shareable.ps1`'s own history says not to make. Whoever fixes item 9 decides
+how the collector gets a runner; this entry only says that scheduling it was not it.
