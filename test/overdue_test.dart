@@ -39,7 +39,7 @@ void main() {
     (tester) async {
       await tester.pumpWidget(pumpRow(overdueProject));
 
-      final text = tester.widget<Text>(find.text('Jan 2020'));
+      final text = tester.widget<Text>(find.text('01.20'));
       expect(text.style?.color, AsaMeaning.needsYou.fg);
     },
   );
@@ -58,7 +58,7 @@ void main() {
     );
     await tester.pumpWidget(pumpRow(shipped));
 
-    final text = tester.widget<Text>(find.text('Jan 2020'));
+    final text = tester.widget<Text>(find.text('01.20'));
     expect(text.style?.color, AsaColors.ink3);
   });
 
@@ -76,7 +76,7 @@ void main() {
     );
     await tester.pumpWidget(pumpRow(future));
 
-    final text = tester.widget<Text>(find.text('Jan 2099'));
+    final text = tester.widget<Text>(find.text('01.99'));
     expect(text.style?.color, AsaColors.ink3);
   });
 }

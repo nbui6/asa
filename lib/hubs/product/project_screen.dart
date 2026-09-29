@@ -179,6 +179,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
   // file itself is untouched until Save).
   String? _editingField;
   final _editController = TextEditingController();
+
+  /// Round 38 §G — `deadline` alone edits as *from* and *to* months
+  /// (`asa-tasks-v3` §1); every other field still uses `_editController`
+  /// on its own, and this stays blank for them.
+  final _editControllerTo = TextEditingController();
   String? _editError;
   bool _saving = false;
 
@@ -193,13 +198,21 @@ class _ProjectScreenState extends State<ProjectScreen> {
   @override
   void dispose() {
     _editController.dispose();
+    _editControllerTo.dispose();
     super.dispose();
   }
 
   void _startEdit(String field, String currentValue) {
     setState(() {
       _editingField = field;
-      _editController.text = currentValue;
+      if (field == 'deadline') {
+        final parts = currentValue.split('/');
+        _editController.text = parts.isNotEmpty ? parts[0] : '';
+        _editControllerTo.text = parts.length > 1 ? parts[1] : '';
+      } else {
+        _editController.text = currentValue;
+        _editControllerTo.text = '';
+      }
       _editError = null;
     });
   }
@@ -211,9 +224,23 @@ class _ProjectScreenState extends State<ProjectScreen> {
     });
   }
 
+  /// Round 38 §G — the *from* and *to* months, joined into the one raw
+  /// shape `project_writer.dart` already knows how to write: `YYYY-MM`
+  /// alone when *to* is blank, `YYYY-MM/YYYY-MM` when both are given.
+  String _composedDeadline() {
+    final from = _editController.text.trim();
+    final to = _editControllerTo.text.trim();
+    if (from.isEmpty) return '';
+    return to.isEmpty ? from : '$from/$to';
+  }
+
   Future<void> _saveEdit(String field) async {
     final read = _read;
     if (read == null || !read.isSuccess) return;
+
+    final value = field == 'deadline'
+        ? _composedDeadline()
+        : _editController.text.trim();
 
     setState(() {
       _saving = true;
@@ -224,7 +251,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       await setProjectField(
         read.project!.sourceFile,
         field: field,
-        value: _editController.text.trim(),
+        value: value,
         expectedFrontmatter: read.rawFrontmatter,
         writeLogPath: widget.writeLogPath,
       );
@@ -714,6 +741,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           'Deadline',
           'deadline',
           project.deadline,
+          periodEditor: true,
           valueBuilder: (value) =>
               Text(humanizeDeadline(value) ?? value, style: AsaText.body),
         ),
@@ -764,6 +792,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
     String? rawValue, {
     List<String>? picker,
     Widget Function(String value)? valueBuilder,
+    bool periodEditor = false,
   }) {
     return _EditableField(
       label: label,
@@ -771,6 +800,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
       valueBuilder: valueBuilder,
       editing: _editingField == field,
       controller: _editController,
+      controllerTo: _editControllerTo,
+      periodEditor: periodEditor,
       error: _editingField == field ? _editError : null,
       saving: _saving,
       picker: picker,
@@ -901,12 +932,22 @@ class _EditableField extends StatelessWidget {
     required this.onCancel,
     this.picker,
     this.valueBuilder,
+    this.controllerTo,
+    this.periodEditor = false,
   });
 
   final String label;
   final String? rawValue;
   final bool editing;
   final TextEditingController controller;
+
+  /// Round 38 §G — the *to* month, only used when [periodEditor] is true.
+  final TextEditingController? controllerTo;
+
+  /// Round 38 §G — `deadline` alone: two small `YYYY-MM` boxes, *from*
+  /// ([controller]) and *to* ([controllerTo]), instead of the one free-text
+  /// box every other field uses.
+  final bool periodEditor;
   final String? error;
   final bool saving;
   final VoidCallback onStartEdit;
@@ -1001,6 +1042,38 @@ class _EditableField extends StatelessWidget {
             : (value) {
                 if (value != null) onPickerChanged(value);
               },
+      );
+    }
+
+    if (periodEditor) {
+      return Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              enabled: !saving,
+              autofocus: true,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'YYYY-MM',
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AsaSpace.xs),
+            child: Text('to', style: TextStyle(color: AsaColors.ink3)),
+          ),
+          Expanded(
+            child: TextField(
+              controller: controllerTo,
+              enabled: !saving,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'YYYY-MM (optional)',
+              ),
+            ),
+          ),
+        ],
       );
     }
 

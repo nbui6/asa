@@ -48,13 +48,14 @@ void main() {
   });
 
   group('humanizeDeadline', () {
-    test("the real shape — bare YYYY-MM, e.g. learning's 2027-09", () {
-      expect(humanizeDeadline('2027-09'), 'Sep 2027');
+    test("the real shape — bare YYYY-MM, e.g. learning's 2027-09, as "
+        "round-38.md §G's own MM.YY format", () {
+      expect(humanizeDeadline('2027-09'), '09.27');
     });
 
     test('every month renders, not just the one real example', () {
-      expect(humanizeDeadline('2026-01'), 'Jan 2026');
-      expect(humanizeDeadline('2026-12'), 'Dec 2026');
+      expect(humanizeDeadline('2026-01'), '01.26');
+      expect(humanizeDeadline('2026-12'), '12.26');
     });
 
     test('null or blank returns null — the row shows an em dash for that', () {
@@ -63,9 +64,24 @@ void main() {
       expect(humanizeDeadline('   '), isNull);
     });
 
-    test('a shape that is not bare YYYY-MM is returned verbatim, not '
-        'mangled', () {
+    test('a shape that is not bare YYYY-MM or a period is returned '
+        'verbatim, not mangled', () {
       expect(humanizeDeadline('Q3 2026'), 'Q3 2026');
+    });
+
+    test('round-38.md §G — a period YYYY-MM/YYYY-MM renders as '
+        'MM.YY–MM.YY, an en dash between the two months', () {
+      expect(humanizeDeadline('2026-02/2026-03'), '02.26–03.26');
+    });
+
+    test('a period spanning a year boundary renders both years in full', () {
+      expect(humanizeDeadline('2026-11/2027-02'), '11.26–02.27');
+    });
+
+    test('a period naming a month outside 1-12 on either side is '
+        'returned verbatim, not mangled', () {
+      expect(humanizeDeadline('2026-13/2027-01'), '2026-13/2027-01');
+      expect(humanizeDeadline('2026-01/2027-13'), '2026-01/2027-13');
     });
   });
 
@@ -376,6 +392,17 @@ void main() {
       ]) {
         expect(isPastDeadline('2020-01', status, now), isTrue);
       }
+    });
+
+    test('round-38.md §G — a period is overdue only once its own end '
+        'month has passed, not its start month', () {
+      // Ends 2026-09 — now's own month — not yet overdue.
+      expect(isPastDeadline('2026-07/2026-09', 'building', now), isFalse);
+      // Ends 2026-08 — strictly before now — overdue.
+      expect(isPastDeadline('2026-06/2026-08', 'building', now), isTrue);
+      // Starts before now but ends after — not overdue; the start month
+      // alone never decides it.
+      expect(isPastDeadline('2026-01/2026-10', 'building', now), isFalse);
     });
   });
 

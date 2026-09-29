@@ -26,7 +26,11 @@ class AsaApp extends StatelessWidget {
     ];
 
     return MaterialApp(
-      title: 'Asa',
+      // Round 38 §G (ADR 0038, 0040) — the app's own title, on screen and
+      // as the window title: "Project Management". Asa appears only as a
+      // project (its own real folder in projects\), never as the app's
+      // own name.
+      title: 'Project Management',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F6FEB)),
         useMaterial3: true,

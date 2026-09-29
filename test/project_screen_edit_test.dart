@@ -92,7 +92,30 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), newValue);
+    await tester.enterText(find.byType(TextField).first, newValue);
+    await pumpAndSettleReal(tester, () => tester.tap(find.byIcon(Icons.check)));
+  }
+
+  /// Round 38 §G — Deadline alone edits as two boxes, *from* and *to*;
+  /// every other field uses [editAndSave]'s one box.
+  Future<void> editDeadlineAndSave(
+    WidgetTester tester,
+    String from,
+    String to,
+  ) async {
+    await tester.tap(
+      find.descendant(
+        of: find
+            .ancestor(of: find.text('Deadline'), matching: find.byType(Row))
+            .first,
+        matching: find.byIcon(Icons.edit),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), from);
+    await tester.enterText(fields.at(1), to);
     await pumpAndSettleReal(tester, () => tester.tap(find.byIcon(Icons.check)));
   }
 
@@ -126,8 +149,22 @@ void main() {
 
       await editAndSave(tester, 'Deadline', '2027-01');
 
-      // Round 37 §D6 — humanised ("Jan 2027"), not the raw "2027-01".
-      expect(find.text('Jan 2027'), findsOneWidget);
+      // Round 38 §G — humanised as "MM.YY" ("01.27"), not the raw
+      // "2027-01" and not Round 37's earlier "Jan 2027".
+      expect(find.text('01.27'), findsOneWidget);
+    });
+
+    testWidgets('Deadline: from and to months, saved as one period, shown '
+        'as MM.YY–MM.YY', (tester) async {
+      await pumpScreen(tester);
+
+      await editDeadlineAndSave(tester, '2027-02', '2027-03');
+
+      expect(find.text('02.27–03.27'), findsOneWidget);
+      expect(
+        File(projectFile).readAsStringSync(),
+        contains('deadline: 2027-02/2027-03'),
+      );
     });
 
     testWidgets('Jira: edit, save, the new value shows', (tester) async {

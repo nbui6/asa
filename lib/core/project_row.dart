@@ -33,48 +33,55 @@ String? jiraLabel(String? jiraUrl) {
   return segments.isEmpty ? null : segments.last;
 }
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
+/// A single `YYYY-MM`, or a period `YYYY-MM/YYYY-MM` (round-38.md §G,
+/// ADR 0038/0040) — the "from" group always 1/2, the "to" group (a
+/// period only) 3/4.
+final RegExp _deadlineShape = RegExp(
+  r'^(\d{4})-(\d{2})(?:/(\d{4})-(\d{2}))?$',
+);
 
-/// `2027-09` → `Sep 2027` — every real `deadline:` value today is a bare
-/// `YYYY-MM`, never a range. Null when [deadline] is null or blank; the
-/// row shows an em dash for that, the same honest-absence convention the
-/// flat list already used. A value that does not match that shape is
+/// `MM.YY` — `2027-09` → `09.27`. Round 38 §G's own corrected display:
+/// the earlier "Sep 2027" shape is retired (rule 12).
+String _monthYear(String year, String month) =>
+    '$month.${year.substring(2)}';
+
+/// `2027-09` → `09.27`; `2026-02/2026-03` → `02.26–03.26` (a period,
+/// ADR 0040 — Details edits it as *from* and *to* months). Null when
+/// [deadline] is null or blank; the row shows an em dash for that, the
+/// same honest-absence convention the flat list already used. A value
+/// that does not match either shape, or names a month outside 1-12, is
 /// returned verbatim rather than mangled or hidden.
 String? humanizeDeadline(String? deadline) {
   if (deadline == null || deadline.trim().isEmpty) return null;
   final trimmed = deadline.trim();
 
-  final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(trimmed);
+  final match = _deadlineShape.firstMatch(trimmed);
   if (match == null) return trimmed;
 
-  final monthIndex = int.parse(match.group(2)!);
-  if (monthIndex < 1 || monthIndex > 12) return trimmed;
+  final fromMonth = int.parse(match.group(2)!);
+  if (fromMonth < 1 || fromMonth > 12) return trimmed;
+  final from = _monthYear(match.group(1)!, match.group(2)!);
 
-  return '${_months[monthIndex - 1]} ${match.group(1)}';
+  final toYear = match.group(3);
+  final toMonthText = match.group(4);
+  if (toYear == null || toMonthText == null) return from;
+
+  final toMonth = int.parse(toMonthText);
+  if (toMonth < 1 || toMonth > 12) return trimmed;
+  final to = _monthYear(toYear, toMonthText);
+
+  return '$from–$to';
 }
 
-/// True when [deadline] names a `YYYY-MM` that has fully passed relative
-/// to [now] — the month itself must be over, not merely reached; a
-/// deadline of `now`'s own month is not yet overdue. `now` is a parameter
-/// rather than `DateTime.now()` read inside, same reasoning as every
-/// other derivation in this file: a test passes a fixed date instead of
-/// depending on the clock.
+/// True when [deadline] (a single month or a period) has fully passed
+/// relative to [now] — the period's own **end** month must be over, not
+/// merely reached; a deadline ending in `now`'s own month is not yet
+/// overdue. `now` is a parameter rather than `DateTime.now()` read
+/// inside, same reasoning as every other derivation in this file: a test
+/// passes a fixed date instead of depending on the clock.
 ///
-/// A `deadline` that is null, blank, or does not match the bare `YYYY-MM`
-/// shape [humanizeDeadline] already parses is never overdue — same
+/// A `deadline` that is null, blank, or does not match either shape
+/// [humanizeDeadline] already parses is never overdue — same
 /// honest-absence handling, not a guess at a shape that isn't there.
 ///
 /// Suppressed for `done` and `canceled` (ADR 0041; was `shipped` and
@@ -87,14 +94,17 @@ bool isPastDeadline(String? deadline, String status, DateTime now) {
   if (canonical == 'done' || canonical == 'canceled') return false;
 
   if (deadline == null || deadline.trim().isEmpty) return false;
-  final match = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(deadline.trim());
+  final match = _deadlineShape.firstMatch(deadline.trim());
   if (match == null) return false;
 
-  final month = int.parse(match.group(2)!);
-  if (month < 1 || month > 12) return false;
-  final year = int.parse(match.group(1)!);
+  // A period's own end month decides it; a single month is its own end.
+  final endYearText = match.group(3) ?? match.group(1)!;
+  final endMonthText = match.group(4) ?? match.group(2)!;
+  final endMonth = int.parse(endMonthText);
+  if (endMonth < 1 || endMonth > 12) return false;
+  final endYear = int.parse(endYearText);
 
-  return (year * 12 + month) < (now.year * 12 + now.month);
+  return (endYear * 12 + endMonth) < (now.year * 12 + now.month);
 }
 
 /// The status pill's colour bucket. Real `status:` values checked across

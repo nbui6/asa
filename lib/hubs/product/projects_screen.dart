@@ -229,18 +229,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     }
   }
 
-  /// Round 35/B — the one line a saved folder collapses to, so the folder
-  /// box stops taking the top third of the screen on every launch. The
-  /// whole line opens the field back up; "change" is the visible
-  /// affordance for that, not the only place a tap works.
-  Widget _folderSummaryRow() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () => setState(() => _folderRowExpanded = true),
-        borderRadius: BorderRadius.circular(4),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+  /// Round 38 §G — the folder path line, no longer sitting under the
+  /// title on every launch; a small menu next to ↻ instead. One item,
+  /// the same "Projects: `<path>`  ·  change" line Round 35/B drew inline,
+  /// still the one place that reopens the editable field.
+  Widget _settingsMenu() {
+    return PopupMenuButton<void>(
+      tooltip: 'Settings',
+      icon: const Icon(Icons.settings_outlined),
+      itemBuilder: (context) => [
+        PopupMenuItem<void>(
+          onTap: () => setState(() => _folderRowExpanded = true),
           child: Text.rich(
             TextSpan(
               style: const TextStyle(color: AsaColors.ink2),
@@ -259,7 +258,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             maxLines: 1,
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -502,10 +501,19 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final scan = _scan;
 
     return AsaPage(
-      name: 'Asa',
+      // Round 38 §G (ADR 0038, 0040) — the app's own on-screen name is
+      // "Project Management"; Asa appears only as a project.
+      name: 'Project Management',
       actions: [
         if (scan != null && scan.error == null) ...[
           _viewToggle(),
+          const SizedBox(width: AsaSpace.sm),
+        ],
+        // Round 38 §G — the folder path line moves off the body and into
+        // this menu, ↻'s own neighbour; only once a folder is actually
+        // chosen, same as the summary row it replaces.
+        if (_folderChosen) ...[
+          _settingsMenu(),
           const SizedBox(width: AsaSpace.sm),
         ],
         IconButton(
@@ -517,9 +525,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_folderChosen && !_folderRowExpanded)
-            _folderSummaryRow()
-          else ...[
+          if (!_folderChosen || _folderRowExpanded) ...[
             const Text('Projects folder'),
             const Text(
               'Where Asa reads project state from. Change it here any time '

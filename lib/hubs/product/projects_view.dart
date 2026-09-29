@@ -49,7 +49,6 @@
 library;
 
 import 'package:asa/core/area.dart';
-import 'package:asa/core/freshness.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
@@ -222,11 +221,6 @@ class _ProjectsViewState extends State<ProjectsView> {
       project.status,
       DateTime.now(),
     );
-    final freshness = freshnessText(
-      humanizedDeadline: deadline,
-      lastTouched: node.lastTouched,
-      now: DateTime.now(),
-    );
     final nextStepResult = effectiveNextStepWithArea(
       project.tasks,
       project.nextStep,
@@ -290,25 +284,19 @@ class _ProjectsViewState extends State<ProjectsView> {
                                   ..._newsMarker(widget.news[node.folder]),
                                 ],
                               ),
-                              // `asa-front2` draws the pills directly under
-                              // the name, not with a visible gap between
-                              // them.
+                              // Round 38 §G — priority and the status pill
+                              // leave this inner row: priority stays in
+                              // Details only, and the status pill moves to
+                              // the row's own right end, after the
+                              // deadline. `asa-front2`'s own gap-free pill
+                              // spacing no longer applies here.
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  Pill(project.status, meaning: meaning),
-                                  if (project.priority != null) ...[
-                                    const SizedBox(width: AsaSpace.xs),
-                                    Pill(
-                                      project.priority!,
-                                      meaning: AsaMeaning.quiet,
-                                    ),
-                                  ],
                                   if (parkedCount > 0) ...[
-                                    const SizedBox(width: AsaSpace.xs),
                                     _parkedBadge(parkedCount),
+                                    const SizedBox(width: AsaSpace.sm),
                                   ],
-                                  const SizedBox(width: AsaSpace.sm),
                                   Expanded(
                                     child: InkWell(
                                       // L3 — only tappable when a real task
@@ -350,7 +338,11 @@ class _ProjectsViewState extends State<ProjectsView> {
                           ),
                         ),
                         const SizedBox(width: AsaSpace.sm),
-                        _freshnessLabel(freshness, overdue),
+                        if (deadline != null) ...[
+                          _deadlineLabel(deadline, overdue),
+                          const SizedBox(width: AsaSpace.xs),
+                        ],
+                        Pill(project.status, meaning: meaning),
                         const SizedBox(width: AsaSpace.xs),
                         StartMenu(
                           projectName: project.name,
@@ -472,13 +464,15 @@ class _ProjectsViewState extends State<ProjectsView> {
     );
   }
 
-  /// Round 32/A — the deadline when there is one, in the "needs you"
-  /// meaning once it is overdue (`HANDOVER.md`, 2026-09-13, "an overdue
-  /// signal for `deadline`"), otherwise the age since the project was
-  /// last actually touched.
-  Widget _freshnessLabel(String? freshness, bool overdue) {
+  /// Round 38 §G — the deadline, shown only when `project.deadline` is
+  /// set (the caller checks that); no fallback to a staleness age
+  /// anymore, that signal left the row. In the "needs you" meaning once
+  /// it is overdue (`HANDOVER.md`, 2026-09-13, "an overdue signal for
+  /// `deadline`") — a single month or a period, [isPastDeadline] already
+  /// decides which.
+  Widget _deadlineLabel(String deadline, bool overdue) {
     final text = Text(
-      freshness ?? '—',
+      deadline,
       style: AsaText.meta.copyWith(
         color: overdue ? AsaMeaning.needsYou.fg : AsaColors.ink3,
         fontWeight: overdue ? FontWeight.bold : null,

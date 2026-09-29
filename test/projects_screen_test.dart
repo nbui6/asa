@@ -47,6 +47,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Round 38 §G — the folder path line moved off the body and into a
+  /// small menu next to ↻; open it to reach the "Projects: <path>" item.
+  Future<void> openSettingsMenu(WidgetTester tester) async {
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+  }
+
   group('no dialog available — what ships on this machine', () {
     testWidgets('the button does not promise a dialog it does not have', (
       tester,
@@ -88,8 +95,10 @@ void main() {
 
       expect(find.byType(SnackBar), findsNothing);
       // Round 35/B — once a folder is accepted, the field/button collapse
-      // to the one-line summary rather than staying open relabelled "Load".
+      // rather than staying open relabelled "Load". Round 38 §G — the
+      // path itself now lives in the settings menu, not the body.
       expect(find.text('Load'), findsNothing);
+      await openSettingsMenu(tester);
       expect(find.textContaining('Projects: '), findsOneWidget);
     });
   });
@@ -147,18 +156,19 @@ void main() {
     expect(find.textContaining('That box is empty'), findsOneWidget);
   });
 
-  group('Round 35/B — the folder box collapses once a folder is set', () {
+  group('Round 35/B — the folder box collapses once a folder is set '
+      '(Round 38 §G moved the path itself into the settings menu)', () {
     testWidgets('first run (nothing saved yet) is unchanged — the full box, '
-        'not the one-line summary', (tester) async {
+        'not the one-line summary, and no settings menu yet', (tester) async {
       await pumpScreen(tester, null);
 
       expect(find.text('Projects folder'), findsOneWidget);
       expect(find.byKey(const Key('projectsFolderField')), findsOneWidget);
-      expect(find.textContaining('Projects: '), findsNothing);
+      expect(find.byIcon(Icons.settings_outlined), findsNothing);
     });
 
-    testWidgets('after accepting a folder, the box is one line, not the '
-        'field and button', (tester) async {
+    testWidgets('after accepting a folder, the box is gone, and the path '
+        'sits in the settings menu instead', (tester) async {
       await pumpScreen(tester, null);
       await tester.enterText(find.byType(TextField), tempDir.path);
       await tester.runAsync(() async {
@@ -169,11 +179,12 @@ void main() {
 
       expect(find.text('Projects folder'), findsNothing);
       expect(find.byKey(const Key('projectsFolderField')), findsNothing);
+      await openSettingsMenu(tester);
       expect(find.textContaining('Projects: ${tempDir.path}'), findsOneWidget);
     });
 
-    testWidgets('"change" reopens the field, and loading again collapses '
-        'it back', (tester) async {
+    testWidgets('"change", in the settings menu, reopens the field, and '
+        'loading again collapses it back', (tester) async {
       await pumpScreen(tester, null);
       await tester.enterText(find.byType(TextField), tempDir.path);
       await tester.runAsync(() async {
@@ -182,6 +193,7 @@ void main() {
       });
       await tester.pumpAndSettle();
 
+      await openSettingsMenu(tester);
       await tester.tap(find.textContaining('Projects: '));
       await tester.pumpAndSettle();
 
@@ -195,6 +207,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('projectsFolderField')), findsNothing);
+      await openSettingsMenu(tester);
       expect(find.textContaining('Projects: ${tempDir.path}'), findsOneWidget);
     });
   });

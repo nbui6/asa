@@ -11,7 +11,9 @@ void main() {
   testWidgets('the app builds and shows the Product Hub', (tester) async {
     await tester.pumpWidget(const AsaApp());
 
-    expect(find.text('Asa'), findsOneWidget);
+    // Round 38 §G (ADR 0038, 0040) — the app's own name is now "Project
+    // Management"; Asa appears only as a project.
+    expect(find.text('Project Management'), findsOneWidget);
     expect(find.text('Projects folder'), findsOneWidget);
   });
 }
