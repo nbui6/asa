@@ -1,8 +1,12 @@
 # Architecture — Asa
 
 One page. Updated in the same commit as any change that adds, moves or removes a part.
-Last checked against the folder tree: 2026-09-27 (Round 37, ADR 0029 — every page under
-`lib/hubs/product/` now composes `lib/hubs/product/ui/` exclusively; nothing else changed shape).
+Last checked against the folder tree: 2026-09-29 (Round 42, ADR 0039 — the Tasks view rebuilt
+around a new reader, `lib/core/tasks_board.dart`; the old `lib/core/tasks_reader.dart` and its
+test are deleted, not just superseded, once nothing imported it any more.
+`lib/hubs/product/ui/task_row.dart` grew four optional slots (`leading`, `textChild`, `onTapText`,
+`trailing`) so the rebuilt screen's own drag handle, click-to-edit field, and indent buttons could
+still go through the one shared checkbox rather than building their own).
 
 ---
 
@@ -82,8 +86,10 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change how a project's plan (`PLAN.md` plus `plan\*.md`, ADR 0021) is read, its headings split into sections, or its derived `[[wikilink]]`/ADR/Round links found | `lib/core/plan.dart` |
 | change how any `##`/`###` heading is split into a heading-plus-body pair for a file whose headings are not known by name in advance | `lib/core/markdown.dart`'s `parseSections` |
 | change what the Plan tab shows — a project with any area: the area list, "Not in an area," "What this project is for," and the folded Overview row; a project with a real `PLAN.md`/`plan\` but none (`asa` today): "what changed," the collapsible outline, the Strategy pointer, unchanged since Round 27, now with the Next line above it; a project with **neither** `PLAN.md` nor `plan\` at all (round 36 cp8 — 12 of 13 real projects): the Next line, "What this project is for" if there's a real Strategy, home tasks under "Not in an area" (open by default, the only row), and a quiet "No areas yet" pointer | `lib/hubs/product/plan_view.dart`'s `build`/`_noPlanBody`/`_legacyBody` |
-| change how a project's Tasks group sorts first when reached from its own project screen, or how an area's own tasks group under its project, after the home note's own | `lib/hubs/product/tasks_view.dart`'s `pinnedProjectName` / `AreaTaskGroup` |
-| change how the Tasks view's groups are built from a scan — the parent-chain nesting rule, or which areas get their own group | `lib/core/tasks_reader.dart` |
+| change the Tasks view's own left rail (⭐ Next up · 📥 Inbox · every visible project with its own open count), which project opens on arrival, add-anywhere / edit-in-place / drag-to-reorder-or-move, or the per-project done-task fold | `lib/hubs/product/tasks_view.dart` — Round 42, ADR 0039, replaces the old flat "every project, all its tasks, nested" view |
+| change how one project's own tasks are read for the Tasks view — home note plus every area, even one with zero tasks so far — or how "Next up" picks one task per project | `lib/core/tasks_board.dart`'s `buildProjectTasksSnapshots`/`ProjectTasksSnapshot`, `buildNextUp`/`NextUpItem` |
+| change a task's own subtask indent (exactly one level, derived from the line's own leading whitespace) | `lib/core/task.dart`'s `Task.indent`, computed by `parseTasks` |
+| change how a task is added, its text edited in place, its indent set, reordered within a file, or moved to another file — each one atomic, one write-log entry (ADR 0039) | `lib/core/task_writer.dart`'s `addTaskAtTop` (bottom reuses the existing `captureTask`), `editTaskText`, `setTaskIndent`, `reorderTasks`, `moveTask`/`moveTaskToTop` |
 | change how a project's strategy (`CHARTER.md`'s Origin / Who it's for / Pain points / Objectives) is read | `lib/core/charter.dart` |
 | change how a Round's state (planned / in progress / waiting for approval / completed / no approval needed) is derived, or how `rounds\APPROVED.md` is read | `lib/core/round_state.dart`, `lib/core/round_approvals.dart` |
 | change what the Strategy tab shows — who it's for, pain points, objectives, the segmented bar, the legend | `lib/hubs/product/strategy_view.dart` |

@@ -79,8 +79,7 @@ void main() {
       final summary = _summary(folder: 'projects/demo', name: 'demo');
       final files = FakeFileAccess(
         {
-          'projects/demo/demo.md':
-              '## Tasks\n\n- [ ] Open\n- [x] Done\n',
+          'projects/demo/demo.md': '## Tasks\n\n- [ ] Open\n- [x] Done\n',
           'projects/demo${_sep}plan${_sep}sales.md':
               '# Sales\n\n## Tasks\n- [ ] Sales open\n- [ ] Sales open 2\n',
         },
@@ -89,10 +88,9 @@ void main() {
         },
       );
 
-      final snapshot = (await buildProjectTasksSnapshots(
-        [summary],
-        files,
-      )).single;
+      final snapshot = (await buildProjectTasksSnapshots([
+        summary,
+      ], files)).single;
 
       expect(snapshot.openCount, 3);
     });
@@ -104,10 +102,9 @@ void main() {
         'projects/demo/demo.md': '## Tasks\n\n- [ ] Only task\n',
       });
 
-      final snapshot = (await buildProjectTasksSnapshots(
-        [summary],
-        files,
-      )).single;
+      final snapshot = (await buildProjectTasksSnapshots([
+        summary,
+      ], files)).single;
 
       expect(snapshot.areas, isEmpty);
       expect(snapshot.homeTasks, hasLength(1));
@@ -118,33 +115,33 @@ void main() {
     test(
       'one row per project with a real open task, home task first',
       () async {
-      final withHomeTask = _summary(folder: 'projects/a', name: 'A');
-      final withAreaTask = _summary(folder: 'projects/b', name: 'B');
-      final files = FakeFileAccess(
-        {
-          'projects/a/A.md': '## Tasks\n\n- [ ] A open task\n',
-          'projects/b/B.md': '## Tasks\n\n',
-          'projects/b${_sep}plan${_sep}sales.md':
-              '# Sales\n\n## Tasks\n- [ ] B area task\n',
-        },
-        {
-          'projects/b${_sep}plan': ['sales.md'],
-        },
-      );
+        final withHomeTask = _summary(folder: 'projects/a', name: 'A');
+        final withAreaTask = _summary(folder: 'projects/b', name: 'B');
+        final files = FakeFileAccess(
+          {
+            'projects/a/A.md': '## Tasks\n\n- [ ] A open task\n',
+            'projects/b/B.md': '## Tasks\n\n',
+            'projects/b${_sep}plan${_sep}sales.md':
+                '# Sales\n\n## Tasks\n- [ ] B area task\n',
+          },
+          {
+            'projects/b${_sep}plan': ['sales.md'],
+          },
+        );
 
-      final snapshots = await buildProjectTasksSnapshots(
-        [withHomeTask, withAreaTask],
-        files,
-      );
-      final nextUp = buildNextUp(snapshots);
+        final snapshots = await buildProjectTasksSnapshots([
+          withHomeTask,
+          withAreaTask,
+        ], files);
+        final nextUp = buildNextUp(snapshots);
 
-      expect(nextUp, hasLength(2));
-      expect(nextUp[0].projectName, 'A');
-      expect(nextUp[0].text, 'A open task');
-      expect(nextUp[0].area, isNull);
-      expect(nextUp[1].projectName, 'B');
-      expect(nextUp[1].text, 'B area task');
-      expect(nextUp[1].area?.name, 'Sales');
+        expect(nextUp, hasLength(2));
+        expect(nextUp[0].projectName, 'A');
+        expect(nextUp[0].text, 'A open task');
+        expect(nextUp[0].area, isNull);
+        expect(nextUp[1].projectName, 'B');
+        expect(nextUp[1].text, 'B area task');
+        expect(nextUp[1].area?.name, 'Sales');
       },
     );
 

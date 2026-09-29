@@ -21,6 +21,10 @@ class TaskRow extends StatefulWidget {
     this.onPark,
     this.indent = 0,
     this.highlighted = false,
+    this.leading,
+    this.textChild,
+    this.onTapText,
+    this.trailing,
     super.key,
   });
 
@@ -29,6 +33,26 @@ class TaskRow extends StatefulWidget {
   final ValueChanged<bool?>? onToggle;
   final bool isNext;
   final bool isCodeTask;
+
+  /// Round 42 — an optional widget shown before the checkbox (the Tasks
+  /// view's own drag handle, shown on hover). Reserve the width whether or
+  /// not it's visible right now — pass an `Opacity`-wrapped icon rather
+  /// than swapping the widget itself in and out, so the row doesn't
+  /// jitter.
+  final Widget? leading;
+
+  /// Round 42 — replaces the built-in `Text` entirely when set (the Tasks
+  /// view's own click-to-edit field). The caller owns its own tap
+  /// handling in this case; [onTapText] is ignored.
+  final Widget? textChild;
+
+  /// Round 42 — wraps the built-in `Text` in an `InkWell` when
+  /// [textChild] is null (the Tasks view's own click-to-edit-in-place).
+  final VoidCallback? onTapText;
+
+  /// Round 42 — extra content after the cross-project chip and park icon
+  /// (the Tasks view's own waiting chip and indent/outdent buttons).
+  final Widget? trailing;
 
   /// Round-36 §3, L3/L9 — briefly true right after this task is the one
   /// just navigated to, so it's visible without hunting the row down.
@@ -70,6 +94,10 @@ class _TaskRowState extends State<TaskRow> {
         height: 26,
         child: Row(
           children: [
+            if (widget.leading != null) ...[
+              widget.leading!,
+              const SizedBox(width: AsaSpace.xs),
+            ],
             SizedBox(width: widget.indent),
             SizedBox(
               width: 18,
@@ -89,16 +117,7 @@ class _TaskRowState extends State<TaskRow> {
             const SizedBox(width: AsaSpace.sm),
             // Flexible, not Expanded — item 3: the "next" pill should sit
             // right after the text, not pinned to the row's far edge.
-            Flexible(
-              child: Text(
-                widget.text,
-                overflow: TextOverflow.ellipsis,
-                style: AsaText.body.copyWith(
-                  color: widget.done ? AsaColors.ink3 : AsaColors.ink,
-                  decoration: widget.done ? TextDecoration.lineThrough : null,
-                ),
-              ),
-            ),
+            Flexible(child: widget.textChild ?? _defaultText()),
             if (widget.isNext) ...[
               const SizedBox(width: AsaSpace.xs),
               const Pill('next', meaning: AsaMeaning.needsYou, fontSize: 10),
@@ -130,10 +149,27 @@ class _TaskRowState extends State<TaskRow> {
                 ),
               ),
             ],
+            if (widget.trailing != null) ...[
+              const SizedBox(width: AsaSpace.xs),
+              widget.trailing!,
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _defaultText() {
+    final text = Text(
+      widget.text,
+      overflow: TextOverflow.ellipsis,
+      style: AsaText.body.copyWith(
+        color: widget.done ? AsaColors.ink3 : AsaColors.ink,
+        decoration: widget.done ? TextDecoration.lineThrough : null,
+      ),
+    );
+    if (widget.onTapText == null) return text;
+    return InkWell(onTap: widget.onTapText, child: text);
   }
 }
 

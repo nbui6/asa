@@ -194,32 +194,7 @@ Future<void> addTaskAtTop(
   String? writeLogPath,
 }) async {
   final line = '- [ ] $text';
-  final file = File(path);
-  final content = file.existsSync() ? await file.readAsString() : '';
-  final range = sectionRange(content, 'Tasks');
-
-  final String newContent;
-  if (range == null) {
-    final prefix = content.trimRight();
-    newContent = prefix.isEmpty
-        ? '## Tasks\n\n$line\n'
-        : '$prefix\n\n## Tasks\n\n$line\n';
-  } else {
-    final (start, end) = range;
-    final section = content.substring(start, end);
-    final trimmedStart = section.trimLeft();
-    final leadingBlank = section.substring(
-      0,
-      section.length - trimmedStart.length,
-    );
-    final newSection = trimmedStart.isEmpty
-        ? '\n$line\n'
-        : '$leadingBlank$line\n$trimmedStart';
-    newContent =
-        content.substring(0, start) + newSection + content.substring(end);
-  }
-
-  await _writeAtomically(path, newContent);
+  await _prependTaskLine(path, line);
   await appendWriteLogEntry(
     path: path,
     field: 'task-added',
@@ -451,6 +426,38 @@ Future<void> moveTask({
   required String toPath,
   required String rawLine,
   String? writeLogPath,
+}) => _moveTaskInternal(
+  fromPath: fromPath,
+  toPath: toPath,
+  rawLine: rawLine,
+  insert: _appendTaskLine,
+  writeLogPath: writeLogPath,
+);
+
+/// Same as [moveTask], but the line lands **first** in the destination's
+/// own `## Tasks` section, not last — round-42.md §A: "drop it on a
+/// project [in the left rail]: it goes to the top of that project's
+/// tasks." Dropping onto an area or another project's own task list
+/// instead still uses [moveTask]'s own bottom placement.
+Future<void> moveTaskToTop({
+  required String fromPath,
+  required String toPath,
+  required String rawLine,
+  String? writeLogPath,
+}) => _moveTaskInternal(
+  fromPath: fromPath,
+  toPath: toPath,
+  rawLine: rawLine,
+  insert: _prependTaskLine,
+  writeLogPath: writeLogPath,
+);
+
+Future<void> _moveTaskInternal({
+  required String fromPath,
+  required String toPath,
+  required String rawLine,
+  required Future<void> Function(String path, String line) insert,
+  String? writeLogPath,
 }) async {
   final fromContent = await File(fromPath).readAsString();
   final range = sectionRange(fromContent, 'Tasks');
@@ -474,9 +481,7 @@ Future<void> moveTask({
   if (lineEnd < section.length && section[lineEnd] == '\n') lineEnd += 1;
   final newSection = section.substring(0, index) + section.substring(lineEnd);
   final newFromContent =
-      fromContent.substring(0, start) +
-      newSection +
-      fromContent.substring(end);
+      fromContent.substring(0, start) + newSection + fromContent.substring(end);
 
   final trimmedLine = rawLine.trim();
   final toFile = File(toPath);
@@ -485,7 +490,7 @@ Future<void> moveTask({
       ? await toFile.readAsString()
       : null;
 
-  await _appendTaskLine(toPath, trimmedLine);
+  await insert(toPath, trimmedLine);
 
   try {
     await _writeAtomically(fromPath, newFromContent);
@@ -522,6 +527,38 @@ Future<void> _appendTaskLine(String path, String line) async {
     final (start, end) = range;
     final section = content.substring(start, end).trimRight();
     final newSection = section.isEmpty ? '\n$line\n' : '$section\n$line\n';
+    newContent =
+        content.substring(0, start) + newSection + content.substring(end);
+  }
+
+  await _writeAtomically(path, newContent);
+}
+
+/// Same as [_appendTaskLine], first instead of last — [addTaskAtTop] and
+/// [moveTaskToTop] share this rather than each rebuilding the section
+/// themselves.
+Future<void> _prependTaskLine(String path, String line) async {
+  final file = File(path);
+  final content = file.existsSync() ? await file.readAsString() : '';
+  final range = sectionRange(content, 'Tasks');
+
+  final String newContent;
+  if (range == null) {
+    final prefix = content.trimRight();
+    newContent = prefix.isEmpty
+        ? '## Tasks\n\n$line\n'
+        : '$prefix\n\n## Tasks\n\n$line\n';
+  } else {
+    final (start, end) = range;
+    final section = content.substring(start, end);
+    final trimmedStart = section.trimLeft();
+    final leadingBlank = section.substring(
+      0,
+      section.length - trimmedStart.length,
+    );
+    final newSection = trimmedStart.isEmpty
+        ? '\n$line\n'
+        : '$leadingBlank$line\n$trimmedStart';
     newContent =
         content.substring(0, start) + newSection + content.substring(end);
   }

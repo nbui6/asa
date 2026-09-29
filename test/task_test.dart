@@ -170,8 +170,7 @@ Shape:
       // would otherwise strip a lone first line's own leading spaces too,
       // a fixture artefact rather than a real `## Tasks` shape (a subtask
       // always follows a real parent in practice).
-      const body =
-          '## Tasks\n\n- [ ] Parent\n  - [x] Done subtask (Code)\n';
+      const body = '## Tasks\n\n- [ ] Parent\n  - [x] Done subtask (Code)\n';
       final task = parseTasks(body)[1];
       expect(task.indent, 1);
       expect(task.done, isTrue);

@@ -360,65 +360,59 @@ void main() {
       expect(File(otherPath).readAsStringSync(), destinationBefore);
     });
 
-    test(
-      'Round 42 — a move where the second write fails leaves neither '
-      'file changed: the destination write lands, then the source write '
-      'is refused, and the destination is rolled back to what it held '
-      'before this call',
-      () async {
-        const sourceBefore = '## Tasks\n\n- [ ] Move me\n';
-        const destinationBefore = '## Tasks\n\n- [ ] Already there\n';
-        File(path).writeAsStringSync(sourceBefore);
-        File(otherPath).writeAsStringSync(destinationBefore);
+    test('Round 42 — a move where the second write fails leaves neither '
+        'file changed: the destination write lands, then the source write '
+        'is refused, and the destination is rolled back to what it held '
+        'before this call', () async {
+      const sourceBefore = '## Tasks\n\n- [ ] Move me\n';
+      const destinationBefore = '## Tasks\n\n- [ ] Already there\n';
+      File(path).writeAsStringSync(sourceBefore);
+      File(otherPath).writeAsStringSync(destinationBefore);
 
-        // Force the second write (removing the line from the source) to
-        // fail: Windows refuses to rename a file over a read-only target.
-        final attribResult = Process.runSync('attrib', ['+R', path]);
-        expect(attribResult.exitCode, 0);
-        addTearDown(() => Process.runSync('attrib', ['-R', path]));
+      // Force the second write (removing the line from the source) to
+      // fail: Windows refuses to rename a file over a read-only target.
+      final attribResult = Process.runSync('attrib', ['+R', path]);
+      expect(attribResult.exitCode, 0);
+      addTearDown(() => Process.runSync('attrib', ['-R', path]));
 
-        await expectLater(
-          moveTask(
-            fromPath: path,
-            toPath: otherPath,
-            rawLine: '- [ ] Move me',
-            writeLogPath: logPath,
-          ),
-          throwsA(isA<Exception>()),
-        );
+      await expectLater(
+        moveTask(
+          fromPath: path,
+          toPath: otherPath,
+          rawLine: '- [ ] Move me',
+          writeLogPath: logPath,
+        ),
+        throwsA(isA<Exception>()),
+      );
 
-        expect(File(path).readAsStringSync(), sourceBefore);
-        expect(File(otherPath).readAsStringSync(), destinationBefore);
-        expect(await readWriteLog(logPath: logPath), isEmpty);
-      },
-    );
+      expect(File(path).readAsStringSync(), sourceBefore);
+      expect(File(otherPath).readAsStringSync(), destinationBefore);
+      expect(await readWriteLog(logPath: logPath), isEmpty);
+    });
 
-    test(
-      'a fresh destination file the failed move created gets deleted '
-      'again, not left behind half-written',
-      () async {
-        const sourceBefore = '## Tasks\n\n- [ ] Move me\n';
-        File(path).writeAsStringSync(sourceBefore);
-        expect(File(otherPath).existsSync(), isFalse);
+    test('a fresh destination file the failed move created gets deleted '
+        'again, not left behind half-written', () async {
+      const sourceBefore = '## Tasks\n\n- [ ] Move me\n';
+      File(path).writeAsStringSync(sourceBefore);
+      expect(File(otherPath).existsSync(), isFalse);
 
-        final attribResult = Process.runSync('attrib', ['+R', path]);
-        expect(attribResult.exitCode, 0);
-        addTearDown(() => Process.runSync('attrib', ['-R', path]));
+      final attribResult = Process.runSync('attrib', ['+R', path]);
+      expect(attribResult.exitCode, 0);
+      addTearDown(() => Process.runSync('attrib', ['-R', path]));
 
-        await expectLater(
-          moveTask(
-            fromPath: path,
-            toPath: otherPath,
-            rawLine: '- [ ] Move me',
-            writeLogPath: logPath,
-          ),
-          throwsA(isA<Exception>()),
-        );
+      await expectLater(
+        moveTask(
+          fromPath: path,
+          toPath: otherPath,
+          rawLine: '- [ ] Move me',
+          writeLogPath: logPath,
+        ),
+        throwsA(isA<Exception>()),
+      );
 
-        expect(File(path).readAsStringSync(), sourceBefore);
-        expect(File(otherPath).existsSync(), isFalse);
-      },
-    );
+      expect(File(path).readAsStringSync(), sourceBefore);
+      expect(File(otherPath).existsSync(), isFalse);
+    });
   });
 
   group('addTaskAtTop — Round 42 §B, "＋ Add a task" at the top of the '
@@ -483,8 +477,7 @@ void main() {
 
     test('a done task keeps its own [x], and a trailing (Code) tag '
         'survives untouched', () async {
-      File(path)
-          .writeAsStringSync('## Tasks\n\n- [x] Ship the fix (Code)\n');
+      File(path).writeAsStringSync('## Tasks\n\n- [x] Ship the fix (Code)\n');
 
       await editTaskText(
         path,
@@ -547,8 +540,7 @@ void main() {
     });
 
     test('un-indents a subtask back to top level', () async {
-      File(path)
-          .writeAsStringSync('## Tasks\n\n- [ ] Parent\n  - [ ] Child\n');
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Parent\n  - [ ] Child\n');
 
       await setTaskIndent(
         path,
@@ -626,8 +618,7 @@ void main() {
 
     test('refuses when the file changed on disk since it was read — a '
         'task was added since', () async {
-      const original =
-          '## Tasks\n\n- [ ] First\n- [ ] Second\n- [ ] New one\n';
+      const original = '## Tasks\n\n- [ ] First\n- [ ] Second\n- [ ] New one\n';
       File(path).writeAsStringSync(original);
 
       await expectLater(

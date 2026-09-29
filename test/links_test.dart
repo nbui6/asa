@@ -181,17 +181,19 @@ void main() {
     },
   );
 
-  testWidgets(
-    "L5 — Tasks view, a project's own group name, lands on its Plan tab",
-    (tester) async {
-      await pumpAndLoad(tester);
+  testWidgets("L5 — Tasks view, a project's own name, lands on its Plan tab", (
+    tester,
+  ) async {
+    await pumpAndLoad(tester);
 
-      await tapAndSettle(tester, find.byIcon(Icons.checklist)); // Tasks view
-      await tapAndSettle(tester, find.text('Solo project'));
+    await tapAndSettle(tester, find.byIcon(Icons.checklist)); // Tasks view
+    // Round 42 — one project at a time: selecting it in the rail first
+    // shows its own tasks, only its own main-pane heading navigates.
+    await tapAndSettle(tester, find.text('Solo project'));
+    await tapAndSettle(tester, find.text('Solo project').last);
 
-      expect(find.text('Solo project'), findsOneWidget); // header
-    },
-  );
+    expect(find.text('Solo project'), findsOneWidget); // header
+  });
 
   testWidgets(
     "L6 — Tasks view, an area's own sub-heading, that area already open",
@@ -199,6 +201,7 @@ void main() {
       await pumpAndLoad(tester);
 
       await tapAndSettle(tester, find.byIcon(Icons.checklist));
+      await tapAndSettle(tester, find.text('Northwind partnership'));
       await tapAndSettle(tester, find.text('Sales'));
 
       expect(find.text('Serves Objective 1.'), findsOneWidget);
@@ -210,6 +213,7 @@ void main() {
     await pumpAndLoad(tester);
 
     await tapAndSettle(tester, find.byIcon(Icons.checklist));
+    await tapAndSettle(tester, find.text('Solo project'));
     await tapAndSettle(tester, find.text('↳ northwind'));
 
     expect(find.text('Northwind partnership'), findsOneWidget);
@@ -222,13 +226,14 @@ void main() {
 
       await tapAndSettle(tester, find.byIcon(Icons.checklist)); // Tasks view
       await tapAndSettle(tester, find.text('Solo project'));
+      await tapAndSettle(tester, find.text('Solo project').last);
 
       await tapAndSettle(tester, find.byIcon(Icons.arrow_back));
 
-      // Back on the Tasks view, not the Overview — the group name is
-      // still visible, and so is the Tasks-view-only "Code tasks" filter.
-      expect(find.text('Solo project'), findsOneWidget);
-      expect(find.text('Code tasks'), findsOneWidget);
+      // Back on the Tasks view, not the Overview — Solo project is still
+      // the selected project in the rail, its own tasks still shown.
+      expect(find.text('Solo project'), findsWidgets);
+      expect(find.text('Home task'), findsOneWidget);
     },
   );
 
@@ -475,15 +480,14 @@ void main() {
       expect(find.text('Sales 1/2'), findsNothing);
       expect(find.text('Sales 2/2'), findsOneWidget);
 
-      // Every group starts expanded in the Tasks view — no further tap
-      // needed to see Sales' own sub-group (tapping the group NAME would
-      // navigate away, per L5, not expand it in place).
       await tapAndSettle(tester, find.byIcon(Icons.checklist));
+      await tapAndSettle(tester, find.text('Northwind partnership'));
 
-      // The Tasks view shows no open Sales task either — "Show
-      // completed" is the only way to see it now.
+      // The Tasks view shows no open Sales task either — every task in
+      // the project is done now (Sales' own two, Finance's one), folded
+      // behind one "✓ N done" for the whole project.
       expect(find.text('Agree the shared account list'), findsNothing);
-      expect(find.textContaining('Show completed'), findsWidgets);
+      expect(find.textContaining('✓ 3 done'), findsOneWidget);
     },
   );
 

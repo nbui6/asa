@@ -59,12 +59,10 @@ class Project {
   /// show instead of [milestone] once this is non-empty.
   final List<Milestone> roadmap;
 
-  /// The `## Tasks` section, parsed — same flat list `tasks_reader.dart`
+  /// The `## Tasks` section, parsed — same flat list `tasks_board.dart`
   /// reads per project for the Tasks view, kept here too so a row that
   /// only has a `Project` (the Projects view) can still derive something
-  /// from a project's own tasks, e.g. `project_row.dart`'s `countParked` —
-  /// without needing the whole grouped-by-parent read `buildTaskGroups`
-  /// does.
+  /// from a project's own tasks, e.g. `project_row.dart`'s `countParked`.
   final List<Task> tasks;
 
   /// Every frontmatter key this file does not already name, in the order

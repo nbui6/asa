@@ -79,6 +79,7 @@ class NextUpItem {
   const NextUpItem({
     required this.projectName,
     required this.projectFolder,
+    required this.path,
     required this.text,
     required this.task,
     this.area,
@@ -86,6 +87,11 @@ class NextUpItem {
 
   final String projectName;
   final String projectFolder;
+
+  /// The real file [task] lives in — the project's own home note, or
+  /// [area]'s own file when this next step came from an area instead.
+  /// Ticking this item writes here, never guessed from [projectFolder].
+  final String path;
   final String text;
   final Task task;
   final Area? area;
@@ -104,6 +110,7 @@ List<NextUpItem> buildNextUp(List<ProjectTasksSnapshot> snapshots) {
       NextUpItem(
         projectName: snapshot.project.name,
         projectFolder: snapshot.folder,
+        path: result.area?.sourceFile ?? snapshot.project.sourceFile,
         text: result.text!,
         task: result.task!,
         area: result.area,

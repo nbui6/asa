@@ -212,11 +212,12 @@ Future<List<Area>> readAreas(String projectFolder) async {
 }
 
 /// Same contract as [readAreas], through [FileAccess] instead of raw
-/// `dart:io` — for a caller (`tasks_reader.dart`'s `buildTaskGroups`) that
-/// already takes a [FileAccess] so its own tests can fake the disk rather
-/// than touch it. `/` throughout, not `Platform.pathSeparator` — the same
-/// convention every other `FileAccess`-based reader in this codebase
-/// already uses, real and fake alike.
+/// `dart:io` — for a caller (`tasks_board.dart`'s
+/// `buildProjectTasksSnapshots`) that already takes a [FileAccess] so its
+/// own tests can fake the disk rather than touch it. `/` throughout, not
+/// `Platform.pathSeparator` — the same convention every other
+/// `FileAccess`-based reader in this codebase already uses, real and fake
+/// alike.
 Future<List<Area>> readAreasVia(String projectFolder, FileAccess files) async {
   // `Platform.pathSeparator`, not a literal `/` — found via a real-disk
   // link test (round-36 §3, L6): `readAreas`' own `sourceFile` comes back

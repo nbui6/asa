@@ -109,9 +109,11 @@ class ProjectScreen extends StatefulWidget {
   /// navigate there, with the tasks of this project on top for easy
   /// work."* Null in a test that does not need it. In the real app this
   /// pops back to `ProjectsScreen` and switches it to the Tasks view with
-  /// this project's name — the only host `TasksView` has, traced rather
-  /// than assumed.
-  final void Function(String projectName)? onOpenTasks;
+  /// this project selected. Round 42 rebuilt that screen around one
+  /// project at a time, selected by folder rather than by name (a name
+  /// is not unique enough — two real projects can share one — and the
+  /// new screen's own left rail already keys everything by folder).
+  final void Function(String projectName, String projectFolder)? onOpenTasks;
 
   /// Round-36 §3, L2/L6 — a caller (the overview, the Tasks view) that
   /// wants this one area open the moment this screen's Plan tab first
@@ -375,7 +377,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
       // which it does: it pops back to the front page.
       if (canOpenTasks)
         TextButton.icon(
-          onPressed: () => widget.onOpenTasks!(read.project!.name),
+          onPressed: () =>
+              widget.onOpenTasks!(read.project!.name, widget.folder),
           icon: const Icon(Icons.north_east, size: 14),
           label: const Text('Tasks'),
           style: TextButton.styleFrom(

@@ -9,13 +9,13 @@
 /// one of `ProjectsView`'s rows; see `InboxPanel` and `core/inbox.dart`.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/inbox.dart';
 import 'package:asa/core/log_visit.dart';
-import 'package:asa/core/project.dart';
 import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_tree.dart';
@@ -26,7 +26,7 @@ import 'package:asa/core/settings.dart';
 import 'package:asa/core/status_words.dart' show isHiddenStatus;
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
-import 'package:asa/core/tasks_reader.dart';
+import 'package:asa/core/tasks_board.dart';
 import 'package:asa/hubs/product/inbox_panel.dart';
 import 'package:asa/hubs/product/instruction_for_ai_screen.dart';
 import 'package:asa/hubs/product/project_screen.dart';
@@ -83,7 +83,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   final _rootField = TextEditingController();
 
   ScanResult? _scan;
-  List<TaskGroup>? _taskGroups;
+  List<ProjectTasksSnapshot>? _taskSnapshots;
   List<Task>? _inboxTasks;
   bool _loading = false;
   _ViewMode _viewMode = _ViewMode.projects;
@@ -108,12 +108,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   int _needsYouIndex = 0;
 
-  /// Round 27's navigation fix — set when `ProjectScreen`'s Tasks button
-  /// pops back here, so [TasksView] sorts that project's group first.
-  /// Sticky on purpose: nothing in the spec asks for it to clear itself,
-  /// and a project staying pinned until another one takes its place is
-  /// the least surprising default.
-  String? _pinnedProjectName;
+  /// Round 27's navigation fix, Round 42 §A's own left rail — set when
+  /// `ProjectScreen`'s Tasks button pops back here, so the Tasks screen
+  /// opens straight onto this project's own tasks. Sticky on purpose:
+  /// nothing in the spec asks for it to clear itself, and a project
+  /// staying selected until another one takes its place is the least
+  /// surprising default.
+  String? _pinnedProjectFolder;
 
   /// `HOME.md`, one level above the chosen projects folder — rule 17's
   /// fixed layout (`asa\`, `projects\`, `workshop\`, `HOME.md`, all
@@ -298,9 +299,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final hidden = scan.error == null
         ? scan.projects.where((s) => isHiddenStatus(s.project.status)).toList()
         : const <ProjectSummary>[];
-    final taskGroups = scan.error == null
-        ? await buildTaskGroups(visible, const DiskFileAccess())
-        : const <TaskGroup>[];
+    final taskSnapshots = scan.error == null
+        ? await buildProjectTasksSnapshots(visible, const DiskFileAccess())
+        : const <ProjectTasksSnapshot>[];
     final home = _homePath;
     final inboxTasks = home == null
         ? const <Task>[]
@@ -316,7 +317,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     setState(() {
       _scan = scan;
       _hiddenProjects = hidden;
-      _taskGroups = taskGroups;
+      _taskSnapshots = taskSnapshots;
       _inboxTasks = inboxTasks;
       _news = newsAndWaiting.news;
       _waiting = newsAndWaiting.waiting;
@@ -413,79 +414,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     await _load();
   }
 
-  /// Round 32/B — reloads everything, not just the task groups.
-  /// `ProjectsView`'s row now derives its next step from `Project.tasks`
-  /// (ADR 0020), populated at scan time — same reasoning `_toggleParked`
-  /// already established for the "N parked" count, extended here because
-  /// a checked-off task can now change what a row's next step says.
-  Future<void> _toggleTask(Project project, Task task) async {
-    try {
-      await setTaskDone(
-        project.sourceFile,
-        rawLine: task.rawLine,
-        done: !task.done,
-      );
-    } on Object catch (e) {
-      _say('Could not save: $e');
-      return;
-    }
-    await _load();
-  }
-
-  /// Toggles a task's `(parked)` tag — `PLAN.md` v0.3, "the rule of two".
-  /// Reloads everything, not just the task groups: `ProjectsView`'s own
-  /// "N parked" count reads `Project.tasks`, populated at scan time, so a
-  /// parked toggle has to refresh the scan too, not only the Tasks view.
-  Future<void> _toggleParked(Project project, Task task) async {
-    try {
-      await setTaskParked(
-        project.sourceFile,
-        rawLine: task.rawLine,
-        parked: !task.parked,
-      );
-    } on Object catch (e) {
-      _say('Could not save: $e');
-      return;
-    }
-    await _load();
-  }
-
-  /// Round 34/F — the same narrow amendment to ADR 0021 the Plan tab
-  /// already exercises, from the Tasks view instead: checkbox state only,
-  /// in an area's own `plan\*.md` page, via the same `setTaskDone` every
-  /// other checkbox in this app already goes through.
-  Future<void> _toggleAreaTask(String areaSourceFile, Task task) async {
-    try {
-      await setTaskDone(
-        areaSourceFile,
-        rawLine: task.rawLine,
-        done: !task.done,
-      );
-    } on Object catch (e) {
-      _say('Could not save: $e');
-      return;
-    }
-    await _load();
-  }
-
-  /// Round 32/B — same reasoning as `_toggleTask`: the next step can
-  /// change here too.
-  Future<void> _markAllDone(Project project) async {
-    try {
-      await markAllTasksDone(project.sourceFile);
-    } on Object catch (e) {
-      _say('Could not save: $e');
-      return;
-    }
-    await _load();
-  }
-
   /// Round-36 §3, L1-L7 — the one place every link that lands on a
-  /// project actually navigates, shared by [ProjectsView] and [TasksView]
-  /// so both sets of links (the overview's, the Tasks view's) open the
-  /// same way. [target]'s optional fields carry where inside the project
-  /// to land — an area, "Not in an area", a task to highlight — through
-  /// to [ProjectScreen]'s own `initial*` constructor params.
+  /// project actually navigates, shared by [ProjectsView] and the Tasks
+  /// screen so both sets of links (the overview's, the Tasks view's) open
+  /// the same way. [target]'s optional fields carry where inside the
+  /// project to land — an area, "Not in an area", a task to highlight —
+  /// through to [ProjectScreen]'s own `initial*` constructor params.
   void _openProject(ProjectOpenTarget target) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -495,11 +429,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           initialOpenHome: target.openHome,
           initialHighlightRawLine: target.highlightRawLine,
           initialOpenLog: target.openLog,
-          onOpenTasks: (projectName) {
+          onOpenTasks: (projectName, projectFolder) {
             Navigator.of(context).pop();
             setState(() {
               _viewMode = _ViewMode.tasks;
-              _pinnedProjectName = projectName;
+              _pinnedProjectFolder = projectFolder;
             });
           },
         ),
@@ -509,11 +443,121 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   /// Round-36 §3, L7 — every scanned project's folder, by slug, so a
   /// `[[project]]` chip in the Tasks view can resolve to a real project
-  /// even one with no tasks of its own (and so absent from `_taskGroups`,
-  /// which only ever groups projects that have some).
+  /// even one with no tasks of its own.
   Map<String, String> _folderBySlug(List<ProjectSummary> projects) => {
     for (final summary in projects) slugOf(summary.folder): summary.folder,
   };
+
+  // --- Round 42 — the Tasks screen's own writers ------------------------
+  //
+  // Each one only performs its own write and reports a failure; the
+  // screen itself calls `_load()` (as `onDataChanged`) once the write
+  // resolves, so a capture, a tick and a drag all reload exactly once,
+  // never twice.
+
+  Future<void> _writeTaskDone(
+    String path, {
+    required String rawLine,
+    required bool done,
+  }) async {
+    try {
+      await setTaskDone(path, rawLine: rawLine, done: done);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeAddTaskAtTop(String path, String text) async {
+    try {
+      await addTaskAtTop(path, text);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeAddTaskAtBottom(String path, String text) async {
+    try {
+      await captureTask(path, text);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeEditTaskText(
+    String path, {
+    required String rawLine,
+    required String oldText,
+    required String newText,
+  }) async {
+    try {
+      await editTaskText(
+        path,
+        rawLine: rawLine,
+        oldText: oldText,
+        newText: newText,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeSetTaskIndent(
+    String path, {
+    required String rawLine,
+    required int indent,
+  }) async {
+    try {
+      await setTaskIndent(path, rawLine: rawLine, indent: indent);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeReorderTasks(
+    String path, {
+    required List<String> currentOrder,
+    required List<String> newOrder,
+  }) async {
+    try {
+      await reorderTasks(path, currentOrder: currentOrder, newOrder: newOrder);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeMoveTask({
+    required String fromPath,
+    required String toPath,
+    required String rawLine,
+  }) async {
+    try {
+      await moveTask(fromPath: fromPath, toPath: toPath, rawLine: rawLine);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeMoveTaskToTop({
+    required String fromPath,
+    required String toPath,
+    required String rawLine,
+  }) async {
+    try {
+      await moveTaskToTop(fromPath: fromPath, toPath: toPath, rawLine: rawLine);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeCaptureInbox(String text) async {
+    final home = _homePath;
+    if (home == null) return;
+    try {
+      await captureTask(home, text);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -622,18 +666,27 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 const SizedBox(height: AsaSpace.xl),
                 _skippedTable(scan.skipped),
               ],
-            ] else if (_taskGroups == null)
+            ] else if (_taskSnapshots == null)
               const Center(child: CircularProgressIndicator())
             else
               TasksView(
-                groups: _taskGroups!,
-                onToggleTask: _toggleTask,
-                onMarkAllDone: _markAllDone,
-                onToggleParked: _toggleParked,
-                onToggleAreaTask: _toggleAreaTask,
-                onOpenProject: _openProject,
+                snapshots: _taskSnapshots!,
+                nextUp: buildNextUp(_taskSnapshots!),
+                inboxTasks: _inboxTasks ?? const [],
+                homePath: _homePath,
                 folderBySlug: _folderBySlug(scan.projects),
-                pinnedProjectName: _pinnedProjectName,
+                onOpenProject: _openProject,
+                onToggleTask: _writeTaskDone,
+                onAddTaskAtTop: _writeAddTaskAtTop,
+                onAddTaskAtBottom: _writeAddTaskAtBottom,
+                onEditText: _writeEditTaskText,
+                onSetIndent: _writeSetTaskIndent,
+                onReorder: _writeReorderTasks,
+                onMove: _writeMoveTask,
+                onMoveToTop: _writeMoveTaskToTop,
+                onCaptureInbox: _writeCaptureInbox,
+                onDataChanged: () => unawaited(_load()),
+                initialSelectedFolder: _pinnedProjectFolder,
               ),
           ],
         ],

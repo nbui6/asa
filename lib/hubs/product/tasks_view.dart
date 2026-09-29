@@ -1,538 +1,729 @@
-/// Product Hub — front page, Tasks view.
+/// Product Hub — front page, Tasks view. Round 42 rebuilt this screen
+/// entirely, `asa-tasks-v3.html` §2-§4: one project at a time, a left
+/// rail (⭐ Next up · 📥 Inbox · every visible project with its own open
+/// count), add anywhere, edit in place, drag to reorder or move.
 ///
-/// Spec: `HANDOVER.md`, 2026-09-07 entry, "the front-page Tasks view."
-/// Sketch: `asa-tasks-view.png`/`.html`, seventh and approved pass — the
-/// content and controls that sketch approved (triangle, mark-all, name,
-/// "Show completed (N)", the Code-tasks switch, one expand/collapse menu)
-/// are unchanged; round 37 (`asa-one-look-v1`) only changes the parts
-/// this screen is drawn from, per ADR 0029 — one panel instead of a card
-/// per project, `AsaGroup`/`TaskRow` instead of this file's own copies,
-/// areas before "Not in an area" (was the opposite order).
+/// **Replaces the old flat "every project, all its tasks, nested" view**
+/// (`HANDOVER.md`, 2026-09-07) — 2026-09-28: *"Tasks is hard to use for me
+/// right now. I imagine it a bit like google task, where I easily move
+/// tasks around drag and drop, type new in anywhere."*
 ///
-/// **Deviation from the sketch, deliberate:** the sketch draws a drag grip
-/// on every task row. Reordering (and dragging a subtask out from under
-/// its parent) is explicitly parked in the spec — no real project note has
-/// a real subtask yet, so there is nothing to drag. An inert grip icon
-/// would promise a capability that is not there; this version omits it
-/// rather than build a decoration that misleads.
+/// **One honest adaptation, named rather than silently built different:**
+/// the sketch draws the subtask indent itself as a rightward drag. A
+/// horizontal drag gesture across a vertical list of drop targets has no
+/// reliable, discoverable hit-test on a desktop pointer — this screen
+/// gives indent/outdent their own small ›/‹ buttons, shown on hover next
+/// to the drag handle, instead. Every other drag `asa-tasks-v3` draws
+/// (reorder, move to another section, onto a project, onto Inbox) is a
+/// real `Draggable`/`DragTarget` here, unchanged from the sketch.
 library;
 
 import 'package:asa/core/markdown.dart';
-import 'package:asa/core/project.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/task.dart';
-import 'package:asa/core/tasks_reader.dart';
-import 'package:asa/hubs/product/ui/asa_group.dart';
+import 'package:asa/core/tasks_board.dart';
 import 'package:asa/hubs/product/ui/asa_panel.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/pill.dart';
+import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/task_row.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+/// A task mid-drag, and the file it is dragged **from** — the one thing
+/// every drop target needs to decide "reorder" (same file) from "move"
+/// (a different one).
+class _DraggedTask {
+  const _DraggedTask({required this.path, required this.task});
+  final String path;
+  final Task task;
+}
 
 class TasksView extends StatefulWidget {
   const TasksView({
-    required this.groups,
-    required this.onToggleTask,
-    required this.onMarkAllDone,
-    required this.onToggleParked,
-    required this.onOpenProject,
+    required this.snapshots,
+    required this.nextUp,
+    required this.inboxTasks,
+    required this.homePath,
     required this.folderBySlug,
-    this.onToggleAreaTask,
-    this.pinnedProjectName,
+    required this.onOpenProject,
+    required this.onToggleTask,
+    required this.onAddTaskAtTop,
+    required this.onAddTaskAtBottom,
+    required this.onEditText,
+    required this.onSetIndent,
+    required this.onReorder,
+    required this.onMove,
+    required this.onMoveToTop,
+    required this.onCaptureInbox,
+    required this.onDataChanged,
+    this.initialSelectedFolder,
     super.key,
   });
 
-  final List<TaskGroup> groups;
+  final List<ProjectTasksSnapshot> snapshots;
+  final List<NextUpItem> nextUp;
+  final List<Task> inboxTasks;
 
-  /// Round-36 §3, L5/L6/L7 — a project's group name, an area's own
-  /// sub-heading, and a resolvable `[[project]]` chip all open the named
-  /// project's Plan tab this way, the same shared navigation the overview
-  /// already uses.
-  final void Function(ProjectOpenTarget target) onOpenProject;
+  /// `HOME.md`'s own path — null when no folder is chosen at all, in
+  /// which case the Inbox row is inert (nothing to read or write).
+  final String? homePath;
 
   /// Round-36 §3, L7 — every scanned project's folder, by slug, so a
   /// `[[project]]` chip can resolve to a real project even one with no
-  /// tasks of its own, and so absent from [groups] itself. A slug this
-  /// does not contain leaves the chip inert, same as before this round.
+  /// tasks of its own.
   final Map<String, String> folderBySlug;
 
-  /// Round 27's navigation fix — when set, the top-level group whose
-  /// `project.name` matches sorts first. Nothing else about the grouping
-  /// changes: not the nested `children`, not which tasks are visible.
-  /// Null (the ordinary front-page-toggle path) leaves [groups] exactly
-  /// as given.
-  final String? pinnedProjectName;
+  final void Function(ProjectOpenTarget target) onOpenProject;
 
-  /// Flips one task's checkbox. The screen re-reads the file afterwards
-  /// rather than trusting the flip happened — same discipline as the
-  /// decision detail screen.
-  final Future<void> Function(Project project, Task task) onToggleTask;
+  final Future<void> Function(
+    String path, {
+    required String rawLine,
+    required bool done,
+  })
+  onToggleTask;
+  final Future<void> Function(String path, String text) onAddTaskAtTop;
+  final Future<void> Function(String path, String text) onAddTaskAtBottom;
+  final Future<void> Function(
+    String path, {
+    required String rawLine,
+    required String oldText,
+    required String newText,
+  })
+  onEditText;
+  final Future<void> Function(
+    String path, {
+    required String rawLine,
+    required int indent,
+  })
+  onSetIndent;
+  final Future<void> Function(
+    String path, {
+    required List<String> currentOrder,
+    required List<String> newOrder,
+  })
+  onReorder;
+  final Future<void> Function({
+    required String fromPath,
+    required String toPath,
+    required String rawLine,
+  })
+  onMove;
+  final Future<void> Function({
+    required String fromPath,
+    required String toPath,
+    required String rawLine,
+  })
+  onMoveToTop;
+  final Future<void> Function(String text) onCaptureInbox;
 
-  /// Marks every open task in one project's own `## Tasks` section done.
-  final Future<void> Function(Project project) onMarkAllDone;
+  /// Called after every write here lands — the parent (`ProjectsScreen`)
+  /// re-reads everything fresh, the same discipline the overview and
+  /// every project screen already follow.
+  final VoidCallback onDataChanged;
 
-  /// Toggles one task's `(parked)` tag — `PLAN.md` v0.3, "the rule of
-  /// two". Orthogonal to [onToggleTask]; parking never touches the
-  /// checkbox.
-  final Future<void> Function(Project project, Task task) onToggleParked;
-
-  /// Round 34/E, F — ticks a task inside one of a project's own areas
-  /// (checkbox state only, in that area's `plan\*.md` page). Null keeps
-  /// every area task here read-only.
-  final Future<void> Function(String areaSourceFile, Task task)?
-  onToggleAreaTask;
+  /// Round 27's own navigation fix, carried into Round 42: opened from a
+  /// project's own "Tasks" button, that project is selected on arrival.
+  final String? initialSelectedFolder;
 
   @override
   State<TasksView> createState() => _TasksViewState();
 }
 
-class _TasksViewState extends State<TasksView> {
-  bool _showCode = true;
+enum _AddPosition { top, bottom }
 
-  // Keyed by the project's source file — stable across a data reload, so
-  // checking one task does not reset every group's open/closed state.
-  final Set<String> _collapsed = {};
-  final Set<String> _showCompleted = {};
+class _TasksViewState extends State<TasksView> {
+  static const _nextUpKey = '\u0000next-up';
+  static const _inboxKey = '\u0000inbox';
+
+  late String _selected;
+  bool _railShowAll = false;
+
+  /// Round 42 §A — "done tasks fold into ✓ N done · show › **per
+  /// project**": one toggle for the whole right pane, every section's
+  /// own done tasks together, not one fold per section.
+  final Set<String> _doneShown = {};
+
+  String? _editingKey;
+  final _editController = TextEditingController();
+
+  final Set<String> _openAddFields = {};
+  final Map<String, TextEditingController> _addControllers = {};
+
+  final _inboxCaptureController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.initialSelectedFolder ?? _nextUpKey;
+  }
+
+  @override
+  void didUpdateWidget(TasksView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only react to a genuinely new request — same guard `PlanView`'s own
+    // `didUpdateWidget` uses, so a plain reload never re-fires this.
+    if (widget.initialSelectedFolder != null &&
+        widget.initialSelectedFolder != oldWidget.initialSelectedFolder) {
+      _selected = widget.initialSelectedFolder!;
+    }
+  }
+
+  @override
+  void dispose() {
+    _editController.dispose();
+    _inboxCaptureController.dispose();
+    for (final controller in _addControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  String _editKey(String path, String rawLine) => '$path\u0000$rawLine';
+  String _addKey(String path, _AddPosition position) => '$path\u0000$position';
 
   @override
   Widget build(BuildContext context) {
-    if (widget.groups.isEmpty) {
-      return const EmptyLine(
-        'No open Tasks sections in any project note yet — add a '
-        '## Tasks list of `- [ ]` lines to one and reload.',
-      );
-    }
-
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _controlsRow(),
-        const SizedBox(height: AsaSpace.lg),
-        AsaPanel(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AsaSpace.xs),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final group in _orderedGroups())
-                  _groupTile(group, depth: 0),
-              ],
-            ),
-          ),
-        ),
+        SizedBox(width: 230, child: _rail()),
+        const SizedBox(width: AsaSpace.md),
+        Expanded(child: _main()),
       ],
     );
   }
 
-  /// `widget.groups`, with the pinned project's group moved first — the
-  /// rest keep their existing relative order. No-op when nothing is
-  /// pinned or nothing matches, rather than silently reordering by guess.
-  List<TaskGroup> _orderedGroups() {
-    final pinned = widget.pinnedProjectName;
-    if (pinned == null) return widget.groups;
+  // --- The left rail ------------------------------------------------
 
-    final match = <TaskGroup>[];
-    final rest = <TaskGroup>[];
-    for (final group in widget.groups) {
-      (group.project.name == pinned ? match : rest).add(group);
-    }
-    return [...match, ...rest];
-  }
+  Widget _rail() {
+    final shown = _railShowAll
+        ? widget.snapshots
+        : widget.snapshots.take(10).toList();
+    final more = widget.snapshots.length - shown.length;
 
-  Widget _controlsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Tooltip(
-          message: 'Hides every task marked (Code), everywhere',
-          child: FilterChip(
-            avatar: const Icon(Icons.code, size: 16),
-            label: const Text('Code tasks'),
-            selected: _showCode,
-            onSelected: (value) => setState(() => _showCode = value),
-          ),
-        ),
-        PopupMenuButton<bool>(
-          tooltip: 'Expand or collapse every group',
-          icon: const Icon(Icons.menu),
-          onSelected: (expand) => setState(() {
-            if (expand) {
-              _collapsed.clear();
-            } else {
-              _collapsed
-                ..clear()
-                ..addAll(_allGroupKeys(widget.groups));
-            }
-          }),
-          itemBuilder: (context) => const [
-            PopupMenuItem(value: true, child: Text('Expand all')),
-            PopupMenuItem(value: false, child: Text('Collapse all')),
+    return AsaPanel(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AsaSpace.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _railItem(
+              label: '⭐ Next up',
+              count: widget.nextUp.length,
+              selected: _selected == _nextUpKey,
+              onTap: () => setState(() => _selected = _nextUpKey),
+            ),
+            _railInboxItem(),
+            const Padding(
+              padding: EdgeInsets.only(
+                left: AsaSpace.md,
+                top: AsaSpace.sm,
+                bottom: 2,
+              ),
+              child: SectionLabel('Projects'),
+            ),
+            for (final snapshot in shown) _railProjectItem(snapshot),
+            if (more > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AsaSpace.md,
+                  vertical: AsaSpace.xs,
+                ),
+                child: InkWell(
+                  onTap: () => setState(() => _railShowAll = true),
+                  child: Text('+ $more more', style: AsaText.meta),
+                ),
+              ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Set<String> _allGroupKeys(List<TaskGroup> groups) {
-    final keys = <String>{};
-    void visit(TaskGroup group) {
-      keys.add(_keyOf(group));
-      for (final areaGroup in group.areaGroups) {
-        keys.add(areaGroup.sourceFile);
-      }
-      group.children.forEach(visit);
-    }
-
-    groups.forEach(visit);
-    return keys;
-  }
-
-  String _keyOf(TaskGroup group) => group.project.sourceFile;
-
-  /// A project note's own `sourceFile` (`projects/demo/demo.md`) to its
-  /// containing folder (`projects/demo`) — the one thing every navigation
-  /// target here actually needs, derived rather than threaded down as a
-  /// second field alongside `Project` everywhere it is used.
-  String _folderOf(String sourceFile) {
-    final separator = sourceFile.contains(r'\') ? r'\' : '/';
-    final index = sourceFile.lastIndexOf(separator);
-    return index == -1 ? sourceFile : sourceFile.substring(0, index);
-  }
-
-  Widget _groupTile(TaskGroup group, {required int depth}) {
-    final key = _keyOf(group);
-    final collapsed = _collapsed.contains(key);
-
-    final visibleTasks = _showCode
-        ? group.tasks
-        : group.tasks.where((t) => !t.isCode).toList();
-    final openTasks = visibleTasks.where((t) => !t.done).toList();
-    final totalOpen =
-        group.tasks.where((t) => !t.done).length +
-        group.areaGroups.fold<int>(
-          0,
-          (sum, a) => sum + a.tasks.where((t) => !t.done).length,
-        );
-
-    return AsaGroup(
-      name: group.project.name,
-      openCount: totalOpen,
-      expanded: !collapsed,
-      nested: depth > 0,
-      onToggleExpand: () => setState(() {
-        if (collapsed) {
-          _collapsed.remove(key);
-        } else {
-          _collapsed.add(key);
-        }
-      }),
-      // L5 — the project's own name opens its Plan tab.
-      onNameTap: () =>
-          widget.onOpenProject(openTarget(_folderOf(group.project.sourceFile))),
-      onMarkAllDone: openTasks.isEmpty
-          ? null
-          : () => widget.onMarkAllDone(group.project),
-      children: [
-        // Round 37 §D1 — areas first, "Not in an area" last, same order
-        // as the Plan tab.
-        for (final areaGroup in group.areaGroups)
-          _areaGroupTile(
-            areaGroup,
-            projectFolder: _folderOf(group.project.sourceFile),
-          ),
-        // Round 37 cp6, §D6 item 2 — "Not in an area" only means something
-        // once a project actually has areas to be "not in"; a project
-        // with none shows its own tasks straight under its name instead.
-        if (group.tasks.isNotEmpty)
-          if (group.areaGroups.isNotEmpty)
-            _notInAnAreaTile(
-              group,
-              projectFolder: _folderOf(group.project.sourceFile),
-            )
-          else
-            ..._directTaskRows(group),
-        for (final child in group.children) _groupTile(child, depth: depth + 1),
-      ],
-    );
-  }
-
-  /// Round 34/E — an area's own tasks, indented under its project, same
-  /// collapse/hide-done/"Code tasks" rules as any other group here. No
-  /// "mark all done" and no parking: Round 34 F's amendment to ADR 0021
-  /// covers checkbox state only, in an area's own file — the two writes
-  /// this group deliberately does not offer.
-  Widget _areaGroupTile(
-    AreaTaskGroup areaGroup, {
-    required String projectFolder,
+  Widget _railItem({
+    required String label,
+    required int count,
+    required bool selected,
+    required VoidCallback onTap,
   }) {
-    final key = areaGroup.sourceFile;
-    final collapsed = _collapsed.contains(key);
-
-    final visibleTasks = _showCode
-        ? areaGroup.tasks
-        : areaGroup.tasks.where((t) => !t.isCode).toList();
-    final openTasks = visibleTasks.where((t) => !t.done).toList();
-    final doneTasks = visibleTasks.where((t) => t.done).toList();
-    final hiddenByCodeFilter =
-        visibleTasks.isEmpty && areaGroup.tasks.isNotEmpty;
-    final nextTask = openTasks.isEmpty ? null : openTasks.first;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: AsaSpace.lg, top: AsaSpace.xs),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Round 37 cp6, §D6 item 1 — the triangle used to sit in its own
-          // Row below this one, an empty-looking row on its own before
-          // the tasks; folded into the heading row itself, the same shape
-          // `AsaGroup`'s own header already uses.
-          Row(
-            children: [
-              InkWell(
-                onTap: () => setState(() {
-                  if (collapsed) {
-                    _collapsed.remove(key);
-                  } else {
-                    _collapsed.add(key);
-                  }
-                }),
-                child: Tooltip(
-                  message: collapsed
-                      ? 'Expand this area'
-                      : 'Collapse this area — click again to reopen',
-                  child: Icon(
-                    collapsed ? Icons.chevron_right : Icons.expand_more,
-                    size: 16,
-                    color: AsaColors.ink3,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AsaSpace.xs),
-              InkWell(
-                onTap: () => widget.onOpenProject(
-                  openTarget(
-                    projectFolder,
-                    areaSourceFile: areaGroup.sourceFile,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: AsaColors.violet,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: AsaSpace.xs),
-                    Text(
-                      areaGroup.name,
-                      style: AsaText.rowName.copyWith(color: AsaColors.violet),
-                    ),
-                    const SizedBox(width: AsaSpace.xs),
-                    Text('${openTasks.length} open', style: AsaText.meta),
-                  ],
-                ),
-              ),
-            ],
+    return Container(
+      color: selected ? AsaColors.violetBg : null,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AsaSpace.md,
+            vertical: AsaSpace.sm,
           ),
-          if (!collapsed)
-            if (hiddenByCodeFilter)
-              Padding(
-                padding: const EdgeInsets.only(left: AsaSpace.xl),
-                child: Text(
-                  '${areaGroup.name} · ${areaGroup.tasks.length} tasks '
-                  'hidden, marked code',
-                  style: AsaText.meta,
-                ),
-              )
-            else ...[
-              for (final task in openTasks)
-                _areaTaskRow(areaGroup, task, isNext: task == nextTask),
-              if (doneTasks.isNotEmpty)
-                _showCompletedLink(key, doneTasks.length),
-              if (_showCompleted.contains(key))
-                for (final task in doneTasks)
-                  _areaTaskRow(areaGroup, task, isNext: false),
-            ],
-        ],
-      ),
-    );
-  }
-
-  /// A project's own home-note tasks, shown last (round 37 §D1) under the
-  /// same "Not in an area" heading the Plan tab already uses.
-  Widget _notInAnAreaTile(TaskGroup group, {required String projectFolder}) {
-    final key = '${group.project.sourceFile}#home';
-    final collapsed = _collapsed.contains(key);
-    final visibleTasks = _showCode
-        ? group.tasks
-        : group.tasks.where((t) => !t.isCode).toList();
-    final openTasks = visibleTasks.where((t) => !t.done).toList();
-    final doneTasks = visibleTasks.where((t) => t.done).toList();
-    final hiddenByCodeFilter = visibleTasks.isEmpty && group.tasks.isNotEmpty;
-    final nextTask = openTasks.isEmpty ? null : openTasks.first;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: AsaSpace.lg, top: AsaSpace.xs),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Round 37 cp6, §D6 item 1 — the triangle folded into the
-          // heading row itself, not a separate row below it.
-          Row(
+          child: Row(
             children: [
-              InkWell(
-                onTap: () => setState(() {
-                  if (collapsed) {
-                    _collapsed.remove(key);
-                  } else {
-                    _collapsed.add(key);
-                  }
-                }),
-                child: Tooltip(
-                  message: collapsed
-                      ? 'Expand this group'
-                      : 'Collapse this group — click again to reopen',
-                  child: Icon(
-                    collapsed ? Icons.chevron_right : Icons.expand_more,
-                    size: 16,
-                    color: AsaColors.ink3,
+              Expanded(
+                child: Text(
+                  label,
+                  style: AsaText.body.copyWith(
+                    color: selected ? AsaColors.violet : AsaColors.ink,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ),
-              const SizedBox(width: AsaSpace.xs),
-              InkWell(
-                onTap: () => widget.onOpenProject(
-                  openTarget(projectFolder, openHome: true),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: AsaColors.ink3,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: AsaSpace.xs),
-                    Text(
-                      'Not in an area',
-                      style: AsaText.rowName.copyWith(color: AsaColors.ink2),
-                    ),
-                    const SizedBox(width: AsaSpace.xs),
-                    Text('${openTasks.length} open', style: AsaText.meta),
-                  ],
-                ),
-              ),
+              Text('$count', style: AsaText.meta),
             ],
-          ),
-          if (!collapsed)
-            if (hiddenByCodeFilter)
-              Padding(
-                padding: const EdgeInsets.only(left: AsaSpace.xl),
-                child: Text(
-                  '${group.project.name} · ${group.tasks.length} tasks '
-                  'hidden, marked code',
-                  style: AsaText.meta,
-                ),
-              )
-            else ...[
-              for (final task in openTasks)
-                _taskRow(group.project, task, isNext: task == nextTask),
-              if (doneTasks.isNotEmpty)
-                _showCompletedLink(key, doneTasks.length),
-              if (_showCompleted.contains(key))
-                for (final task in doneTasks)
-                  _taskRow(group.project, task, isNext: false),
-            ],
-        ],
-      ),
-    );
-  }
-
-  /// Round 37 cp6, §D6 item 2 — a project with no areas at all shows its
-  /// own tasks straight under its name, no "Not in an area" heading and
-  /// no collapse state of its own: they show and hide with the project's
-  /// own `AsaGroup` toggle, same as `AsaGroup.children` already does for
-  /// nested projects.
-  List<Widget> _directTaskRows(TaskGroup group) {
-    final key = '${group.project.sourceFile}#home';
-    final visibleTasks = _showCode
-        ? group.tasks
-        : group.tasks.where((t) => !t.isCode).toList();
-    final openTasks = visibleTasks.where((t) => !t.done).toList();
-    final doneTasks = visibleTasks.where((t) => t.done).toList();
-    final hiddenByCodeFilter = visibleTasks.isEmpty && group.tasks.isNotEmpty;
-    final nextTask = openTasks.isEmpty ? null : openTasks.first;
-
-    if (hiddenByCodeFilter) {
-      return [
-        Padding(
-          padding: const EdgeInsets.only(left: AsaSpace.xl, top: AsaSpace.xs),
-          child: Text(
-            '${group.project.name} · ${group.tasks.length} tasks hidden, '
-            'marked code',
-            style: AsaText.meta,
           ),
         ),
-      ];
-    }
+      ),
+    );
+  }
+
+  /// Round 42 §A — "onto Inbox" is one of the sketch's own named drop
+  /// targets (§3): dragging a task here moves it to `HOME.md`'s own
+  /// `## Tasks`, the same file quick capture already writes to.
+  Widget _railInboxItem() {
+    final home = widget.homePath;
+    final content = _railItem(
+      label: '📥 Inbox',
+      count: widget.inboxTasks.length,
+      selected: _selected == _inboxKey,
+      onTap: () => setState(() => _selected = _inboxKey),
+    );
+    if (home == null) return content;
+
+    return DragTarget<_DraggedTask>(
+      onWillAcceptWithDetails: (details) => details.data.path != home,
+      onAcceptWithDetails: (details) =>
+          _moveTask(dragged: details.data, toPath: home, atTop: false),
+      builder: (context, candidates, rejected) => Container(
+        decoration: candidates.isNotEmpty
+            ? BoxDecoration(
+                border: Border.all(color: AsaColors.blue, width: 2),
+                color: AsaColors.blueBg,
+              )
+            : null,
+        child: content,
+      ),
+    );
+  }
+
+  Widget _railProjectItem(ProjectTasksSnapshot snapshot) {
+    final content = _railItem(
+      label: snapshot.project.name,
+      count: snapshot.openCount,
+      selected: _selected == snapshot.folder,
+      onTap: () => setState(() => _selected = snapshot.folder),
+    );
+
+    // Round 42 §A — "drop it on a project: it goes to the top of that
+    // project's tasks (into Not in an area if it has areas)" —
+    // moveTaskToTop always targets the project's own home file, which is
+    // exactly "Not in an area" once the project has any areas at all.
+    return DragTarget<_DraggedTask>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.path != snapshot.project.sourceFile,
+      onAcceptWithDetails: (details) => _moveTask(
+        dragged: details.data,
+        toPath: snapshot.project.sourceFile,
+        atTop: true,
+      ),
+      builder: (context, candidates, rejected) => Container(
+        decoration: candidates.isNotEmpty
+            ? BoxDecoration(
+                border: Border.all(color: AsaColors.blue, width: 2),
+                color: AsaColors.blueBg,
+              )
+            : null,
+        child: content,
+      ),
+    );
+  }
+
+  // --- The right pane -------------------------------------------------
+
+  Widget _main() {
+    if (_selected == _nextUpKey) return _nextUpBody();
+    if (_selected == _inboxKey) return _inboxBody();
+    final snapshot = widget.snapshots
+        .where((s) => s.folder == _selected)
+        .firstOrNull;
+    if (snapshot == null) return _nextUpBody();
+    return _projectBody(snapshot);
+  }
+
+  Widget _nextUpBody() {
+    return AsaPanel(
+      child: Padding(
+        padding: const EdgeInsets.all(AsaSpace.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Next up', style: AsaText.rowName),
+            const SizedBox(height: AsaSpace.sm),
+            if (widget.nextUp.isEmpty)
+              const EmptyLine('Nothing waiting — every project is caught up.')
+            else
+              for (final item in widget.nextUp) _nextUpRow(item),
+            const SizedBox(height: AsaSpace.xs),
+            const Text(
+              "Tick one, and that project's next task takes its place.",
+              style: AsaText.meta,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _nextUpRow(NextUpItem item) {
+    final waiting = waitingOn(item.task, DateTime.now());
+    return TaskRow(
+      text: item.text,
+      done: item.task.done,
+      onToggle: (_) => _toggle(item.path, item.task),
+      trailing: waiting == null ? null : _waitingChip(waiting),
+      textChild: InkWell(
+        onTap: () => widget.onOpenProject(
+          openTarget(
+            item.projectFolder,
+            areaSourceFile: item.area?.sourceFile,
+            openHome: item.area == null,
+            highlightRawLine: item.task.rawLine,
+          ),
+        ),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: item.text, style: AsaText.body),
+              TextSpan(text: '  · ${item.projectName}', style: AsaText.meta),
+            ],
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _inboxBody() {
+    final home = widget.homePath;
+    return AsaPanel(
+      child: Padding(
+        padding: const EdgeInsets.all(AsaSpace.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Inbox', style: AsaText.rowName),
+            const SizedBox(height: AsaSpace.xs),
+            const Text(
+              'Type here when a task has no project yet; drag it onto one '
+              'later.',
+              style: AsaText.meta,
+            ),
+            const SizedBox(height: AsaSpace.sm),
+            if (home != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inboxCaptureController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        hintText: 'Quick capture — type anything',
+                      ),
+                      onSubmitted: (_) => _submitInboxCapture(),
+                    ),
+                  ),
+                  const SizedBox(width: AsaSpace.sm),
+                  IconButton(
+                    onPressed: _submitInboxCapture,
+                    icon: const Icon(Icons.add),
+                    tooltip: 'Add to the inbox',
+                  ),
+                ],
+              ),
+            const SizedBox(height: AsaSpace.sm),
+            if (widget.inboxTasks.isEmpty)
+              const EmptyLine('Inbox empty — nothing unfiled right now.')
+            else
+              for (final task in widget.inboxTasks)
+                if (home != null)
+                  _draggableTaskRow(
+                    path: home,
+                    task: task,
+                    sectionTasks: widget.inboxTasks,
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitInboxCapture() async {
+    final text = _inboxCaptureController.text.trim();
+    if (text.isEmpty) return;
+    _inboxCaptureController.clear();
+    await widget.onCaptureInbox(text);
+    widget.onDataChanged();
+  }
+
+  Widget _projectBody(ProjectTasksSnapshot snapshot) {
+    final expanded = _doneShown.contains(snapshot.folder);
+    final totalDone =
+        snapshot.homeTasks.where((t) => t.done).length +
+        snapshot.areas.fold<int>(
+          0,
+          (sum, area) => sum + area.tasks.where((t) => t.done).length,
+        );
+
+    return SingleChildScrollView(
+      child: AsaPanel(
+        child: Padding(
+          padding: const EdgeInsets.all(AsaSpace.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Round-36 §3, L5 — the project's own name opens its
+                  // Plan tab, same as every other project-name link.
+                  InkWell(
+                    onTap: () =>
+                        widget.onOpenProject(openTarget(snapshot.folder)),
+                    child: Text(snapshot.project.name, style: AsaText.rowName),
+                  ),
+                  const SizedBox(width: AsaSpace.sm),
+                  Pill(
+                    snapshot.project.status,
+                    meaning: meaningForStatus(snapshot.project.status),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AsaSpace.sm),
+              if (snapshot.areas.isEmpty)
+                ..._sectionBody(
+                  path: snapshot.project.sourceFile,
+                  tasks: snapshot.homeTasks,
+                  showDone: expanded,
+                  addPosition: _AddPosition.top,
+                )
+              else ...[
+                const SectionLabel('Not in an area'),
+                const SizedBox(height: 2),
+                ..._sectionBody(
+                  path: snapshot.project.sourceFile,
+                  tasks: snapshot.homeTasks,
+                  showDone: expanded,
+                  addPosition: _AddPosition.top,
+                ),
+                for (final area in snapshot.areas) ...[
+                  const SizedBox(height: AsaSpace.sm),
+                  InkWell(
+                    onTap: () => widget.onOpenProject(
+                      openTarget(
+                        snapshot.folder,
+                        areaSourceFile: area.sourceFile,
+                      ),
+                    ),
+                    child: Text(
+                      area.name,
+                      style: AsaText.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AsaColors.violet,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  ..._sectionBody(
+                    path: area.sourceFile,
+                    tasks: area.tasks,
+                    showDone: expanded,
+                    addPosition: _AddPosition.bottom,
+                  ),
+                ],
+              ],
+              if (totalDone > 0) ...[
+                const SizedBox(height: AsaSpace.xs),
+                InkWell(
+                  onTap: () => setState(() {
+                    if (expanded) {
+                      _doneShown.remove(snapshot.folder);
+                    } else {
+                      _doneShown.add(snapshot.folder);
+                    }
+                  }),
+                  child: Text(
+                    expanded ? 'Hide' : '✓ $totalDone done  show ›',
+                    style: AsaText.meta.copyWith(
+                      color: AsaColors.blue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _sectionBody({
+    required String path,
+    required List<Task> tasks,
+    required bool showDone,
+    required _AddPosition addPosition,
+  }) {
+    final visible = showDone ? tasks : tasks.where((t) => !t.done).toList();
+    final addField = _addField(path: path, position: addPosition);
 
     return [
-      for (final task in openTasks)
-        _taskRow(group.project, task, isNext: task == nextTask),
-      if (doneTasks.isNotEmpty) _showCompletedLink(key, doneTasks.length),
-      if (_showCompleted.contains(key))
-        for (final task in doneTasks)
-          _taskRow(group.project, task, isNext: false),
+      if (addPosition == _AddPosition.top) addField,
+      DragTarget<_DraggedTask>(
+        onWillAcceptWithDetails: (details) => details.data.path != path,
+        onAcceptWithDetails: (details) =>
+            _moveTask(dragged: details.data, toPath: path, atTop: false),
+        builder: (context, candidates, rejected) => Container(
+          decoration: candidates.isNotEmpty
+              ? const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AsaColors.blue, width: 2),
+                  ),
+                )
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final task in visible)
+                _draggableTaskRow(path: path, task: task, sectionTasks: tasks),
+            ],
+          ),
+        ),
+      ),
+      if (addPosition == _AddPosition.bottom) addField,
     ];
   }
 
-  Widget _showCompletedLink(String key, int count) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AsaSpace.xl, top: AsaSpace.xs),
-      child: InkWell(
-        onTap: () => setState(() {
-          if (_showCompleted.contains(key)) {
-            _showCompleted.remove(key);
-          } else {
-            _showCompleted.add(key);
-          }
-        }),
-        child: Text(
-          _showCompleted.contains(key)
-              ? 'Hide completed'
-              : 'Show completed ($count)',
-          style: AsaText.meta,
+  // --- One task row: drag source, drop target, edit-in-place ---------
+
+  Widget _draggableTaskRow({
+    required String path,
+    required Task task,
+    required List<Task> sectionTasks,
+  }) {
+    final row = _taskRow(path: path, task: task);
+
+    return DragTarget<_DraggedTask>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.task.rawLine != task.rawLine ||
+          details.data.path != path,
+      onAcceptWithDetails: (details) => _handleDropOnRow(
+        dragged: details.data,
+        path: path,
+        target: task,
+        sectionTasks: sectionTasks,
+      ),
+      builder: (context, candidates, rejected) => Container(
+        decoration: candidates.isNotEmpty
+            ? const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: AsaColors.blue, width: 2),
+                ),
+              )
+            : null,
+        child: Draggable<_DraggedTask>(
+          data: _DraggedTask(path: path, task: task),
+          feedback: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 320),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AsaSpace.md,
+                vertical: AsaSpace.sm,
+              ),
+              color: AsaColors.panel,
+              child: Text(
+                stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          childWhenDragging: Opacity(opacity: 0.4, child: row),
+          child: row,
         ),
       ),
     );
   }
 
-  Widget _taskRow(Project project, Task task, {required bool isNext}) {
-    return TaskRow(
-      text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
-      done: task.done,
-      isNext: isNext,
-      isCodeTask: task.isCode,
-      indent: AsaSpace.xl,
-      onToggle: (_) => widget.onToggleTask(project, task),
-      crossProjectChip: task.crossProjectRef == null
-          ? null
-          : _crossProjectChip(task),
-      parked: task.parked,
-      onPark: () => widget.onToggleParked(project, task),
+  Widget _taskRow({required String path, required Task task}) {
+    final editKey = _editKey(path, task.rawLine);
+    final editing = _editingKey == editKey;
+    final waiting = waitingOn(task, DateTime.now());
+
+    return _HoverRow(
+      builder: ({required hovering}) => TaskRow(
+        text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
+        done: task.done,
+        indent: task.indent * AsaSpace.lg,
+        onToggle: (_) => _toggle(path, task),
+        leading: Opacity(
+          opacity: hovering ? 1 : 0,
+          child: const Icon(
+            Icons.drag_indicator,
+            size: 14,
+            color: AsaColors.ink3,
+          ),
+        ),
+        textChild: editing ? _editField(path: path, task: task) : null,
+        onTapText: editing ? null : () => _startEdit(path, task),
+        crossProjectChip: task.crossProjectRef != null
+            ? _crossProjectChip(task)
+            : null,
+        trailing: !hovering && waiting == null
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (waiting != null) _waitingChip(waiting),
+                  if (hovering && !editing) ...[
+                    if (waiting != null) const SizedBox(width: AsaSpace.xs),
+                    Tooltip(
+                      message: task.indent == 0
+                          ? 'Indent — make it a subtask'
+                          : 'Un-indent',
+                      child: InkWell(
+                        onTap: () =>
+                            _setIndent(path, task, task.indent == 0 ? 1 : 0),
+                        child: Icon(
+                          task.indent == 0
+                              ? Icons.chevron_right
+                              : Icons.chevron_left,
+                          size: 16,
+                          color: AsaColors.ink3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+      ),
     );
   }
 
-  /// Round-36 §3, L7 — a `[[project]]` reference, tappable when
-  /// [TasksView.folderBySlug] can resolve it to a real project; inert
-  /// otherwise, same as every task here already was before this round.
+  Widget _waitingChip(({String name, int days, String since}) waiting) {
+    final overdue = waiting.days >= 14;
+    return Text(
+      'waiting on ${waiting.name} · ${waiting.days} days',
+      style: AsaText.meta.copyWith(
+        color: overdue ? AsaColors.amber : AsaColors.ink3,
+        fontWeight: overdue ? FontWeight.bold : null,
+      ),
+    );
+  }
+
+  /// Round-36 §3, L7 — a `[[project]]` reference, tappable when it
+  /// resolves to a real project, inert otherwise — same fallback every
+  /// cross-project chip in this app already uses.
   Widget _crossProjectChip(Task task) {
     final folder = widget.folderBySlug[task.crossProjectRef];
     final chip = Text(
@@ -546,26 +737,207 @@ class _TasksViewState extends State<TasksView> {
     );
   }
 
-  /// Round 34/E, F — an area's own task row: the checkbox ticks (when
-  /// [TasksView.onToggleAreaTask] is set), same as any other task here.
-  /// No parking icon — Round 34 F's amendment to ADR 0021 covers checkbox
-  /// state only, and parking is a different write this group does not
-  /// offer for an area's file.
-  Widget _areaTaskRow(
-    AreaTaskGroup areaGroup,
-    Task task, {
-    required bool isNext,
-  }) {
-    final onToggle = widget.onToggleAreaTask;
-    return TaskRow(
-      text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
-      done: task.done,
-      isNext: isNext,
-      isCodeTask: task.isCode,
-      indent: AsaSpace.xl,
-      onToggle: onToggle == null
-          ? null
-          : (_) => onToggle(areaGroup.sourceFile, task),
+  Widget _editField({required String path, required Task task}) {
+    return _SubmitOnEscape(
+      onEscape: _cancelEdit,
+      child: TextField(
+        controller: _editController,
+        autofocus: true,
+        decoration: const InputDecoration(isDense: true, isCollapsed: true),
+        onSubmitted: (_) => _submitEdit(path, task),
+        onTapOutside: (_) => _submitEdit(path, task),
+      ),
+    );
+  }
+
+  void _startEdit(String path, Task task) {
+    setState(() {
+      _editingKey = _editKey(path, task.rawLine);
+      _editController.text = task.text;
+    });
+  }
+
+  void _cancelEdit() => setState(() => _editingKey = null);
+
+  Future<void> _submitEdit(String path, Task task) async {
+    final newText = _editController.text.trim();
+    setState(() => _editingKey = null);
+    if (newText.isEmpty || newText == task.text) return;
+    await widget.onEditText(
+      path,
+      rawLine: task.rawLine,
+      oldText: task.text,
+      newText: newText,
+    );
+    widget.onDataChanged();
+  }
+
+  // --- "＋ Add a task" --------------------------------------------------
+
+  Widget _addField({required String path, required _AddPosition position}) {
+    final key = _addKey(path, position);
+    final open = _openAddFields.contains(key);
+    if (!open) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: InkWell(
+          onTap: () => setState(() {
+            _addControllers[key] = TextEditingController();
+            _openAddFields.add(key);
+          }),
+          child: Text(
+            '＋ Add a task',
+            style: AsaText.body.copyWith(color: AsaColors.blue),
+          ),
+        ),
+      );
+    }
+
+    final controller = _addControllers[key]!;
+    return _SubmitOnEscape(
+      onEscape: () => _closeAddField(key),
+      child: SizedBox(
+        height: 26,
+        child: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(isDense: true, isCollapsed: true),
+          onSubmitted: (_) => _submitAddField(path, position, key, controller),
+        ),
+      ),
+    );
+  }
+
+  void _closeAddField(String key) {
+    setState(() {
+      _addControllers.remove(key)?.dispose();
+      _openAddFields.remove(key);
+    });
+  }
+
+  Future<void> _submitAddField(
+    String path,
+    _AddPosition position,
+    String key,
+    TextEditingController controller,
+  ) async {
+    final text = controller.text.trim();
+    if (text.isEmpty) {
+      _closeAddField(key);
+      return;
+    }
+    controller.clear();
+    if (position == _AddPosition.top) {
+      await widget.onAddTaskAtTop(path, text);
+    } else {
+      await widget.onAddTaskAtBottom(path, text);
+    }
+    widget.onDataChanged();
+    // Round 42 §B — "Enter writes the line and opens the next empty
+    // field": stays open, ready for the next one, rather than closing.
+  }
+
+  // --- Writers, wired to real callbacks --------------------------------
+
+  Future<void> _toggle(String path, Task task) async {
+    await widget.onToggleTask(path, rawLine: task.rawLine, done: !task.done);
+    widget.onDataChanged();
+  }
+
+  Future<void> _setIndent(String path, Task task, int indent) async {
+    await widget.onSetIndent(path, rawLine: task.rawLine, indent: indent);
+    widget.onDataChanged();
+  }
+
+  Future<void> _handleDropOnRow({
+    required _DraggedTask dragged,
+    required String path,
+    required Task target,
+    required List<Task> sectionTasks,
+  }) async {
+    if (dragged.path == path) {
+      final current = [for (final t in sectionTasks) t.rawLine];
+      final fromIndex = current.indexOf(dragged.task.rawLine);
+      final toIndex = current.indexOf(target.rawLine);
+      if (fromIndex == -1 || toIndex == -1 || fromIndex == toIndex) return;
+      final newOrder = [...current]..removeAt(fromIndex);
+      final insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+      newOrder.insert(insertAt, dragged.task.rawLine);
+      await widget.onReorder(path, currentOrder: current, newOrder: newOrder);
+    } else {
+      await widget.onMove(
+        fromPath: dragged.path,
+        toPath: path,
+        rawLine: dragged.task.rawLine,
+      );
+    }
+    widget.onDataChanged();
+  }
+
+  Future<void> _moveTask({
+    required _DraggedTask dragged,
+    required String toPath,
+    required bool atTop,
+  }) async {
+    if (atTop) {
+      await widget.onMoveToTop(
+        fromPath: dragged.path,
+        toPath: toPath,
+        rawLine: dragged.task.rawLine,
+      );
+    } else {
+      await widget.onMove(
+        fromPath: dragged.path,
+        toPath: toPath,
+        rawLine: dragged.task.rawLine,
+      );
+    }
+    widget.onDataChanged();
+  }
+}
+
+/// A small wrapper reporting hover state to its own builder — the drag
+/// handle and the indent/outdent buttons only show once the pointer is
+/// actually over this row, same as `TaskRow`'s own park icon elsewhere.
+class _HoverRow extends StatefulWidget {
+  const _HoverRow({required this.builder});
+  final Widget Function({required bool hovering}) builder;
+
+  @override
+  State<_HoverRow> createState() => _HoverRowState();
+}
+
+class _HoverRowState extends State<_HoverRow> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: widget.builder(hovering: _hovering),
+    );
+  }
+}
+
+/// Escape cancels an inline field — Round 42 §B: "Esc or an empty Enter
+/// closes it" (the add field) / "Esc cancels" (editing a task's text).
+class _SubmitOnEscape extends StatelessWidget {
+  const _SubmitOnEscape({required this.onEscape, required this.child});
+  final VoidCallback onEscape;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyboardListener(
+      focusNode: FocusNode(skipTraversal: true),
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          onEscape();
+        }
+      },
+      child: child,
     );
   }
 }
