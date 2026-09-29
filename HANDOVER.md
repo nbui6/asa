@@ -730,3 +730,39 @@ writers).
 **Commits:** `ab35690` (`project_news.dart`, core layer alone), `72d31b1` (wired into the overview, both markers and the panel).
 
 **Next:** §D (Asa's own Plan/Strategy show work, not documents), then §F (status takes a project out of sight) and §G (the title, the row, deadline periods).
+
+---
+
+### Delivery v1, item 2 — Round 38 §D: Asa's own Plan and Strategy show work, not documents
+
+**§D.1** — an objective's own row already showed only its title, one evidence line and its state while collapsed (Round 35/G's own drawing); the real gap was that a real objective's third line had nowhere to go. Checked Asa's own `CHARTER.md` directly rather than assuming: each objective's own sentence carries a "Served by Round N, Round M..." tail, already parsed into `Objective.sentence` but never shown anywhere, not even expanded. `charter.dart` gains `objectiveWhy` (the text after "Would show:", the same "Served by" boundary `_evidenceIn` already used); `strategy_view.dart` shows it under a "Why" heading, only once the row is opened.
+
+**§D.2** — the developer-facing "Read-only. Tapping anything opens the real file. Nothing here edits PLAN.md." note is gone from both places it appeared (`_legacyBody`, `_overviewRow`'s own expanded state) — ADR 0029's own source line already says where things come from. Found and fixed alongside it: a stale doc-comment naming "asa today" as the example of a no-`plan\`-folder project — Asa gained a real `plan\` folder this same round (§B's cp1), so it no longer takes that path at all. `_legacyBody` itself stays, as the general fallback for any other project still in the old shape.
+
+**§D.3** — "at most three links per row, then +N" was checked directly against the code, not assumed: already built, Round 35/C's own `_maxChipsShown = 3`. Nothing to do — avoided rebuilding something that already existed.
+
+**Tests:** `charter_test.dart` (+2, `objectiveWhy` — the real "Served by" case and the "nothing past evidence" null case); `strategy_view_test.dart` (+1, the Why section appearing only once expanded). 748 total, `flutter analyze` clean.
+
+**Commit:** `f1dc7a6`.
+
+**Next:** §F (status takes a project out of sight) and §G (the title, the row, deadline periods). Building §G next, out of round-38.md's own checkpoint order (§F is listed first, cp3c) — already in progress when this was picked up; §F follows immediately after.
+
+---
+
+### Delivery v1, item 2 — Round 38 cp3d: §G — the title, the row's right end, deadline periods
+
+**The app's own name.** `lib/main.dart`'s `MaterialApp.title` and `projects_screen.dart`'s `AsaPage.name` both changed from `'Asa'` to `'Project Management'` — on screen and as the window title. Asa appears only as a project (its own real folder), never as the app's own name (ADR 0038, 0040).
+
+**Deadline format, a real breaking rewrite, not an addition.** `project_row.dart`'s `humanizeDeadline` used to output `"Sep 2027"`; round-38.md §G's own sketch (`asa-tasks-v3` §1) calls for `"09.27"` — two-digit month, two-digit year — and a period shape `YYYY-MM/YYYY-MM` rendered `"09.27–10.27"` (en dash), neither of which the old single-month-only regex could parse at all. Rewrote both `humanizeDeadline` and `isPastDeadline` around one shared regex covering both shapes; a period is overdue once its own **end** month has passed, never its start month. Every existing test asserting the old "Sep 2027" shape (`project_row_test.dart`, `overdue_test.dart`, `project_screen_edit_test.dart`) updated to the new format, not just patched — plus new tests for period parsing, period display, a year-boundary period, and period-based overdue detection.
+
+**The overview row reordered** (`projects_view.dart`): priority pill and the "last changed" staleness fallback (`freshness.dart`'s `freshnessText`) leave the row entirely — priority stays in Details only, and the row now shows the deadline (or nothing, honest absence) where staleness used to fall back. The status pill moves from the name's own second line to the row's right end, after the deadline, before the Start rocket. Left to right: name · *N new* marker (§E) · next step · deadline (amber once overdue) · status pill · 🚀.
+
+**Details' own Deadline field edits as two boxes, from and to months** (`project_screen.dart`), not one raw text box — `_EditableField` gains a `periodEditor` mode (two `TextField`s side by side, a "to" label between them) and a second controller, `_editControllerTo`. Composed into the one raw shape `project_writer.dart` already knows how to write (`YYYY-MM` alone when *to* is blank, `YYYY-MM/YYYY-MM` otherwise) — `project_writer.dart` and `asa-check` needed no change at all, since neither validates the deadline's own shape.
+
+**The folder path line moves into a small settings menu, ↻'s own neighbour** (`projects_screen.dart`) — the old inline one-line "Projects: `<path>` · change" summary under the title is gone from the body; a `PopupMenuButton` (gear icon) next to Reload holds the same line as its one item, still the way to reopen the editable field. `projects_screen_test.dart`'s three affected tests updated to open the menu first, not just patched to find text that moved.
+
+**Tests:** `project_row_test.dart` (+7: period parsing, period display, a year-boundary period, a malformed period returned verbatim, period-based overdue); `overdue_test.dart` (3, format only, same cases); `project_screen_edit_test.dart` (+1, the from/to period editor, written and read back from disk); `projects_screen_test.dart` (3 updated for the settings menu); `widget_test.dart` (the new title). 753 total, `flutter analyze` clean.
+
+**Commit:** `a0e7e08`.
+
+**Next:** §F (status takes a project out of sight, ADR 0036) — the last piece of Round 38.
