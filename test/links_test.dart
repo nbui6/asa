@@ -122,9 +122,10 @@ void main() {
       await tapAndSettle(tester, find.text('Northwind partnership'));
 
       expect(find.text('Northwind partnership'), findsOneWidget); // header
-      // Two: the area row's own heading, and the Next line's own area
-      // chip — Sales also holds the project's effective next step.
-      expect(find.text('Sales'), findsNWidgets(2));
+      // Three: the header's own Next-line area chip, the area tab strip's
+      // own label (Round 38 §B), and "All"'s own summary-row heading —
+      // Sales also holds the project's effective next step.
+      expect(find.text('Sales'), findsNWidgets(3));
     },
   );
 
@@ -448,8 +449,13 @@ void main() {
       // own checkbox is the second one on the whole screen.
       await tapAndSettle(tester, find.byType(Checkbox).last);
 
-      // The Next line and the area row both now read "all done".
+      // The Next line already reads "all done".
       expect(find.text('No next step'), findsOneWidget);
+
+      // Round 38 §B — Sales' own tab shows its full page now, not the
+      // "All" summary row; switch back to "All" to see that row's own
+      // count changed too, the same one source of truth.
+      await tapAndSettle(tester, find.text('All'));
       expect(find.text('nothing open — all done'), findsWidgets);
 
       await tapAndSettle(tester, find.byIcon(Icons.arrow_back));

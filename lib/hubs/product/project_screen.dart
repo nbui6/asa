@@ -33,6 +33,7 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/area.dart';
+import 'package:asa/core/area_writer.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decisions_reader.dart';
@@ -133,15 +134,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
   List<Area> _areas = const [];
 
   /// Round 34/D — an area chip on a decision row sets this, then switches
-  /// to the Plan tab; `PlanView` opens that one area on the next build.
-  /// Sticky, same reasoning as `_pinnedProjectName`: nothing asks it to
-  /// clear itself.
-  String? _areaToOpen;
+  /// to the Plan tab. Round 38 §B — this is now the area *tab* strip's own
+  /// selection ("the selected area is remembered per project while the
+  /// app runs"), owned here rather than inside `PlanView` because that
+  /// widget is torn down and rebuilt on every switch away from and back
+  /// to the Plan tab. `null` means "All".
+  String? _selectedAreaTab;
 
   /// Round-36 §3, L12 — an area's Objective chip on the Plan tab sets
   /// this, then switches to the Strategy tab; `StrategyView` opens that
   /// one objective on the next build. Sticky, same reasoning as
-  /// `_areaToOpen`.
+  /// `_selectedAreaTab`.
   String? _objectiveToOpen;
   Strategy? _strategy;
   RoundApprovals _approvals = const RoundApprovals({});
@@ -154,7 +157,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// it still has to land on the right area (or "Not in an area") and
   /// highlight the right task, the same as before the hoist — these two
   /// carry that into a freshly built `PlanView` exactly like
-  /// `_areaToOpen` already does for the decision-row-area-chip case.
+  /// `_selectedAreaTab` already does for the decision-row-area-chip case.
   bool _openHomeNow = false;
   String? _highlightRawLine;
 
@@ -170,7 +173,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   @override
   void initState() {
     super.initState();
-    _areaToOpen = widget.initialAreaToOpen;
+    _selectedAreaTab = widget.initialAreaToOpen;
     _load();
   }
 
@@ -517,8 +520,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _activeTab = _Tab.plan;
       if (area == null) {
         _openHomeNow = true;
+        // Round 38 §B — "Not in an area" only lives inside "All"; a home
+        // task's own Next line must not leave some other area's tab
+        // selected, or that row would be invisible.
+        _selectedAreaTab = null;
       } else {
-        _areaToOpen = area.sourceFile;
+        _selectedAreaTab = area.sourceFile;
       }
       _highlightRawLine = task?.rawLine;
     });
@@ -571,7 +578,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
           onOpenArea: _openArea,
           onDataChanged: _load,
           onToggleTask: _toggleAreaOrHomeTask,
-          areaToOpen: _areaToOpen,
+          selectedAreaTab: _selectedAreaTab,
+          onSelectAreaTab: (sourceFile) =>
+              setState(() => _selectedAreaTab = sourceFile),
+          onCreateArea: (name) => createArea(
+            widget.folder,
+            name,
+            writeLogPath: widget.writeLogPath,
+          ),
           openHomeOnStart: widget.initialOpenHome || _openHomeNow,
           highlightTaskRawLine:
               _highlightRawLine ?? widget.initialHighlightRawLine,
@@ -706,7 +720,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// screen's tree lands the same way: Plan tab, that area open.
   void _openArea(Area area) => setState(() {
     _activeTab = _Tab.plan;
-    _areaToOpen = area.sourceFile;
+    _selectedAreaTab = area.sourceFile;
   });
 
   /// A short canonical word, not the raw parsed status text (which can

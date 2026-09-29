@@ -89,8 +89,10 @@ void main() {
       await tester.tap(find.text('Plan'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sales'), findsOneWidget);
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — one "Sales" in the area tab strip, one in "All"'s
+      // own summary row; either one selects the same area.
+      expect(find.text('Sales'), findsNWidgets(2));
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
 
       expect(find.text('Agree the shared account list'), findsOneWidget);

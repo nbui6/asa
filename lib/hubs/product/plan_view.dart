@@ -23,6 +23,7 @@ library;
 import 'dart:async';
 
 import 'package:asa/core/area.dart';
+import 'package:asa/core/area_writer.dart' show AreaCreateResult;
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/markdown.dart';
@@ -52,7 +53,9 @@ class PlanView extends StatefulWidget {
     this.onOpenArea,
     this.onToggleTask,
     this.onDataChanged,
-    this.areaToOpen,
+    this.selectedAreaTab,
+    this.onSelectAreaTab,
+    this.onCreateArea,
     this.openHomeOnStart = false,
     this.highlightTaskRawLine,
     super.key,
@@ -113,15 +116,28 @@ class PlanView extends StatefulWidget {
   /// that never records a verdict from here.
   final VoidCallback? onDataChanged;
 
-  /// Round 34/D, L13/L17 — an area's own `sourceFile`, set by a caller
-  /// (an ADR chip elsewhere) that wants this one area open the next time
-  /// this tab is shown. Read once, on the change that sets it — see
-  /// `_PlanViewState.didUpdateWidget`.
-  final String? areaToOpen;
+  /// Round 38 §B — a strip of area tabs replaces the old expand-in-place
+  /// row: `null` means "All"; an area's own [Area.sourceFile] otherwise.
+  /// Owned by `ProjectScreen`, not this widget — "the selected area is
+  /// remembered per project while the app runs," which only holds if it
+  /// survives this widget being torn down and rebuilt on every switch
+  /// away from and back to the Plan tab (see round-38.md §B).
+  final String? selectedAreaTab;
+
+  /// Tapping an area row in "All", or an area chip anywhere else in this
+  /// screen's tree (Round 34/D, L13/L17). Null in a test that does not
+  /// need it.
+  final void Function(String? sourceFile)? onSelectAreaTab;
+
+  /// Round 38 §B's own `+ Add area` — writes a brand new, empty area page
+  /// and reports what happened; this widget shows the dialog and the
+  /// refusal, never writes a file itself (`area_writer.dart` does, ADR
+  /// 0021/0026's narrow amendment). Null keeps `+ Add area` out of a test
+  /// that does not need it.
+  final Future<AreaCreateResult> Function(String name)? onCreateArea;
 
   /// Round-36 §3, L3 — a caller that wants "Not in an area" open the next
-  /// time this tab is shown, the same way [areaToOpen] opens one area.
-  /// False in a test that does not need it.
+  /// time this tab is shown. False in a test that does not need it.
   final bool openHomeOnStart;
 
   /// Round-36 §3, L3/L9 — the exact [Task.rawLine] to briefly highlight
@@ -143,11 +159,6 @@ class _PlanViewState extends State<PlanView> {
   // every group is collapsed by default without having to know every
   // group's id in advance.
   final Set<int> _expanded = {};
-
-  /// Areas keyed by [Area.sourceFile], not `identityHashCode` — see
-  /// `_areaRow`'s own comment: ticking a task reloads the project and
-  /// re-parses a brand new `Area`, and identity would not survive that.
-  final Set<String> _expandedAreas = {};
   bool _olderChangesShown = false;
   bool _moreGroupsShown = false;
   bool _overviewExpanded = false;
@@ -171,8 +182,6 @@ class _PlanViewState extends State<PlanView> {
   @override
   void initState() {
     super.initState();
-    final target = widget.areaToOpen;
-    if (target != null) _expandedAreas.add(target);
     // Round 36 cp8, §9 point 1 — a project with no plan pages at all shows
     // "Not in an area" as its only row; open by default, same reasoning
     // openHomeOnStart already uses for a caller that asked for it.
@@ -185,13 +194,6 @@ class _PlanViewState extends State<PlanView> {
   @override
   void didUpdateWidget(PlanView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Only react to a genuinely new request — the same sourceFile arriving
-    // again (e.g. a reload after a tick) must not reopen a row the person
-    // already collapsed by hand.
-    final target = widget.areaToOpen;
-    if (target != null && target != oldWidget.areaToOpen) {
-      _expandedAreas.add(target);
-    }
     // Round 38 §A — the header's own Next line can now point at a home
     // task (no area) while this PlanView is already mounted (the tab was
     // already Plan, so it never remounts); without this,
@@ -222,15 +224,116 @@ class _PlanViewState extends State<PlanView> {
       // real projects have neither `PLAN.md` nor `plan\`, and used to land
       // on the Decisions tab entirely (this widget never even built) —
       // contradicting §2 a's own "every project opens on Plan." A project
-      // with a real `PLAN.md` (asa, today) keeps its own legacy screen
-      // unchanged, just with the Next line above it; a project with
-      // neither gets the Next line, "what this project is for" if there's
-      // a real Strategy, its home tasks under "Not in an area" (the only
-      // row, so open by default — see initState), and one quiet pointer
-      // to how it would grow areas at all.
-      if (widget.plan.isEmpty) return _noPlanBody();
-      return _legacyBody();
+      // with a real `PLAN.md` keeps its own legacy screen unchanged, just
+      // with the Next line above it; a project with neither gets the Next
+      // line, "what this project is for" if there's a real Strategy, its
+      // home tasks under "Not in an area" (the only row, so open by
+      // default — see initState), and one quiet pointer to how it would
+      // grow areas at all. Round 38 §B — either way, "a project without
+      // areas shows only All … and + Add area": both bodies gain that one
+      // entry point, nothing else about them changes.
+      final body = widget.plan.isEmpty ? _noPlanBody() : _legacyBody();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.onCreateArea != null) ...[
+            _addAreaEntry(),
+            const SizedBox(height: AsaSpace.sm),
+          ],
+          body,
+        ],
+      );
     }
+
+    // Round 38 §B — a strip of area tabs replaces the old expand-in-place
+    // row: All · one per area · + Add area.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _areaTabStrip(),
+        const SizedBox(height: AsaSpace.sm),
+        const Divider(height: 1, color: AsaColors.soft),
+        const SizedBox(height: AsaSpace.sm),
+        _areaTabBody(),
+      ],
+    );
+  }
+
+  /// `null` (or a `sourceFile` no longer among [Area]s — the file was
+  /// renamed or removed by hand, ADR 0021 point 4's own boundary, never
+  /// this app) both mean "All".
+  Area? _selectedArea() {
+    final selected = widget.selectedAreaTab;
+    if (selected == null) return null;
+    for (final area in widget.areas) {
+      if (area.sourceFile == selected) return area;
+    }
+    return null;
+  }
+
+  Widget _areaTabStrip() {
+    final selected = _selectedArea();
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AsaSpace.lg,
+      runSpacing: AsaSpace.xs,
+      children: [
+        _areaTabLabel(
+          'All',
+          selected: selected == null,
+          onTap: () => widget.onSelectAreaTab?.call(null),
+        ),
+        for (final area in widget.areas)
+          _areaTabLabel(
+            area.name,
+            selected: selected?.sourceFile == area.sourceFile,
+            onTap: () => widget.onSelectAreaTab?.call(area.sourceFile),
+          ),
+        if (widget.onCreateArea != null)
+          _areaTabLabel(
+            '+ Add area',
+            selected: false,
+            onTap: _showAddAreaDialog,
+          ),
+      ],
+    );
+  }
+
+  /// A smaller, secondary strip — the four main tabs (Strategy/Plan/
+  /// Decisions/Details) already own `AsaText.rowName`'s weight and the
+  /// underline; this one reads as a sub-navigation, `AsaText.meta`-sized,
+  /// a light fill instead of an underline when selected.
+  Widget _areaTabLabel(
+    String label, {
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsaSpace.sm,
+          vertical: 2,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? AsaColors.ground : null,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          style: AsaText.meta.copyWith(
+            color: selected ? AsaColors.ink : AsaColors.ink2,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _areaTabBody() {
+    final selected = _selectedArea();
+    if (selected != null) return _areaDetail(selected);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,12 +342,88 @@ class _PlanViewState extends State<PlanView> {
           _whatThisProjectIsFor(widget.strategy!),
           const SizedBox(height: AsaSpace.xs),
         ],
-        for (final area in widget.areas) _areaRow(area),
+        for (final area in widget.areas) _areaSummaryRow(area),
         _notInAnAreaRow(),
         const SizedBox(height: AsaSpace.lg),
         _overviewRow(),
       ],
     );
+  }
+
+  Widget _addAreaEntry() => LinkChip('+ Add area', onTap: _showAddAreaDialog);
+
+  Future<void> _showAddAreaDialog() async {
+    final controller = TextEditingController();
+    String? error;
+
+    final created = await showDialog<AreaCreateResult>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add area'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: const InputDecoration(hintText: 'Name'),
+                    onSubmitted: (_) async {
+                      final result = await widget.onCreateArea!(
+                        controller.text,
+                      );
+                      if (result.isSuccess) {
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop(result);
+                        }
+                      } else {
+                        setDialogState(() => error = result.error);
+                      }
+                    },
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: AsaSpace.xs),
+                    Text(
+                      error!,
+                      style: AsaText.meta.copyWith(
+                        color: AsaMeaning.needsYou.fg,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final result = await widget.onCreateArea!(controller.text);
+                    if (result.isSuccess) {
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop(result);
+                      }
+                    } else {
+                      setDialogState(() => error = result.error);
+                    }
+                  },
+                  child: const Text('Create'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (created != null && created.isSuccess) {
+      widget.onSelectAreaTab?.call(created.sourceFile);
+      widget.onDataChanged?.call();
+    }
   }
 
   /// Round 27's own screen, unchanged — a project with no `plan\` folder
@@ -341,86 +520,60 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  // --- One area's row ---------------------------------------------------
+  // --- One area's row, in "All" ------------------------------------------
 
-  Widget _areaRow(Area area) {
-    // Keyed by sourceFile, not identityHashCode — ticking a task inside
-    // an area reloads the whole project, which re-parses a brand new
-    // Area object from disk. identityHashCode would change on every
-    // reload and silently collapse the row that was just ticked open;
-    // the file path is the one thing that stays the same.
-    final expanded = _expandedAreas.contains(area.sourceFile);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AsaColors.soft)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () => setState(() {
-              if (expanded) {
-                _expandedAreas.remove(area.sourceFile);
-              } else {
-                _expandedAreas.add(area.sourceFile);
-              }
-            }),
-            // One row, per both approved sketches (asa-plan-v5,
-            // asa-project-page-v1) — round-35/G's own persona-check
-            // worry (density) is about a row's *height*, not about
-            // spreading one row's own fields across several lines.
-            child: Row(
-              children: [
-                Icon(
-                  expanded ? Icons.expand_more : Icons.chevron_right,
-                  size: 16,
-                  color: AsaColors.ink3,
+  /// Round 38 §B — "All is the list … one row per area … a row opens its
+  /// area's tab": a plain summary row, no expand/collapse of its own any
+  /// more (that whole page is now the area's own tab, [_areaDetail]).
+  Widget _areaSummaryRow(Area area) {
+    return InkWell(
+      onTap: () => widget.onSelectAreaTab?.call(area.sourceFile),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AsaColors.soft)),
+        ),
+        // One row, per both approved sketches (asa-plan-v5,
+        // asa-project-page-v1) — round-35/G's own persona-check worry
+        // (density) is about a row's *height*, not about spreading one
+        // row's own fields across several lines.
+        child: Row(
+          children: [
+            Text(area.name, style: AsaText.rowName),
+            const SizedBox(width: AsaSpace.sm),
+            Expanded(
+              child: Text(
+                _areaNextTaskLabel(area),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: AsaText.meta.copyWith(
+                  color: _areaHasOpenTask(area)
+                      ? AsaColors.ink2
+                      : AsaColors.ink3,
+                  fontStyle: _areaHasOpenTask(area)
+                      ? FontStyle.normal
+                      : FontStyle.italic,
                 ),
-                const SizedBox(width: AsaSpace.xs),
-                Text(area.name, style: AsaText.rowName),
-                const SizedBox(width: AsaSpace.sm),
-                Expanded(
-                  child: Text(
-                    _areaNextTaskLabel(area),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: AsaText.meta.copyWith(
-                      color: _areaHasOpenTask(area)
-                          ? AsaColors.ink2
-                          : AsaColors.ink3,
-                      fontStyle: _areaHasOpenTask(area)
-                          ? FontStyle.normal
-                          : FontStyle.italic,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AsaSpace.sm),
-                Text(_resultLabel(area), style: AsaText.meta),
-                const SizedBox(width: AsaSpace.sm),
-                SizedBox(
-                  width: 90,
-                  child: ProgressBar(segments: [_areaFraction(area)]),
-                ),
-                const SizedBox(width: AsaSpace.sm),
-                SizedBox(
-                  width: 32,
-                  child: Text(
-                    '${area.doneCount} / ${area.totalCount}',
-                    textAlign: TextAlign.right,
-                    style: AsaText.meta,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          if (expanded)
-            Padding(
-              padding: const EdgeInsets.only(left: 22, top: AsaSpace.sm),
-              child: _areaDetail(area),
+            const SizedBox(width: AsaSpace.sm),
+            Text(_resultLabel(area), style: AsaText.meta),
+            const SizedBox(width: AsaSpace.sm),
+            SizedBox(
+              width: 90,
+              child: ProgressBar(segments: [_areaFraction(area)]),
             ),
-        ],
+            const SizedBox(width: AsaSpace.sm),
+            SizedBox(
+              width: 32,
+              child: Text(
+                '${area.doneCount} / ${area.totalCount}',
+                textAlign: TextAlign.right,
+                style: AsaText.meta,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -451,7 +604,33 @@ class _PlanViewState extends State<PlanView> {
   bool _areaHasOpenTask(Area area) =>
       area.tasks.any((t) => !t.done && !t.parked);
 
+  /// Round 38 §B — a brand new area (nothing in any of its five parts)
+  /// shows one honest line instead of five separate "No X yet"s: *"Empty
+  /// so far. To fill it: Start → Copy opener, and tell the AI what this
+  /// area is for."* Not only for the moment right after creation — any
+  /// area this empty gets the same message, since it is a fact about the
+  /// file, not a one-time flag this widget would have to remember.
+  bool _isAreaEmpty(Area area) =>
+      (area.goal == null || area.goal!.isEmpty) &&
+      (area.planText == null || area.planText!.isEmpty) &&
+      area.tasks.isEmpty &&
+      area.results.isEmpty &&
+      area.decisionNumbers.isEmpty;
+
   Widget _areaDetail(Area area) {
+    if (_isAreaEmpty(area)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const EmptyLine(
+            'Empty so far. To fill it: Start → Copy opener, and tell the '
+            'AI what this area is for.',
+          ),
+          const SizedBox(height: AsaSpace.xs),
+          LinkChip('open the page ↗', onTap: () => openUrl(area.sourceFile)),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

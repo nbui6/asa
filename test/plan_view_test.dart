@@ -282,6 +282,11 @@ void main() {
       );
     }
 
+    // Round 38 §B — `selectedAreaTab` is now a controlled prop, owned by
+    // whoever hosts `PlanView` (`ProjectScreen`, for real); this harness
+    // plays that same role for a test, so tapping an area row in "All"
+    // (or "All" itself) actually switches what's shown, same as before
+    // the prop moved out of this widget's own state.
     Future<void> pumpAreas(
       WidgetTester tester, {
       required List<Area> areas,
@@ -290,28 +295,37 @@ void main() {
       VoidCallback? onOpenStrategy,
       Future<void> Function(String, Task)? onToggleTask,
     }) async {
+      String? selected;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PlanView(
-              plan: const Plan(pages: []),
-              areas: areas,
-              decisions: const [],
-              homeTasks: homeTasks,
-              strategy: strategy,
-              onOpenStrategy: onOpenStrategy,
-              onToggleTask: onToggleTask,
-              projectSourceFile: 'demo.md',
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return PlanView(
+                  plan: const Plan(pages: []),
+                  areas: areas,
+                  decisions: const [],
+                  homeTasks: homeTasks,
+                  strategy: strategy,
+                  onOpenStrategy: onOpenStrategy,
+                  onToggleTask: onToggleTask,
+                  projectSourceFile: 'demo.md',
+                  selectedAreaTab: selected,
+                  onSelectAreaTab: (sourceFile) =>
+                      setState(() => selected = sourceFile),
+                );
+              },
             ),
           ),
         ),
       );
     }
 
-    testWidgets('an area row is collapsed by default: name, next task, '
-        'done/total and a result label, no Goal/Plan/Tasks text yet', (
-      tester,
-    ) async {
+    testWidgets(
+      '"All" shows a plain summary row: name, next task, done/total and a '
+      'result label, no Goal/Plan/Tasks text yet (Round 38 §B — that '
+      "whole page is now the area's own tab, not shown inline)",
+      (tester) async {
       await pumpAreas(
         tester,
         areas: [
@@ -327,7 +341,8 @@ void main() {
         ],
       );
 
-      expect(find.text('Sales'), findsOneWidget);
+      // One "Sales" in the area tab strip, one in "All"'s own summary row.
+      expect(find.text('Sales'), findsNWidgets(2));
       expect(find.text('next b'), findsOneWidget);
       expect(find.text('1 / 2'), findsOneWidget);
       expect(find.text('no result yet'), findsOneWidget);
@@ -352,7 +367,10 @@ void main() {
         ],
       );
 
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — "Sales" now names both the area's own tab-strip
+      // label and its "All" summary row; either one selects the same
+      // area, so `.first` is unambiguous here.
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
 
       expect(find.text('Serves Objective 1.'), findsOneWidget);
@@ -377,14 +395,28 @@ void main() {
     ) async {
       await pumpAreas(
         tester,
-        areas: [area(summary: null, goal: null, planText: null)],
+        // Not fully empty (one task) — this is the "some parts missing"
+        // case; a fully empty area gets Round 38 §B's own single "Empty
+        // so far" message instead (see the dedicated test for that).
+        areas: [
+          area(
+            summary: null,
+            goal: null,
+            planText: null,
+            tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
+          ),
+        ],
       );
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — "Sales" now names both the area's own tab-strip
+      // label and its "All" summary row; either one selects the same
+      // area, so `.first` is unambiguous here.
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
 
       expect(find.text('No goal yet'), findsOneWidget);
       expect(find.text('No plan yet'), findsOneWidget);
-      expect(find.text('Nothing yet'), findsWidgets); // Tasks and Results
+      expect(find.text('a'), findsOneWidget); // the one real task
+      expect(find.text('Nothing yet'), findsOneWidget); // Results only
       expect(find.text('None yet'), findsOneWidget); // Decisions
     });
 
@@ -407,7 +439,10 @@ void main() {
           calledTask = t;
         },
       );
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — "Sales" now names both the area's own tab-strip
+      // label and its "All" summary row; either one selects the same
+      // area, so `.first` is unambiguous here.
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
@@ -556,24 +591,32 @@ void main() {
     testWidgets('the Goal sentence\'s own "Objective N" mention is the '
         'link, tap switches to Strategy with that objective', (tester) async {
       String? opened;
+      String? selected;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PlanView(
-              plan: const Plan(pages: []),
-              areas: [
-                area(objectiveNumbers: const ['1']),
-              ],
-              decisions: const [],
-              homeTasks: const [],
-              projectSourceFile: 'demo.md',
-              onOpenObjective: (n) => opened = n,
+            body: StatefulBuilder(
+              builder: (context, setState) => PlanView(
+                plan: const Plan(pages: []),
+                areas: [
+                  area(objectiveNumbers: const ['1']),
+                ],
+                decisions: const [],
+                homeTasks: const [],
+                projectSourceFile: 'demo.md',
+                onOpenObjective: (n) => opened = n,
+                selectedAreaTab: selected,
+                onSelectAreaTab: (s) => setState(() => selected = s),
+              ),
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — "Sales" now names both the area's own tab-strip
+      // label and its "All" summary row; either one selects the same
+      // area, so `.first` is unambiguous here.
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
 
       expect(find.text('Serves Objective 1.'), findsOneWidget);
@@ -584,22 +627,30 @@ void main() {
     testWidgets('no objective named at all leaves "Objective 1" as plain text, '
         'not a link', (tester) async {
       String? opened;
+      String? selected;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PlanView(
-              plan: const Plan(pages: []),
-              areas: [area()],
-              decisions: const [],
-              homeTasks: const [],
-              projectSourceFile: 'demo.md',
-              onOpenObjective: (n) => opened = n,
+            body: StatefulBuilder(
+              builder: (context, setState) => PlanView(
+                plan: const Plan(pages: []),
+                areas: [area()],
+                decisions: const [],
+                homeTasks: const [],
+                projectSourceFile: 'demo.md',
+                onOpenObjective: (n) => opened = n,
+                selectedAreaTab: selected,
+                onSelectAreaTab: (s) => setState(() => selected = s),
+              ),
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — "Sales" now names both the area's own tab-strip
+      // label and its "All" summary row; either one selects the same
+      // area, so `.first` is unambiguous here.
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
 
       expect(find.text('Serves Objective 1.'), findsOneWidget);
@@ -631,28 +682,36 @@ void main() {
 
     testWidgets('a loaded decision opens the real in-app detail screen, '
         'not the raw file', (tester) async {
+      String? selected;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PlanView(
-              plan: const Plan(pages: []),
-              areas: [
-                area(const ['0003']),
-              ],
-              decisions: const [
-                DecisionReadResult(
-                  sourceFile: 'decisions/0003.md',
-                  decision: decision,
-                ),
-              ],
-              homeTasks: const [],
-              projectSourceFile: 'demo.md',
+            body: StatefulBuilder(
+              builder: (context, setState) => PlanView(
+                plan: const Plan(pages: []),
+                areas: [
+                  area(const ['0003']),
+                ],
+                decisions: const [
+                  DecisionReadResult(
+                    sourceFile: 'decisions/0003.md',
+                    decision: decision,
+                  ),
+                ],
+                homeTasks: const [],
+                projectSourceFile: 'demo.md',
+                selectedAreaTab: selected,
+                onSelectAreaTab: (s) => setState(() => selected = s),
+              ),
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('Sales'));
+      // Round 38 §B — "Sales" now names both the area's own tab-strip
+      // label and its "All" summary row; either one selects the same
+      // area, so `.first` is unambiguous here.
+      await tester.tap(find.text('Sales').first);
       await tester.pump();
       // Round 37 §D3 — both show both: the chip itself names the loaded
       // decision's own title, not just "ADR 0003".
