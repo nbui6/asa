@@ -766,3 +766,27 @@ writers).
 **Commit:** `a0e7e08`.
 
 **Next:** §F (status takes a project out of sight, ADR 0036) — the last piece of Round 38.
+
+---
+
+### Delivery v1, item 2 — Round 38 cp3c: §F — the status takes a project out of sight (ADR 0036, sketch `asa-status-v2`) — Round 38 closed
+
+**The shared check already existed, unused.** `status_words.dart`'s own `isHiddenStatus` (on-hold/done/canceled) was written for this ADR and never wired in until now; `check.dart`'s own duplicate `_inactiveStatuses` set is retired in favour of it — one source of truth instead of two that could drift.
+
+**The overview, the Tasks view, Needs you and the N-new markers all filter from one place.** `ProjectsScreen._load()` splits every scan into visible/hidden once; the visible list feeds the main forest, `buildTaskGroups` and the news pass. `folderBySlug` stays unfiltered on purpose — a `[[project]]` chip in the Tasks view must still resolve a hidden project, since opening one directly is still normal.
+
+**`ProjectsView` gets a `hidden` list** — folded by default into one quiet line, "On hold N · Done N · Canceled N · show ›" (only the statuses actually present named); opened, one group per status, newest first by `updated:`, each row opening the whole project. No "bring back" button, per the ADR's own wording — changing the status field back is the only way.
+
+**The Checks tab and `asa-brief --all` both needed their own fix, not just the overview's.** `instruction_for_ai_screen.dart`'s Checks loop now skips a hidden project before calling `checkProject` on it — found by checking directly rather than assuming: `checkProject` itself already quieted some findings for these statuses (an earlier round), but the aggregate tab still listed whatever it didn't quiet. `brief.dart`'s `briefAll` collapses on-hold/done/canceled into one `## Out of sight` line instead of a full section each, matching the ADR's own line.
+
+**The same rule inside a project — done tasks and results fold too** (`plan_view.dart`): done tasks fold into "✓ N done · show ›", both the "Not in an area" home-task list and every area's own Tasks section, through one shared `_taskListBody` rather than two copies that could go out of sync; results show only the newest two, then "N older ›" (already newest-first from `area.dart`'s own parsing, so this was a straight `.take(2)`).
+
+**A real regression, caught by the existing suite rather than assumed safe:** `plan_area_ticking_test.dart` failed after the first pass at this — tapping the same checkbox position twice (tick, then untick) ended up ticking two different tasks, because folding done tasks to the bottom **reordered** the visible list the instant the first tap landed. Fixed two ways, together: folding never reorders now (tasks stay in file order in both states — collapsed just omits the done ones, expanded shows all of them where they already were), and ticking or unticking a task auto-reveals its own list's fold so a task never vanishes out from under the very tap that changed it.
+
+**The Status field's "leaves the list" hint needed no new code** — `StatusWord.means` already carried it for these three words, from an earlier round; a test now says so explicitly rather than leaving it unverified.
+
+**Tests:** `brief_test.dart` (+1, a real hidden/visible three-project mix); `instruction_for_ai_screen_test.dart` (+1, a real finding-worthy on-hold project excluded from the aggregate Checks); `plan_view_test.dart` (+2, done-tasks fold and results fold, both tested through tapping the fold link open); `projects_view_test.dart` (+4, the hidden line: none/folded/one-status-only/expanded-and-grouped-and-opens); `project_screen_edit_test.dart` (+1 assertion). 761 total, `flutter analyze` clean.
+
+**Commit:** `d524b13`.
+
+**Round 38 is now fully built, §A through §G.** Next: Round 42 (Tasks), per delivery-v1.md's own order.
