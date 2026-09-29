@@ -447,6 +447,32 @@ void main() {
       expect(find.text('changed without a note'), findsNothing);
       expect(find.textContaining(' new'), findsNothing);
     });
+
+    testWidgets(
+      'L25 — clicking the marker opens the project on its Log, not just '
+      'the row default',
+      (tester) async {
+        ProjectOpenTarget? opened;
+        final node = ProjectNode(
+          project: _project(status: 'in-progress'),
+          folder: 'demo',
+        );
+
+        await _pump(
+          tester,
+          [node],
+          onOpenProject: (target) => opened = target,
+          news: const {
+            'demo': ProjectNews(newCount: 3, hasUnloggedChange: false),
+          },
+        );
+
+        await tester.tap(find.text('3 new'));
+
+        expect(opened?.folder, 'demo');
+        expect(opened?.openLog, isTrue);
+      },
+    );
   });
 
   group('Round 38 §F, ADR 0036 — the hidden line', () {

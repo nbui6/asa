@@ -427,7 +427,10 @@ class _ProjectsViewState extends State<ProjectsView> {
                                       onTap: () => openUrl(project.jira!),
                                     ),
                                   ],
-                                  ..._newsMarker(widget.news[node.folder]),
+                                  ..._newsMarker(
+                                    widget.news[node.folder],
+                                    node.folder,
+                                  ),
                                 ],
                               ),
                               // Round 38 §G — priority and the status pill
@@ -533,41 +536,55 @@ class _ProjectsViewState extends State<ProjectsView> {
   /// opened that project's Log: a blue N new marker, or amber changed
   /// without a note if any change has no log line." The amber signal
   /// wins when both apply — it names a real gap, not just activity.
-  List<Widget> _newsMarker(ProjectNews? news) {
+  List<Widget> _newsMarker(ProjectNews? news, String folder) {
     if (news == null || !news.hasAnything) return const [];
+    // Round 38 §E, L25 — "Clicking it opens the project on its Log." Its
+    // own `InkWell`, nested inside the row's — the more specific gesture
+    // wins the tap, the same pattern the Start-menu icon already relies
+    // on at the other end of this same row.
+    void onTap() =>
+        widget.onOpenProject(openTarget(folder, openLog: true));
     if (news.hasUnloggedChange) {
       return [
         const SizedBox(width: AsaSpace.sm),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AsaSpace.xs,
-            vertical: 1,
-          ),
-          decoration: BoxDecoration(
-            color: AsaColors.amberBg,
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: Text(
-            'changed without a note',
-            style: AsaText.meta.copyWith(color: AsaColors.amber),
+        InkWell(
+          borderRadius: BorderRadius.circular(100),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AsaSpace.xs,
+              vertical: 1,
+            ),
+            decoration: BoxDecoration(
+              color: AsaColors.amberBg,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              'changed without a note',
+              style: AsaText.meta.copyWith(color: AsaColors.amber),
+            ),
           ),
         ),
       ];
     }
     return [
       const SizedBox(width: AsaSpace.sm),
-      Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AsaSpace.xs,
-          vertical: 1,
-        ),
-        decoration: BoxDecoration(
-          color: AsaColors.blueBg,
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Text(
-          '${news.newCount} new',
-          style: AsaText.meta.copyWith(color: AsaColors.blue),
+      InkWell(
+        borderRadius: BorderRadius.circular(100),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AsaSpace.xs,
+            vertical: 1,
+          ),
+          decoration: BoxDecoration(
+            color: AsaColors.blueBg,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          child: Text(
+            '${news.newCount} new',
+            style: AsaText.meta.copyWith(color: AsaColors.blue),
+          ),
         ),
       ),
     ];

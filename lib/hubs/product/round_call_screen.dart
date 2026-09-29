@@ -35,6 +35,51 @@ import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
+/// Pushes [RoundCallScreen] for one real round, wiring the same three
+/// injected callbacks every caller needs (`loadRoundText`, `onApprove`,
+/// `onRequestChanges`) to that round's own number and title — the one
+/// place this push happens, shared by the Log tab's own *Needs your yes*
+/// card and the Strategy tab's own round row (round-38.md §C: "a round's
+/// own row inside an objective... goes to its *Your call* screen"),
+/// rather than two copies of the same `Navigator.push` that could drift.
+Future<void> openRoundCall(
+  BuildContext context, {
+  required String roundNumber,
+  required String roundTitle,
+  required Future<String?> Function(String roundNumber) loadRoundText,
+  required Future<void> Function(
+    String roundNumber, {
+    required String roundTitle,
+    String? feedback,
+  })
+  onApproveRound,
+  required Future<void> Function(String roundNumber, {required String what})
+  onRequestRoundChanges,
+  RoundApproval? existingApproval,
+  ChangeRequest? existingChangeRequest,
+  VoidCallback? onDataChanged,
+}) async {
+  final changed = await Navigator.of(context).push<bool>(
+    MaterialPageRoute<bool>(
+      builder: (_) => RoundCallScreen(
+        roundNumber: roundNumber,
+        loadRoundText: () => loadRoundText(roundNumber),
+        onApprove: ({required feedback}) => onApproveRound(
+          roundNumber,
+          roundTitle: roundTitle,
+          feedback: feedback,
+        ),
+        onRequestChanges: ({required what}) =>
+            onRequestRoundChanges(roundNumber, what: what),
+        onOpenRoundFile: () {},
+        existingApproval: existingApproval,
+        existingChangeRequest: existingChangeRequest,
+      ),
+    ),
+  );
+  if (changed ?? false) onDataChanged?.call();
+}
+
 class RoundCallScreen extends StatefulWidget {
   const RoundCallScreen({
     required this.roundNumber,

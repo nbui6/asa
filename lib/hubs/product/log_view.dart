@@ -274,25 +274,15 @@ class _LogViewState extends State<LogView> {
       return;
     }
     final round = item as _NeedsYourYesRound;
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => RoundCallScreen(
-          roundNumber: round.roundNumber,
-          loadRoundText: () => widget.loadRoundText(round.roundNumber),
-          onApprove: ({required feedback}) => widget.onApproveRound(
-            round.roundNumber,
-            roundTitle: round.title,
-            feedback: feedback,
-          ),
-          onRequestChanges: ({required what}) => widget.onRequestRoundChanges(
-            round.roundNumber,
-            what: what,
-          ),
-          onOpenRoundFile: () {},
-        ),
-      ),
+    await openRoundCall(
+      context,
+      roundNumber: round.roundNumber,
+      roundTitle: round.title,
+      loadRoundText: widget.loadRoundText,
+      onApproveRound: widget.onApproveRound,
+      onRequestRoundChanges: widget.onRequestRoundChanges,
+      onDataChanged: widget.onDataChanged,
     );
-    if (changed ?? false) widget.onDataChanged?.call();
   }
 
   List<Area> _areasNaming(Decision decision) {
@@ -420,7 +410,16 @@ class _LogViewState extends State<LogView> {
                   Wrap(
                     spacing: AsaSpace.xs,
                     children: [
-                      if (entry.area != null) AreaChip(entry.area!),
+                      // Round 38 §E, L27 — the same area lookup
+                      // `_areaSectionLabel` already uses: a real chip's
+                      // own `onTap` when this area is actually loaded,
+                      // inert otherwise rather than a chip that looks
+                      // tappable and does nothing.
+                      if (entry.area != null)
+                        AreaChip(
+                          entry.area!,
+                          onTap: _openAreaByName(entry.area!),
+                        ),
                       if (entry.round != null) Text('Round ${entry.round}'),
                       if (entry.file != null)
                         Text(entry.file!, style: AsaText.meta),
@@ -540,6 +539,17 @@ class _LogViewState extends State<LogView> {
       onTap: () => widget.onOpenArea!(match),
       child: SectionLabel(areaName),
     );
+  }
+
+  /// Round 38 §E, L27 — "What happened"'s own expanded-row area chip,
+  /// same lookup as [_areaSectionLabel]; null when this area name
+  /// doesn't resolve to a real, loaded [Area], leaving the chip inert.
+  VoidCallback? _openAreaByName(String areaName) {
+    final match = widget.areas
+        .where((a) => a.name.toLowerCase() == areaName.toLowerCase())
+        .firstOrNull;
+    if (match == null || widget.onOpenArea == null) return null;
+    return () => widget.onOpenArea!(match);
   }
 
   Widget _decisionInForceRow(DecisionReadResult result) {

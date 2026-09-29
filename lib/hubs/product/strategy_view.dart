@@ -8,10 +8,18 @@
 /// Round 37 (ADR 0029) moves this screen onto the shared `ui/` parts —
 /// its own layout is unchanged, exactly `asa-strategy-v3`.
 ///
-/// **Read-only, all of it — same rule as the Plan tab.** Tapping a Round
-/// opens the project's own note (`open_url.dart`, already built); tapping
-/// an ADR chip opens that decision when it is already loaded, or the same
-/// note otherwise. Nothing here writes a byte anywhere.
+/// **Read-only, all of it — same rule as the Plan tab.** Tapping an ADR
+/// chip opens that decision when it is already loaded, or the project's
+/// own note otherwise (`open_url.dart`). Nothing here writes a byte
+/// anywhere itself.
+///
+/// **Round 38 §C — a round's own row goes to its own *Your call* screen**
+/// (`round_call_screen.dart`'s `openRoundCall`) once the three writer
+/// callbacks are wired in, same as the Log tab's identical *Needs your
+/// yes* card; the per-objective *"N waiting for your yes"* pill opens the
+/// Log tab itself. Neither wired (the old default, and every test that
+/// hasn't opted in) falls back to `open_url.dart`'s raw-file open, this
+/// screen's original behaviour.
 library;
 
 import 'dart:async';
@@ -26,6 +34,7 @@ import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_state.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
+import 'package:asa/hubs/product/round_call_screen.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/progress_bar.dart';
@@ -46,6 +55,10 @@ class StrategyView extends StatefulWidget {
     this.areas = const [],
     this.onOpenArea,
     this.onDataChanged,
+    this.onOpenLog,
+    this.loadRoundText,
+    this.onApproveRound,
+    this.onRequestRoundChanges,
     super.key,
   });
 
@@ -80,6 +93,28 @@ class StrategyView extends StatefulWidget {
   /// actually recorded, so the caller can reload its own cached
   /// `decisions` rather than show what was true before that Accept/Reject.
   final VoidCallback? onDataChanged;
+
+  /// Round 38 §C, L19 — "The Strategy 'waiting for your yes →' link opens
+  /// the Log with the card" (§E). Null leaves the per-objective waiting
+  /// pill inert rather than a link that goes nowhere.
+  final VoidCallback? onOpenLog;
+
+  /// Round 38 §C, L20 — "a round's own row inside an objective... goes to
+  /// its Your call screen," the same three injected callbacks
+  /// `RoundCallScreen` already needs, wired here the same way `LogView`
+  /// wires them (`openRoundCall`, `round_call_screen.dart`). All three
+  /// null together falls back to opening the raw project note instead —
+  /// this screen's own older behaviour, kept as the graceful default for
+  /// a caller (or a test) that hasn't wired real writers.
+  final Future<String?> Function(String roundNumber)? loadRoundText;
+  final Future<void> Function(
+    String roundNumber, {
+    required String roundTitle,
+    String? feedback,
+  })?
+  onApproveRound;
+  final Future<void> Function(String roundNumber, {required String what})?
+  onRequestRoundChanges;
 
   @override
   State<StrategyView> createState() => _StrategyViewState();
@@ -194,6 +229,7 @@ class _StrategyViewState extends State<StrategyView> {
       for (final link in roundLinks)
         if (byNumber[link.target] case final milestone?)
           (
+            number: link.target,
             milestone: milestone,
             state: roundStateOf(milestone, widget.approvals),
           ),
@@ -242,9 +278,19 @@ class _StrategyViewState extends State<StrategyView> {
                   child: Text(_plain(objective.title), style: AsaText.rowName),
                 ),
                 if (waiting > 0) ...[
-                  Pill(
-                    '$waiting waiting for you',
-                    meaning: AsaMeaning.needsYou,
+                  // Round 38 §C, L19 — "the 'N waiting for your approval'
+                  // pill becomes a link... it opens" the Log tab (§E's
+                  // own Needs-your-yes card). Its own `InkWell`, nested
+                  // inside the header row's own expand/collapse one — the
+                  // more specific tap wins, same pattern the news marker
+                  // on the overview row already relies on.
+                  InkWell(
+                    onTap: widget.onOpenLog,
+                    borderRadius: BorderRadius.circular(100),
+                    child: Pill(
+                      '$waiting waiting for your yes →',
+                      meaning: AsaMeaning.needsYou,
+                    ),
                   ),
                   const SizedBox(width: AsaSpace.sm),
                 ],
@@ -301,7 +347,7 @@ class _StrategyViewState extends State<StrategyView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final round in rounds)
-                    _roundRow(round.milestone, round.state),
+                    _roundRow(round.number, round.milestone, round.state),
                   if (adrLinks.isNotEmpty) _adrRow(adrLinks),
                   // Round 38 §D.1 — anything else CHARTER.md holds for
                   // this objective (most often "Served by Round N, …")
@@ -375,11 +421,11 @@ class _StrategyViewState extends State<StrategyView> {
     }
   }
 
-  Widget _roundRow(Milestone milestone, RoundState state) {
+  Widget _roundRow(String number, Milestone milestone, RoundState state) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: InkWell(
-        onTap: () => openUrl(widget.projectSourceFile),
+        onTap: () => _openRound(number, milestone),
         child: Row(
           children: [
             Expanded(child: Text(_plain(milestone.title), style: AsaText.body)),
@@ -387,6 +433,33 @@ class _StrategyViewState extends State<StrategyView> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Round 38 §C, L20 — "a round's own row... goes to its Your call
+  /// screen" once the three writer callbacks are actually wired in;
+  /// falls back to this screen's own older behaviour (the raw project
+  /// note) when they aren't, same graceful default `_adrChip`'s own ADR
+  /// fallback already uses for an unloaded decision.
+  Future<void> _openRound(String number, Milestone milestone) async {
+    final loadRoundText = widget.loadRoundText;
+    final onApproveRound = widget.onApproveRound;
+    final onRequestRoundChanges = widget.onRequestRoundChanges;
+    if (loadRoundText == null ||
+        onApproveRound == null ||
+        onRequestRoundChanges == null) {
+      unawaited(openUrl(widget.projectSourceFile));
+      return;
+    }
+    await openRoundCall(
+      context,
+      roundNumber: number,
+      roundTitle: _plain(milestone.title),
+      loadRoundText: loadRoundText,
+      onApproveRound: onApproveRound,
+      onRequestRoundChanges: onRequestRoundChanges,
+      existingApproval: widget.approvals.approvalFor(number),
+      onDataChanged: widget.onDataChanged,
     );
   }
 

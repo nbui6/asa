@@ -614,6 +614,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
           areas: _areas,
           onOpenArea: _openArea,
           onDataChanged: _load,
+          onOpenLog: () => setState(() => _activeTab = _Tab.log),
+          loadRoundText: _loadRoundText,
+          onApproveRound: _approveRound,
+          onRequestRoundChanges: _requestRoundChanges,
         );
       case _Tab.plan:
         // Round 36 cp8, §9 point 1 — always PlanView, never a fallback to
@@ -668,28 +672,46 @@ class _ProjectScreenState extends State<ProjectScreen> {
       areas: _areas,
       onOpenArea: _openArea,
       onDataChanged: _load,
-      loadRoundText: (roundNumber) => readRoundFileText(
-        widget.folder,
-        roundNumber,
-        const DiskFileAccess(),
-      ),
-      onApproveRound: (roundNumber, {required roundTitle, feedback}) =>
-          approveRound(
-            widget.folder,
-            roundNumber,
-            roundTitle: roundTitle,
-            feedback: feedback,
-            writeLogPath: widget.writeLogPath,
-          ),
-      onRequestRoundChanges: (roundNumber, {required what}) =>
-          requestRoundChanges(
-            widget.folder,
-            roundNumber,
-            what: what,
-            writeLogPath: widget.writeLogPath,
-          ),
+      loadRoundText: _loadRoundText,
+      onApproveRound: _approveRound,
+      onRequestRoundChanges: _requestRoundChanges,
     );
   }
+
+  /// The three round-call writer/reader functions, real `dart:io` behind
+  /// one shared seam — `LogView`'s own *Needs your yes* card and
+  /// `StrategyView`'s own round row (Round 38 §C, L20) both push the same
+  /// `RoundCallScreen` through `openRoundCall`, and both need the exact
+  /// same three functions bound to this project's own folder and write
+  /// log, not two copies that could drift.
+  Future<String?> _loadRoundText(String roundNumber) => readRoundFileText(
+    widget.folder,
+    roundNumber,
+    const DiskFileAccess(),
+  );
+
+  Future<void> _approveRound(
+    String roundNumber, {
+    required String roundTitle,
+    String? feedback,
+  }) => approveRound(
+    widget.folder,
+    roundNumber,
+    roundTitle: roundTitle,
+    feedback: feedback,
+    writeLogPath: widget.writeLogPath,
+  );
+
+  Future<void> _requestRoundChanges(
+    String roundNumber, {
+    required String what,
+  }) =>
+      requestRoundChanges(
+        widget.folder,
+        roundNumber,
+        what: what,
+        writeLogPath: widget.writeLogPath,
+      );
 
   /// Round-36 §3, L17 — also handed to `DecisionDetailScreen`, `PlanView`
   /// and `StrategyView` as `onOpenArea`, so an area chip anywhere in this

@@ -168,7 +168,9 @@ void main() {
       // Two matches, deliberately: the round's own state pill, and the
       // legend's always-visible label for the same colour/word.
       expect(find.text('waiting for your approval'), findsNWidgets(2));
-      expect(find.text('1 waiting for you'), findsOneWidget);
+      // Round 38 §C, L19 — the objective's own aggregate pill is a link
+      // now, "N waiting for your yes →", not the bare count it used to be.
+      expect(find.text('1 waiting for your yes →'), findsOneWidget);
     });
 
     testWidgets('a matching row in the ledger makes the round completed, '
@@ -196,7 +198,7 @@ void main() {
         approvals: approvals,
       );
 
-      expect(find.text('1 waiting for you'), findsNothing);
+      expect(find.text('1 waiting for your yes →'), findsNothing);
       expect(find.text('1 of 1 completed'), findsOneWidget);
     });
   });
