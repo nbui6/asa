@@ -486,6 +486,275 @@ void main() {
       expect(find.textContaining('Show completed'), findsWidgets);
     },
   );
+
+  // round-38.md's own new link rows, L19-L29 — a real round waiting for
+  // approval, a dated area result (for the Log's own area chip) and a
+  // hidden-status project all needed, none of which the fixture above
+  // has (adding a waiting round there once shifted the global Needs-you
+  // card into almost every L1-L18 test's own text counts — a separate,
+  // purpose-built fixture avoids that ripple entirely).
+  group('Round 38 links — L19-L29', () {
+    late Directory tempDir2;
+    late String settingsPath2;
+    late String root2;
+
+    setUp(() {
+      tempDir2 = Directory.systemTemp.createTempSync('asa-links-r38-test-');
+      root2 = tempDir2.path;
+      settingsPath2 = '${tempDir2.path}${Platform.pathSeparator}settings.json';
+      _buildRound38Fixture(root2);
+    });
+
+    tearDown(() => tempDir2.deleteSync(recursive: true));
+
+    Future<void> pumpAndLoad2(WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: ProjectsScreen(settingsPath: settingsPath2)),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), root2);
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Use this folder'));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      });
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'L19 — Strategy, the "N waiting for your yes →" pill opens the Log',
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+        await tapAndSettle(tester, find.text('Strategy'));
+        await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
+
+        await tapAndSettle(tester, find.text('1 waiting for your yes →'));
+
+        // SectionLabel renders its own text upper-cased.
+        expect(find.text('NEEDS YOUR YES'), findsOneWidget);
+        expect(
+          find.text('Round 1 — Strategy first, areas as tabs'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      "L20, L22 — an objective's round row opens its own Your call "
+      'screen; back returns to Strategy, same objective open',
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+        await tapAndSettle(tester, find.text('Strategy'));
+        await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
+
+        await tapAndSettle(
+          tester,
+          find.text('Round 1 — Strategy first, areas as tabs'),
+        );
+
+        expect(find.text('waiting for your yes'), findsWidgets);
+        expect(find.textContaining('First line.'), findsOneWidget);
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Round 1 — Strategy first, areas as tabs'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'L21 — an "All" summary row opens that same area\'s own tab',
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+
+        // "Marketing" names both the area tab strip's own label and
+        // "All"'s own summary row — tapping the row (not the tab) still
+        // lands on the same area page.
+        await tapAndSettle(tester, find.text('Marketing').last);
+
+        expect(find.text('Serves Objective 1.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      "L23 — the header's own Next line, an area chip, opens that area's "
+      'tab',
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+
+        // The header's Next line names the area holding the next open
+        // task — tapping its own area chip switches straight to it.
+        await tapAndSettle(tester, find.text('Marketing').first);
+
+        expect(find.text('Serves Objective 1.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'L24 — Yes on the Needs-your-yes card settles the round on '
+      'Strategy too, adapted from the retired "Yes to selected": the '
+      "card now cycles one item at a time (cp3b's own override of §C)",
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+        await tapAndSettle(tester, find.text('Log'));
+
+        await tapAndSettle(tester, find.text('Yes'));
+
+        expect(find.text('Needs your yes'), findsNothing);
+
+        await tapAndSettle(tester, find.text('Strategy'));
+        await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
+
+        expect(find.text('1 of 1 completed'), findsOneWidget);
+        expect(find.textContaining('waiting for your yes'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      "L26 — the Needs-your-yes card's own title opens the round's "
+      'Your call screen',
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+        await tapAndSettle(tester, find.text('Log'));
+
+        await tapAndSettle(
+          tester,
+          find.text('Round 1 — Strategy first, areas as tabs'),
+        );
+
+        expect(find.textContaining('First line.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      "L27 — \"What happened\"'s own area chip, on an expanded entry, "
+      "opens that area's tab",
+      (tester) async {
+        await pumpAndLoad2(tester);
+        await tapAndSettle(tester, find.text('Round Work').last);
+        await tapAndSettle(tester, find.text('Log'));
+
+        await tapAndSettle(tester, find.text('Launch went well.'));
+        // Two matches until this tap: the header's own Next-line area
+        // chip (visible on every tab) and this entry's own, now expanded.
+        await tapAndSettle(tester, find.text('Marketing').last);
+
+        expect(find.text('Serves Objective 1.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      "L28, L29 — the overview's own hidden line opens its groups; a "
+      'row there opens that project',
+      (tester) async {
+        await pumpAndLoad2(tester);
+
+        expect(find.text('Paused Project'), findsNothing);
+        await tapAndSettle(tester, find.textContaining('show ›'));
+
+        expect(find.text('Paused Project'), findsOneWidget);
+
+        await tapAndSettle(tester, find.text('Paused Project'));
+
+        expect(find.text('Paused Project'), findsOneWidget); // the header
+      },
+    );
+  });
+}
+
+/// L19-L29's own fixture — separate from `_buildFixture` on purpose (see
+/// this file's own comment just above the group that uses it). Shape:
+///
+/// - `roundwork\` — one area, `Marketing` (one open task, so the header's
+///   own Next line names it; one dated result, so "What happened" gets a
+///   real entry with a real area chip); `CHARTER.md` names Round 1, which
+///   `roundwork.md`'s own `## Roadmap` checks off with no matching
+///   `rounds\APPROVED.md` row yet — waiting for approval, everywhere that
+///   state surfaces (Strategy's own pill and round row, the Log's own
+///   Needs-your-yes card).
+/// - `paused\` — `status: on-hold`, for L28/L29.
+void _buildRound38Fixture(String root) {
+  final sep = Platform.pathSeparator;
+
+  void write(String relativePath, String contents) {
+    final file = File('$root$sep$relativePath');
+    file.parent.createSync(recursive: true);
+    file.writeAsStringSync(contents);
+  }
+
+  write('roundwork${sep}roundwork.md', '''
+---
+project: Round Work
+status: building
+updated: 2026-09-26
+---
+
+# Round Work
+
+## Roadmap
+- [x] Round 1 — Strategy first, areas as tabs
+''');
+
+  write('roundwork${sep}CHARTER.md', '''
+# Round Work — Strategy
+
+## Origin
+Why this project exists.
+
+## Who it's for
+The user.
+
+## Pain points
+1. A pain worth naming.
+
+## Objectives
+1. **Ship the thing** — Would show: it ships. Served by Round 1.
+''');
+
+  write('roundwork${sep}rounds${sep}round-1.md', '''
+# Round 1 — Strategy first, areas as tabs
+
+**Area:** App
+
+## The finish line
+
+1. First line.
+
+## How it's tested
+
+1. Open Asa.
+''');
+
+  write('roundwork${sep}plan${sep}marketing.md', '''
+# Marketing
+
+## Goal
+Serves Objective 1.
+
+## Tasks
+- [ ] Promote the launch
+
+## Results
+- 2026-09-20 — Launch went well.
+''');
+
+  write('paused${sep}paused.md', '''
+---
+project: Paused Project
+status: on-hold
+updated: 2026-09-01
+---
+
+# Paused Project
+''');
 }
 
 /// One fixture, real files, invented data only (Gate 2). Shape:
