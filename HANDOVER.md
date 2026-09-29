@@ -620,3 +620,62 @@ own rule 2 (a decision only Nico can make: write it down, keep moving).
 **Item 1 (Round 39's rest) is therefore six of eight — not fully done.** Named honestly rather than
 marked complete: 6 pass for real; 7 needs Nico; 8 exposes a real, pre-existing gap that needs his
 call above.
+
+---
+
+### Delivery v1, item 2 — Round 38 cp0 + cp1: tab order, the Next line, areas as tabs
+
+**cp0 (§A):** tabs reorder to `Strategy · Plan · Decisions · Details` — a project still opens on
+Plan. The Next line hoists out of `PlanView` into `ProjectScreen`'s own header, so it shows above
+every tab, not only Plan — same `effectiveNextStepWithArea` chain, same visual shape; tapping it
+switches to Plan and tells the next `PlanView` which area (or "Not in an area") and task to open.
+One real gap the hoist exposed and fixed alongside it: `PlanView`'s own `didUpdateWidget` never
+reacted to `openHomeOnStart` flipping true on an already-mounted `PlanView` (only `areaToOpen`/
+`highlightTaskRawLine` did). The Decisions tab gets a small amber count (`groupForReview`'s existing
+"needs a look" size), shown only when > 0.
+
+**cp1 (§B):** areas stop being expand-in-place rows and become their own tabs under Plan — `All` ·
+one per area · `+ Add area`. "All" keeps the same summary-row list; tapping a row now switches tabs
+instead of expanding inline. Selection (`_selectedAreaTab`, renamed from `_areaToOpen`) is owned by
+`ProjectScreen`, not `PlanView` — "remembered per project while the app runs" only holds if it
+survives `PlanView` being torn down and rebuilt on every switch away from and back to Plan.
+`templates\area.md` (new) and `lib\core\area_writer.dart`'s `createArea` (new, its own commit): the
+canonical empty shape, a lowercase-dash slug, a refusal on a duplicate name or an empty slug, never
+touching an existing page, logged through `write_log.dart`. The dialog (name field, Create/Cancel)
+shows a refusal inline, and on success switches straight to the new area's tab and reloads. A fully
+empty area (new or otherwise) shows one honest line — *"Empty so far. To fill it: Start → Copy
+opener, and tell the AI what this area is for"* — instead of five separate "No X yet"s. A
+zero-area project gets a plain `+ Add area` link next to its existing body, no tab strip (nothing
+yet to switch between) — "nothing else changes," per the round's own wording.
+
+**A real, reproducible test-environment quirk found and worked around, not silently retried into
+passing:** a widget test driving the dialog through the real `ProjectScreen` end-to-end (real disk)
+hung indefinitely on a *second* `readProject()` call, triggered by the dialog's own un-awaited
+`onDataChanged` firing after `showDialog` resolved — reproduced consistently, isolated with
+temporary debug prints (removed before committing) down to the exact `await` that never returned,
+confirmed unrelated to wait duration (a 3-second real delay didn't help either). Read as a
+`runAsync`/`FakeAsync` interaction specific to this test binding, not a bug in the dialog's own
+logic or a production risk (real usage has no `FakeAsync` at all). Fixed by testing the dialog
+against `PlanView` directly with fake callbacks instead — faster, more focused, and it already
+matches the level every other `PlanView` interaction is tested at.
+
+**Existing tests updated for the new architecture, not just patched to pass:** `plan_view_test.dart`'s
+whole "round-36 §2 b" Next-line group removed (moved to the header); several assertions now expect
+2–3 "Sales" matches instead of 1 (the tab strip's own label is new); a harness `StatefulBuilder`
+added so a test can actually drive `selectedAreaTab`/`onSelectAreaTab` the way `ProjectScreen` really
+does.
+
+**Tests:** `area_writer_test.dart` (8), `add_area_dialog_test.dart` (4, the dialog's own logic).
+685 total, `flutter analyze` clean.
+
+**Also fixed along the way, its own commit:** cp10's `projects-stop-six-moments.ps1` named the user
+in its own comment (*"Nico has no API budget"*) — caught by `no_personal_name_test.dart` when the
+full suite ran (cp10 itself had only run `test-hooks.ps1`, not `flutter test`, a real gap in that
+checkpoint's own discipline, not a new rule).
+
+**Commits:** `81b586c` (cp0), `c96f6c0` (the area writer), `0d29a4e` (cp1's UI),
+`efcbf0e`/`ba754bc` (the two fixes above, already logged under item 1's own entry since they were
+found while correcting the drill's step 8).
+
+**Next:** cp2 (§C — Strategy links to Decisions/Log, the round *Your call* screen, its two
+writers).
