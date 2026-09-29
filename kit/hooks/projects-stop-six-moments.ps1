@@ -1,6 +1,6 @@
 ﻿# projects-stop-six-moments.ps1 - Stop hook (Round 39 cp10), user-level.
 #
-# A plain word match, no model call, no cost (Nico has no API budget, and
+# A plain word match, no model call, no cost (the user has no API budget, and
 # whether a "type": "prompt" hook bills separately isn't documented).
 # Blocks once with a short reminder when the user's own message this turn
 # holds one of the six-moments' words AND nothing under projects\ was
