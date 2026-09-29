@@ -179,4 +179,37 @@ Shape:
       expect(task.text, 'Done subtask');
     });
   });
+
+  group('waitingOn — Round 38 §E / Round 42, shared with check.dart', () {
+    const task = Task(
+      rawLine: '- [ ] Ask legal (waiting: Legal, since 2026-09-01)',
+      text: 'Ask legal',
+      done: false,
+    );
+
+    test('parses the name and computes days from now', () {
+      final result = waitingOn(task, DateTime(2026, 9, 15));
+      expect(result?.name, 'Legal');
+      expect(result?.days, 14);
+      expect(result?.since, '2026-09-01');
+    });
+
+    test('is case-insensitive on the "waiting" keyword', () {
+      const upper = Task(
+        rawLine: '- [ ] Ask (Waiting: Tamara, since 2026-09-01)',
+        text: 'Ask',
+        done: false,
+      );
+      expect(waitingOn(upper, DateTime(2026, 9, 2))?.name, 'Tamara');
+    });
+
+    test('null when the line has no such marker at all', () {
+      const plain = Task(
+        rawLine: '- [ ] Plain task',
+        text: 'Plain task',
+        done: false,
+      );
+      expect(waitingOn(plain, DateTime.now()), isNull);
+    });
+  });
 }

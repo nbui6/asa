@@ -148,3 +148,27 @@ Task? parseTaskLine(String line) {
     crossProjectRef: crossProjectRef,
   );
 }
+
+/// `(waiting: Name, since YYYY-MM-DD)` on a task's own line — the manual's
+/// own shape, first named in `check.dart`. Round 38 §E's own row rule,
+/// reused by Round 42's Tasks view: shown as "waiting on Name · N days",
+/// grey, amber from 14 days. Shared here — one parser, not two — so
+/// `check.dart` reads the identical thing a screen shows. Null when the
+/// line carries no such marker at all, or the date after `since` doesn't
+/// parse as one.
+final RegExp waitingMarker = RegExp(
+  r'\(waiting:\s*([^,]+),\s*since\s*(\d{4}-\d{2}-\d{2})\)',
+  caseSensitive: false,
+);
+
+({String name, int days, String since})? waitingOn(Task task, DateTime now) {
+  final match = waitingMarker.firstMatch(task.rawLine);
+  if (match == null) return null;
+  final since = DateTime.tryParse(match.group(2)!);
+  if (since == null) return null;
+  return (
+    name: match.group(1)!.trim(),
+    days: now.difference(since).inDays,
+    since: match.group(2)!,
+  );
+}

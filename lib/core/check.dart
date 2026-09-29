@@ -13,6 +13,7 @@ import 'package:asa/core/project_reader.dart';
 import 'package:asa/core/session_file.dart';
 import 'package:asa/core/session_log.dart';
 import 'package:asa/core/status_words.dart';
+import 'package:asa/core/task.dart' show waitingOn;
 
 /// One problem `asa-check` found, already in the words a person could read
 /// and act on — never a stack trace, never a code.
@@ -23,13 +24,6 @@ class Finding {
   @override
   String toString() => message;
 }
-
-/// `(waiting: Name, since YYYY-MM-DD)` on a task — the manual's own shape,
-/// added 2026-09-14. A wait over 14 days is the thing worth a look.
-final RegExp _waitingMarker = RegExp(
-  r'\(waiting:\s*([^,]+),\s*since\s*(\d{4}-\d{2}-\d{2})\)',
-  caseSensitive: false,
-);
 
 /// Headings §13's move folds away — a note still carrying one of these is
 /// the project the manual's own "getting a project into shape" is for.
@@ -175,15 +169,13 @@ Future<List<Finding>> checkProject(
   final areas = await readAreas(projectFolder);
   final allTasks = [...project.tasks, for (final area in areas) ...area.tasks];
   for (final task in allTasks) {
-    final match = _waitingMarker.firstMatch(task.rawLine);
-    if (match == null) continue;
-    final since = DateTime.tryParse(match.group(2)!);
-    if (since == null) continue;
-    if (effectiveNow.difference(since).inDays > 14) {
+    final waiting = waitingOn(task, effectiveNow);
+    if (waiting == null) continue;
+    if (waiting.days > 14) {
       findings.add(
         Finding(
-          'waiting on ${match.group(1)!.trim()} since ${match.group(2)} — '
-          'over 14 days.',
+          'waiting on ${waiting.name} since ${waiting.since} — over 14 '
+          'days.',
         ),
       );
     }
