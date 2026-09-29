@@ -41,11 +41,12 @@ void main() {
   test(
     "recording again overwrites only that project's own timestamp",
     () async {
-    await recordLogVisit('demo', now: DateTime(2026, 9), path: path);
-    await recordLogVisit('demo', now: DateTime(2026, 9, 20), path: path);
+      await recordLogVisit('demo', now: DateTime(2026, 9), path: path);
+      await recordLogVisit('demo', now: DateTime(2026, 9, 20), path: path);
 
-    expect(await lastLogVisit('demo', path: path), DateTime(2026, 9, 20));
-  });
+      expect(await lastLogVisit('demo', path: path), DateTime(2026, 9, 20));
+    },
+  );
 
   test('an unparseable file reads as never opened, not a crash', () async {
     File(path).writeAsStringSync('not json at all');

@@ -129,9 +129,8 @@ void main() {
       final active = Directory(
         '${hiddenRoot.path}${Platform.pathSeparator}active-project',
       )..createSync();
-      File(
-        '${active.path}${Platform.pathSeparator}active-project.md',
-      ).writeAsStringSync('''
+      File('${active.path}${Platform.pathSeparator}active-project.md')
+          .writeAsStringSync('''
 ---
 project: Active Project
 status: building
@@ -143,9 +142,8 @@ updated: 2026-09-13
       final paused = Directory(
         '${hiddenRoot.path}${Platform.pathSeparator}paused-project',
       )..createSync();
-      File(
-        '${paused.path}${Platform.pathSeparator}paused-project.md',
-      ).writeAsStringSync('''
+      File('${paused.path}${Platform.pathSeparator}paused-project.md')
+          .writeAsStringSync('''
 ---
 project: Paused Project
 status: on-hold
@@ -157,9 +155,8 @@ updated: 2026-09-13
       final canceled = Directory(
         '${hiddenRoot.path}${Platform.pathSeparator}canceled-project',
       )..createSync();
-      File(
-        '${canceled.path}${Platform.pathSeparator}canceled-project.md',
-      ).writeAsStringSync('''
+      File('${canceled.path}${Platform.pathSeparator}canceled-project.md')
+          .writeAsStringSync('''
 ---
 project: Canceled Project
 status: canceled

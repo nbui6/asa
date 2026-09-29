@@ -103,8 +103,7 @@ void main() {
   });
 
   group('waitingAcrossProjects', () {
-    test('collects proposed decisions and waiting rounds, oldest first',
-        () {
+    test('collects proposed decisions and waiting rounds, oldest first', () {
       final items = waitingAcrossProjects([
         (
           folder: 'projects/a',

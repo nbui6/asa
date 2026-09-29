@@ -33,7 +33,8 @@ const _approvedHeader =
     '| date | round | their exact words | the result, in one line |\n'
     '|---|---|---|---|\n';
 
-const _changesHeader = '| date | round | what they want changed |\n'
+const _changesHeader =
+    '| date | round | what they want changed |\n'
     '|---|---|\n';
 
 /// Appends one row to `rounds\APPROVED.md`. [feedback] is the optional

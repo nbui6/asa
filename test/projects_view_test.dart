@@ -497,9 +497,7 @@ void main() {
       );
     }
 
-    testWidgets('no hidden line at all when nothing is hidden', (
-      tester,
-    ) async {
+    testWidgets('no hidden line at all when nothing is hidden', (tester) async {
       final node = ProjectNode(
         project: _project(status: 'in-progress'),
         folder: 'demo',
@@ -554,9 +552,7 @@ void main() {
     });
 
     testWidgets('tapping "show ›" opens one group per status, newest '
-        'first by updated:, and a row opens the whole project', (
-      tester,
-    ) async {
+        'first by updated:, and a row opens the whole project', (tester) async {
       ProjectOpenTarget? opened;
       final node = ProjectNode(
         project: _project(status: 'in-progress'),

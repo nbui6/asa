@@ -21,8 +21,7 @@ void main() {
   tearDown(() => tempDir.deleteSync(recursive: true));
 
   group('approveRound', () {
-    test('creates APPROVED.md from scratch with the neutral header',
-        () async {
+    test('creates APPROVED.md from scratch with the neutral header', () async {
       await approveRound(
         projectFolder,
         '38',
@@ -42,8 +41,7 @@ void main() {
       expect(approval.result, 'Round 38 — the UI overhaul');
     });
 
-    test('a typed feedback becomes the quoted words, not "in Asa"',
-        () async {
+    test('a typed feedback becomes the quoted words, not "in Asa"', () async {
       await approveRound(
         projectFolder,
         '38',
@@ -63,9 +61,7 @@ void main() {
     test('appends without touching an existing row', () async {
       final sep = Platform.pathSeparator;
       final path = '$projectFolder${sep}rounds${sep}APPROVED.md';
-      await Directory(
-        '$projectFolder${Platform.pathSeparator}rounds',
-      ).create();
+      await Directory('$projectFolder${Platform.pathSeparator}rounds').create();
       const original =
           '| date | round | their exact words | the result, in one line |\n'
           '|---|---|---|---|\n'

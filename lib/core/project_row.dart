@@ -36,14 +36,11 @@ String? jiraLabel(String? jiraUrl) {
 /// A single `YYYY-MM`, or a period `YYYY-MM/YYYY-MM` (round-38.md §G,
 /// ADR 0038/0040) — the "from" group always 1/2, the "to" group (a
 /// period only) 3/4.
-final RegExp _deadlineShape = RegExp(
-  r'^(\d{4})-(\d{2})(?:/(\d{4})-(\d{2}))?$',
-);
+final RegExp _deadlineShape = RegExp(r'^(\d{4})-(\d{2})(?:/(\d{4})-(\d{2}))?$');
 
 /// `MM.YY` — `2027-09` → `09.27`. Round 38 §G's own corrected display:
 /// the earlier "Sep 2027" shape is retired (rule 12).
-String _monthYear(String year, String month) =>
-    '$month.${year.substring(2)}';
+String _monthYear(String year, String month) => '$month.${year.substring(2)}';
 
 /// `2027-09` → `09.27`; `2026-02/2026-03` → `02.26–03.26` (a period,
 /// ADR 0040 — Details edits it as *from* and *to* months). Null when

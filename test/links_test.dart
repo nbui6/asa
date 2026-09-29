@@ -539,47 +539,45 @@ void main() {
       },
     );
 
-    testWidgets(
-      "L20, L22 — an objective's round row opens its own Your call "
-      'screen; back returns to Strategy, same objective open',
-      (tester) async {
-        await pumpAndLoad2(tester);
-        await tapAndSettle(tester, find.text('Round Work').last);
-        await tapAndSettle(tester, find.text('Strategy'));
-        await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
+    testWidgets("L20, L22 — an objective's round row opens its own Your call "
+        'screen; back returns to Strategy, same objective open', (
+      tester,
+    ) async {
+      await pumpAndLoad2(tester);
+      await tapAndSettle(tester, find.text('Round Work').last);
+      await tapAndSettle(tester, find.text('Strategy'));
+      await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
 
-        await tapAndSettle(
-          tester,
-          find.text('Round 1 — Strategy first, areas as tabs'),
-        );
+      await tapAndSettle(
+        tester,
+        find.text('Round 1 — Strategy first, areas as tabs'),
+      );
 
-        expect(find.text('waiting for your yes'), findsWidgets);
-        expect(find.textContaining('First line.'), findsOneWidget);
+      expect(find.text('waiting for your yes'), findsWidgets);
+      expect(find.textContaining('First line.'), findsOneWidget);
 
-        await tester.pageBack();
-        await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
-        expect(
-          find.text('Round 1 — Strategy first, areas as tabs'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(
+        find.text('Round 1 — Strategy first, areas as tabs'),
+        findsOneWidget,
+      );
+    });
 
-    testWidgets(
-      'L21 — an "All" summary row opens that same area\'s own tab',
-      (tester) async {
-        await pumpAndLoad2(tester);
-        await tapAndSettle(tester, find.text('Round Work').last);
+    testWidgets('L21 — an "All" summary row opens that same area\'s own tab', (
+      tester,
+    ) async {
+      await pumpAndLoad2(tester);
+      await tapAndSettle(tester, find.text('Round Work').last);
 
-        // "Marketing" names both the area tab strip's own label and
-        // "All"'s own summary row — tapping the row (not the tab) still
-        // lands on the same area page.
-        await tapAndSettle(tester, find.text('Marketing').last);
+      // "Marketing" names both the area tab strip's own label and
+      // "All"'s own summary row — tapping the row (not the tab) still
+      // lands on the same area page.
+      await tapAndSettle(tester, find.text('Marketing').last);
 
-        expect(find.text('Serves Objective 1.'), findsOneWidget);
-      },
-    );
+      expect(find.text('Serves Objective 1.'), findsOneWidget);
+    });
 
     testWidgets(
       "L23 — the header's own Next line, an area chip, opens that area's "
@@ -596,43 +594,39 @@ void main() {
       },
     );
 
-    testWidgets(
-      'L24 — Yes on the Needs-your-yes card settles the round on '
-      'Strategy too, adapted from the retired "Yes to selected": the '
-      "card now cycles one item at a time (cp3b's own override of §C)",
-      (tester) async {
-        await pumpAndLoad2(tester);
-        await tapAndSettle(tester, find.text('Round Work').last);
-        await tapAndSettle(tester, find.text('Log'));
+    testWidgets('L24 — Yes on the Needs-your-yes card settles the round on '
+        'Strategy too, adapted from the retired "Yes to selected": the '
+        "card now cycles one item at a time (cp3b's own override of §C)", (
+      tester,
+    ) async {
+      await pumpAndLoad2(tester);
+      await tapAndSettle(tester, find.text('Round Work').last);
+      await tapAndSettle(tester, find.text('Log'));
 
-        await tapAndSettle(tester, find.text('Yes'));
+      await tapAndSettle(tester, find.text('Yes'));
 
-        expect(find.text('Needs your yes'), findsNothing);
+      expect(find.text('Needs your yes'), findsNothing);
 
-        await tapAndSettle(tester, find.text('Strategy'));
-        await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
+      await tapAndSettle(tester, find.text('Strategy'));
+      await tapAndSettle(tester, find.byIcon(Icons.chevron_right));
 
-        expect(find.text('1 of 1 completed'), findsOneWidget);
-        expect(find.textContaining('waiting for your yes'), findsNothing);
-      },
-    );
+      expect(find.text('1 of 1 completed'), findsOneWidget);
+      expect(find.textContaining('waiting for your yes'), findsNothing);
+    });
 
-    testWidgets(
-      "L26 — the Needs-your-yes card's own title opens the round's "
-      'Your call screen',
-      (tester) async {
-        await pumpAndLoad2(tester);
-        await tapAndSettle(tester, find.text('Round Work').last);
-        await tapAndSettle(tester, find.text('Log'));
+    testWidgets("L26 — the Needs-your-yes card's own title opens the round's "
+        'Your call screen', (tester) async {
+      await pumpAndLoad2(tester);
+      await tapAndSettle(tester, find.text('Round Work').last);
+      await tapAndSettle(tester, find.text('Log'));
 
-        await tapAndSettle(
-          tester,
-          find.text('Round 1 — Strategy first, areas as tabs'),
-        );
+      await tapAndSettle(
+        tester,
+        find.text('Round 1 — Strategy first, areas as tabs'),
+      );
 
-        expect(find.textContaining('First line.'), findsOneWidget);
-      },
-    );
+      expect(find.textContaining('First line.'), findsOneWidget);
+    });
 
     testWidgets(
       "L27 — \"What happened\"'s own area chip, on an expanded entry, "
@@ -651,22 +645,19 @@ void main() {
       },
     );
 
-    testWidgets(
-      "L28, L29 — the overview's own hidden line opens its groups; a "
-      'row there opens that project',
-      (tester) async {
-        await pumpAndLoad2(tester);
+    testWidgets("L28, L29 — the overview's own hidden line opens its groups; a "
+        'row there opens that project', (tester) async {
+      await pumpAndLoad2(tester);
 
-        expect(find.text('Paused Project'), findsNothing);
-        await tapAndSettle(tester, find.textContaining('show ›'));
+      expect(find.text('Paused Project'), findsNothing);
+      await tapAndSettle(tester, find.textContaining('show ›'));
 
-        expect(find.text('Paused Project'), findsOneWidget);
+      expect(find.text('Paused Project'), findsOneWidget);
 
-        await tapAndSettle(tester, find.text('Paused Project'));
+      await tapAndSettle(tester, find.text('Paused Project'));
 
-        expect(find.text('Paused Project'), findsOneWidget); // the header
-      },
-    );
+      expect(find.text('Paused Project'), findsOneWidget); // the header
+    });
   });
 }
 

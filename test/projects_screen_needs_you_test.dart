@@ -48,15 +48,13 @@ void main() {
     projectsRoot = '${tempDir.path}${Platform.pathSeparator}projects';
     final projectFolder = '$projectsRoot${Platform.pathSeparator}demo';
     Directory(projectFolder).createSync(recursive: true);
-    File(
-      '$projectFolder${Platform.pathSeparator}demo.md',
-    ).writeAsStringSync(_homeNote);
+    File('$projectFolder${Platform.pathSeparator}demo.md')
+        .writeAsStringSync(_homeNote);
     final decisionsDir = Directory(
       '$projectFolder${Platform.pathSeparator}decisions',
     )..createSync();
-    File(
-      '${decisionsDir.path}${Platform.pathSeparator}0001-a-call.md',
-    ).writeAsStringSync(_decisionText);
+    File('${decisionsDir.path}${Platform.pathSeparator}0001-a-call.md')
+        .writeAsStringSync(_decisionText);
   });
 
   tearDown(() => tempDir.deleteSync(recursive: true));
@@ -72,32 +70,27 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-    'a real proposed decision shows in the Needs you panel, oldest '
-    '(only) item, 1 of 1',
-    (tester) async {
-      final settingsPath =
-          '${tempDir.path}${Platform.pathSeparator}settings.json';
+  testWidgets('a real proposed decision shows in the Needs you panel, oldest '
+      '(only) item, 1 of 1', (tester) async {
+    final settingsPath =
+        '${tempDir.path}${Platform.pathSeparator}settings.json';
 
-      await pumpAndSettleReal(
-        tester,
-        () => tester.pumpWidget(
-          MaterialApp(
-            home: ProjectsScreen(settingsPath: settingsPath),
-          ),
-        ),
-      );
+    await pumpAndSettleReal(
+      tester,
+      () => tester.pumpWidget(
+        MaterialApp(home: ProjectsScreen(settingsPath: settingsPath)),
+      ),
+    );
 
-      await tester.enterText(find.byType(TextField), projectsRoot);
-      await pumpAndSettleReal(
-        tester,
-        () => tester.tap(find.text('Use this folder')),
-      );
+    await tester.enterText(find.byType(TextField), projectsRoot);
+    await pumpAndSettleReal(
+      tester,
+      () => tester.tap(find.text('Use this folder')),
+    );
 
-      expect(find.text('Needs you'), findsOneWidget);
-      expect(find.text('A proposed call'), findsOneWidget);
-      expect(find.text('1 of 1'), findsOneWidget);
-      expect(find.text('next ›'), findsNothing);
-    },
-  );
+    expect(find.text('Needs you'), findsOneWidget);
+    expect(find.text('A proposed call'), findsOneWidget);
+    expect(find.text('1 of 1'), findsOneWidget);
+    expect(find.text('next ›'), findsNothing);
+  });
 }

@@ -1400,7 +1400,6 @@ class _PlanViewState extends State<PlanView> {
       ),
     );
   }
-
 }
 
 // --- Pure helpers, tested directly ------------------------------------

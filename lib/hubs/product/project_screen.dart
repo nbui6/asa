@@ -684,11 +684,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
   /// `RoundCallScreen` through `openRoundCall`, and both need the exact
   /// same three functions bound to this project's own folder and write
   /// log, not two copies that could drift.
-  Future<String?> _loadRoundText(String roundNumber) => readRoundFileText(
-    widget.folder,
-    roundNumber,
-    const DiskFileAccess(),
-  );
+  Future<String?> _loadRoundText(String roundNumber) =>
+      readRoundFileText(widget.folder, roundNumber, const DiskFileAccess());
 
   Future<void> _approveRound(
     String roundNumber, {
@@ -705,13 +702,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
   Future<void> _requestRoundChanges(
     String roundNumber, {
     required String what,
-  }) =>
-      requestRoundChanges(
-        widget.folder,
-        roundNumber,
-        what: what,
-        writeLogPath: widget.writeLogPath,
-      );
+  }) => requestRoundChanges(
+    widget.folder,
+    roundNumber,
+    what: what,
+    writeLogPath: widget.writeLogPath,
+  );
 
   /// Round-36 §3, L17 — also handed to `DecisionDetailScreen`, `PlanView`
   /// and `StrategyView` as `onOpenArea`, so an area chip anywhere in this

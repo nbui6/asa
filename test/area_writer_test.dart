@@ -81,9 +81,8 @@ void main() {
     });
 
     test('never touches an existing area page', () async {
-      final planDir = Directory(
-        '$projectFolder${Platform.pathSeparator}plan',
-      )..createSync(recursive: true);
+      final planDir = Directory('$projectFolder${Platform.pathSeparator}plan')
+        ..createSync(recursive: true);
       final existing = File(
         '${planDir.path}${Platform.pathSeparator}finance.md',
       );

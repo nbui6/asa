@@ -326,28 +326,29 @@ void main() {
       'result label, no Goal/Plan/Tasks text yet (Round 38 §B — that '
       "whole page is now the area's own tab, not shown inline)",
       (tester) async {
-      await pumpAreas(
-        tester,
-        areas: [
-          area(
-            tasks: [
-              const Task(rawLine: '- [x] a', text: 'a', done: true),
-              const Task(rawLine: '- [ ] b', text: 'b', done: false),
-            ],
-          ),
-        ],
-        homeTasks: [
-          const Task(rawLine: '- [ ] home', text: 'Home task', done: false),
-        ],
-      );
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              tasks: [
+                const Task(rawLine: '- [x] a', text: 'a', done: true),
+                const Task(rawLine: '- [ ] b', text: 'b', done: false),
+              ],
+            ),
+          ],
+          homeTasks: [
+            const Task(rawLine: '- [ ] home', text: 'Home task', done: false),
+          ],
+        );
 
-      // One "Sales" in the area tab strip, one in "All"'s own summary row.
-      expect(find.text('Sales'), findsNWidgets(2));
-      expect(find.text('next b'), findsOneWidget);
-      expect(find.text('1 / 2'), findsOneWidget);
-      expect(find.text('no result yet'), findsOneWidget);
-      expect(find.text('Serves Objective 1.'), findsNothing);
-    });
+        // One "Sales" in the area tab strip, one in "All"'s own summary row.
+        expect(find.text('Sales'), findsNWidgets(2));
+        expect(find.text('next b'), findsOneWidget);
+        expect(find.text('1 / 2'), findsOneWidget);
+        expect(find.text('no result yet'), findsOneWidget);
+        expect(find.text('Serves Objective 1.'), findsNothing);
+      },
+    );
 
     testWidgets('opening a row shows Goal, Plan, Tasks, Results and '
         'Decisions, in that order', (tester) async {

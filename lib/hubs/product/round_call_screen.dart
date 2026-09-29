@@ -239,9 +239,7 @@ class _RoundCallScreenState extends State<RoundCallScreen> {
     return AsaPage(
       name: _title,
       onBack: () => Navigator.of(context).pop(_settled),
-      body: _loading
-          ? const Text('Loading…', style: AsaText.body)
-          : _body(),
+      body: _loading ? const Text('Loading…', style: AsaText.body) : _body(),
     );
   }
 
@@ -309,7 +307,8 @@ class _RoundCallScreenState extends State<RoundCallScreen> {
           enabled: !_saving,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
-            hintText: 'Anything to add? (optional for Yes, required for '
+            hintText:
+                'Anything to add? (optional for Yes, required for '
                 'Needs changes)',
           ),
         ),

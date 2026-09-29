@@ -80,36 +80,33 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a refusal shows inline, the dialog stays open, nothing else is '
-    'called',
-    (tester) async {
-      var selectCalled = false;
-      var reloadCalled = false;
+  testWidgets('a refusal shows inline, the dialog stays open, nothing else is '
+      'called', (tester) async {
+    var selectCalled = false;
+    var reloadCalled = false;
 
-      await pump(
-        tester,
-        areas: const [],
-        onCreateArea: (name) async => AreaCreateResult(
-          error: 'An area named "${name.toLowerCase()}" already exists.',
-        ),
-        onSelectAreaTab: (_) => selectCalled = true,
-        onDataChanged: () => reloadCalled = true,
-      );
+    await pump(
+      tester,
+      areas: const [],
+      onCreateArea: (name) async => AreaCreateResult(
+        error: 'An area named "${name.toLowerCase()}" already exists.',
+      ),
+      onSelectAreaTab: (_) => selectCalled = true,
+      onDataChanged: () => reloadCalled = true,
+    );
 
-      await tester.tap(find.text('+ Add area'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('+ Add area'));
+    await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextField), 'Finance');
-      await tester.tap(find.text('Create'));
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Finance');
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.textContaining('already exists'), findsOneWidget);
-      expect(selectCalled, isFalse);
-      expect(reloadCalled, isFalse);
-    },
-  );
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.textContaining('already exists'), findsOneWidget);
+    expect(selectCalled, isFalse);
+    expect(reloadCalled, isFalse);
+  });
 
   testWidgets('Cancel closes the dialog and calls nothing', (tester) async {
     var createCalled = false;

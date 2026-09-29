@@ -54,7 +54,10 @@ Future<AreaCreateResult> createArea(
   }
 
   final sep = Platform.pathSeparator;
-  final planDir = Directory('$projectFolder$sep' 'plan');
+  final planDir = Directory(
+    '$projectFolder$sep'
+    'plan',
+  );
   final targetPath = '${planDir.path}$sep$slug.md';
   final target = File(targetPath);
 
@@ -64,12 +67,13 @@ Future<AreaCreateResult> createArea(
     );
   }
 
-  final resolvedTemplatePath = templatePath ?? _defaultTemplatePath(
-    projectsRoot: Directory(projectFolder).parent.path,
-  );
+  final resolvedTemplatePath =
+      templatePath ??
+      _defaultTemplatePath(projectsRoot: Directory(projectFolder).parent.path);
   if (resolvedTemplatePath == null) {
     return const AreaCreateResult(
-      error: "Could not find the asa repo (rule 17's workspace shape) to "
+      error:
+          "Could not find the asa repo (rule 17's workspace shape) to "
           r'read templates\area.md from.',
     );
   }
@@ -107,5 +111,7 @@ String? _defaultTemplatePath({required String projectsRoot}) {
   final asaRepoPath = asaRepoPathFrom(projectsRoot);
   if (asaRepoPath == null) return null;
   final sep = Platform.pathSeparator;
-  return '$asaRepoPath$sep' 'templates$sep' 'area.md';
+  return '$asaRepoPath$sep'
+      'templates$sep'
+      'area.md';
 }

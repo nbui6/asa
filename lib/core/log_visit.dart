@@ -14,7 +14,9 @@ String? logVisitFilePath() {
   final appData = Platform.environment['APPDATA'];
   if (appData == null || appData.isEmpty) return null;
   final sep = Platform.pathSeparator;
-  return '$appData$sep' 'Asa$sep' 'log-visits.json';
+  return '$appData$sep'
+      'Asa$sep'
+      'log-visits.json';
 }
 
 /// When [projectFolder]'s Log was last opened, or null — never opened

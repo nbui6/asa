@@ -229,7 +229,8 @@ Future<List<LogEntry>> _changeHistoryEntries(
             : LogEntryType.change,
         date: record.timestamp,
         title: record.path,
-        detail: '${record.linesBefore} line(s) before, '
+        detail:
+            '${record.linesBefore} line(s) before, '
             '${record.linesAfter} after',
         hint: match == LoggedMatch.probably ? 'probably logged' : null,
         file: record.path,

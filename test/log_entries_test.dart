@@ -31,11 +31,12 @@ void main() {
 
   tearDown(() => tempDir.deleteSync(recursive: true));
 
-  test('a decision contributes type decision, with its area/objective/round',
-      () async {
-    Directory(sep(projectFolder, 'decisions')).createSync();
-    File(sep(sep(projectFolder, 'decisions'), '0001-thing.md'))
-        .writeAsStringSync('''
+  test(
+    'a decision contributes type decision, with its area/objective/round',
+    () async {
+      Directory(sep(projectFolder, 'decisions')).createSync();
+      File(sep(sep(projectFolder, 'decisions'), '0001-thing.md'))
+          .writeAsStringSync('''
 # ADR 0001 — A real decision
 
 **Date:** 2026-09-20 · **Status:** accepted
@@ -51,17 +52,17 @@ Because.
 Nothing.
 ''');
 
-    final entries = await readLogEntries(projectFolder, files);
-    expect(entries, hasLength(1));
-    expect(entries.first.type, LogEntryType.decision);
-    expect(entries.first.area, 'Sales');
-    expect(entries.first.objectiveNumber, '1');
-    expect(entries.first.round, '38');
-  });
+      final entries = await readLogEntries(projectFolder, files);
+      expect(entries, hasLength(1));
+      expect(entries.first.type, LogEntryType.decision);
+      expect(entries.first.area, 'Sales');
+      expect(entries.first.objectiveNumber, '1');
+      expect(entries.first.round, '38');
+    },
+  );
 
   test('a sketch approval contributes type yourYes, not decision', () async {
-    final sketchesDir = Directory(sep(projectFolder, 'sketches'))
-      ..createSync();
+    final sketchesDir = Directory(sep(projectFolder, 'sketches'))..createSync();
     // The row's own image/source paths must resolve, rule 17's own
     // shape: projects\<name>\... — decisions_reader.dart's own
     // SketchApprovalsSource checks both are real files, not just text.
@@ -80,8 +81,7 @@ Nothing.
 
   test('a round approval contributes type yourYes', () async {
     Directory(sep(projectFolder, 'rounds')).createSync();
-    File(sep(sep(projectFolder, 'rounds'), 'APPROVED.md'))
-        .writeAsStringSync('''
+    File(sep(sep(projectFolder, 'rounds'), 'APPROVED.md')).writeAsStringSync('''
 | date | round | their exact words | the result, in one line |
 |---|---|---|---|
 | 2026-09-20 | 38 | "yes" | Areas as tabs, shipped |
@@ -141,55 +141,39 @@ Serves Objective 1.
     expect(entries.first.area, 'Sales');
   });
 
-  test(
-    'an unlogged change contributes type changedWithoutNote; a logged '
-    'one contributes type change',
-    () async {
-      final charterPath = sep(projectFolder, 'CHARTER.md');
-      File(charterPath).writeAsStringSync('## Objectives\n1. First.\n');
-      await recordChanges(
-        projectFolder,
-        tempDir.path,
-        historyRoot: historyRoot,
-      );
+  test('an unlogged change contributes type changedWithoutNote; a logged '
+      'one contributes type change', () async {
+    final charterPath = sep(projectFolder, 'CHARTER.md');
+    File(charterPath).writeAsStringSync('## Objectives\n1. First.\n');
+    await recordChanges(projectFolder, tempDir.path, historyRoot: historyRoot);
 
-      File(charterPath).writeAsStringSync('## Objectives\n1. Changed.\n');
-      await recordChanges(
-        projectFolder,
-        tempDir.path,
-        historyRoot: historyRoot,
-      );
+    File(charterPath).writeAsStringSync('## Objectives\n1. Changed.\n');
+    await recordChanges(projectFolder, tempDir.path, historyRoot: historyRoot);
 
-      final entries = await readLogEntries(
-        projectFolder,
-        files,
-        historyRoot: historyRoot,
-      );
-      expect(entries, hasLength(1));
-      expect(entries.first.type, LogEntryType.changedWithoutNote);
+    final entries = await readLogEntries(
+      projectFolder,
+      files,
+      historyRoot: historyRoot,
+    );
+    expect(entries, hasLength(1));
+    expect(entries.first.type, LogEntryType.changedWithoutNote);
 
-      // Now with a same-day log line naming the file — logged instead.
-      final today = DateTime.now();
-      final logLine =
-          '- ${today.toIso8601String().split("T").first} 10:00-10:05 · '
-          'test · updated · CHARTER.md\n';
-      File(sep(projectFolder, '.asa-log.md')).writeAsStringSync(logLine);
-      File(charterPath)
-          .writeAsStringSync('## Objectives\n1. Changed again.\n');
-      await recordChanges(
-        projectFolder,
-        tempDir.path,
-        historyRoot: historyRoot,
-      );
+    // Now with a same-day log line naming the file — logged instead.
+    final today = DateTime.now();
+    final logLine =
+        '- ${today.toIso8601String().split("T").first} 10:00-10:05 · '
+        'test · updated · CHARTER.md\n';
+    File(sep(projectFolder, '.asa-log.md')).writeAsStringSync(logLine);
+    File(charterPath).writeAsStringSync('## Objectives\n1. Changed again.\n');
+    await recordChanges(projectFolder, tempDir.path, historyRoot: historyRoot);
 
-      final entries2 = await readLogEntries(
-        projectFolder,
-        files,
-        historyRoot: historyRoot,
-      );
-      expect(entries2.any((e) => e.type == LogEntryType.change), isTrue);
-    },
-  );
+    final entries2 = await readLogEntries(
+      projectFolder,
+      files,
+      historyRoot: historyRoot,
+    );
+    expect(entries2.any((e) => e.type == LogEntryType.change), isTrue);
+  });
 
   test('sorted newest first across every source', () async {
     File(sep(projectFolder, '.asa-log.md')).writeAsStringSync(

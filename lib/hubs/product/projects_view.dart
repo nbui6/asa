@@ -56,8 +56,7 @@ import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart' show ProjectSummary;
 import 'package:asa/core/roadmap.dart';
-import 'package:asa/core/status_words.dart'
-    show canonicalStatus, statusLabel;
+import 'package:asa/core/status_words.dart' show canonicalStatus, statusLabel;
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
@@ -542,8 +541,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     // own `InkWell`, nested inside the row's — the more specific gesture
     // wins the tap, the same pattern the Start-menu icon already relies
     // on at the other end of this same row.
-    void onTap() =>
-        widget.onOpenProject(openTarget(folder, openLog: true));
+    void onTap() => widget.onOpenProject(openTarget(folder, openLog: true));
     if (news.hasUnloggedChange) {
       return [
         const SizedBox(width: AsaSpace.sm),

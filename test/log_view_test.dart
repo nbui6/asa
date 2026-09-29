@@ -59,7 +59,7 @@ void main() {
     })?
     onApproveRound,
     Future<void> Function(String, {required String what})?
-        onRequestRoundChanges,
+    onRequestRoundChanges,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -85,16 +85,12 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('an empty project shows the honest empty state', (
-    tester,
-  ) async {
+  testWidgets('an empty project shows the honest empty state', (tester) async {
     await pump(tester);
     expect(find.text('Nothing happened here yet.'), findsOneWidget);
   });
 
-  testWidgets('each entry shows its own type label and title', (
-    tester,
-  ) async {
+  testWidgets('each entry shows its own type label and title', (tester) async {
     await pump(
       tester,
       entries: [
@@ -119,38 +115,32 @@ void main() {
     expect(find.text('CHARTER.md'), findsOneWidget);
   });
 
-  testWidgets(
-    'the needs-your-yes card shows one item and cycles with next',
-    (tester) async {
-      await pump(
-        tester,
-        decisions: [
-          _decision(title: 'First proposed', proposed: true),
-          _decision(number: '0002', title: 'Second proposed', proposed: true),
-        ],
-      );
-
-      expect(find.text('1 of 2'), findsOneWidget);
-      final firstVisible =
-          find.text('First proposed').evaluate().isNotEmpty;
-      final secondVisible =
-          find.text('Second proposed').evaluate().isNotEmpty;
-      expect(firstVisible ^ secondVisible, isTrue);
-
-      await tester.tap(find.text('next ›'));
-      await tester.pump();
-
-      expect(find.text('2 of 2'), findsOneWidget);
-    },
-  );
-
-  testWidgets('no waiting items shows no needs-your-yes card at all', (
+  testWidgets('the needs-your-yes card shows one item and cycles with next', (
     tester,
   ) async {
     await pump(
       tester,
-      decisions: [_decision(title: 'Already settled')],
+      decisions: [
+        _decision(title: 'First proposed', proposed: true),
+        _decision(number: '0002', title: 'Second proposed', proposed: true),
+      ],
     );
+
+    expect(find.text('1 of 2'), findsOneWidget);
+    final firstVisible = find.text('First proposed').evaluate().isNotEmpty;
+    final secondVisible = find.text('Second proposed').evaluate().isNotEmpty;
+    expect(firstVisible ^ secondVisible, isTrue);
+
+    await tester.tap(find.text('next ›'));
+    await tester.pump();
+
+    expect(find.text('2 of 2'), findsOneWidget);
+  });
+
+  testWidgets('no waiting items shows no needs-your-yes card at all', (
+    tester,
+  ) async {
+    await pump(tester, decisions: [_decision(title: 'Already settled')]);
     expect(find.text('Needs your yes'), findsNothing);
   });
 

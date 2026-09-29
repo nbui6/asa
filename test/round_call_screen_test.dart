@@ -92,9 +92,7 @@ void main() {
     expect(find.textContaining('Yes —'), findsOneWidget);
   });
 
-  testWidgets('typed feedback is passed through to onApprove', (
-    tester,
-  ) async {
+  testWidgets('typed feedback is passed through to onApprove', (tester) async {
     String? feedbackPassed;
     await pump(
       tester,
@@ -125,25 +123,22 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Needs changes with real text calls onRequestChanges, then shows '
-    '"Your call. Needs changes — …"',
-    (tester) async {
-      String? whatPassed;
-      await pump(
-        tester,
-        onRequestChanges: ({required what}) async => whatPassed = what,
-      );
+  testWidgets('Needs changes with real text calls onRequestChanges, then shows '
+      '"Your call. Needs changes — …"', (tester) async {
+    String? whatPassed;
+    await pump(
+      tester,
+      onRequestChanges: ({required what}) async => whatPassed = what,
+    );
 
-      await tester.enterText(find.byType(TextField), 'move the button');
-      await tester.tap(find.text('Needs changes'));
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'move the button');
+    await tester.tap(find.text('Needs changes'));
+    await tester.pumpAndSettle();
 
-      expect(whatPassed, 'move the button');
-      expect(find.text('Your call. '), findsOneWidget);
-      expect(find.textContaining('Needs changes —'), findsOneWidget);
-    },
-  );
+    expect(whatPassed, 'move the button');
+    expect(find.text('Your call. '), findsOneWidget);
+    expect(find.textContaining('Needs changes —'), findsOneWidget);
+  });
 
   testWidgets('an already-recorded round shows settled, not the buttons', (
     tester,

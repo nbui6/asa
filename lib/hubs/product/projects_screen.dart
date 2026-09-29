@@ -728,28 +728,23 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           ),
           const SizedBox(height: AsaSpace.xs),
           InkWell(
-            onTap: () => _openProject(
-              openTarget(item.projectFolder, openLog: true),
-            ),
+            onTap: () =>
+                _openProject(openTarget(item.projectFolder, openLog: true)),
             child: Text(item.title, style: AsaText.body),
           ),
           const SizedBox(height: AsaSpace.sm),
           Row(
             children: [
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AsaColors.green,
-                ),
-                onPressed: () => _openProject(
-                  openTarget(item.projectFolder, openLog: true),
-                ),
+                style: FilledButton.styleFrom(backgroundColor: AsaColors.green),
+                onPressed: () =>
+                    _openProject(openTarget(item.projectFolder, openLog: true)),
                 child: const Text('Yes'),
               ),
               const SizedBox(width: AsaSpace.sm),
               OutlinedButton(
-                onPressed: () => _openProject(
-                  openTarget(item.projectFolder, openLog: true),
-                ),
+                onPressed: () =>
+                    _openProject(openTarget(item.projectFolder, openLog: true)),
                 child: const Text('Changes…'),
               ),
               const Spacer(),

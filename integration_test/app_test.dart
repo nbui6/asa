@@ -89,14 +89,30 @@ The second, better approach.
       await tester.pumpAndSettle();
 
       // Round 36 cp8 — every project opens on Plan now, with or without
-      // plan pages of its own; this fixture has neither, so Decisions
+      // plan pages of its own; this fixture has neither, so the Log tab
       // needs an explicit tap to see what this test is actually about.
-      await tester.tap(find.text('Decisions'));
+      // Round 38 §E (ADR 0034) renamed the old flat Decisions tab to Log
+      // and split it into two views — "Decisions in force" is the one
+      // that shows every decision; a superseded one sits behind its own
+      // "show replaced" reveal rather than the flat list this test was
+      // first written against.
+      await tester.tap(find.text('Log'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Decisions in force'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('The second decision'), findsOneWidget);
+      expect(find.text('The first decision'), findsNothing);
+
+      await tester.tap(find.text('show replaced'));
       await tester.pumpAndSettle();
 
       expect(find.text('The first decision'), findsOneWidget);
-      expect(find.text('The second decision'), findsOneWidget);
-      expect(find.textContaining('replaced by 0002'), findsOneWidget);
+
+      await tester.tap(find.text('The first decision'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Superseded by 0002'), findsOneWidget);
     },
   );
 }

@@ -113,8 +113,7 @@ void main() {
     },
   );
 
-  testWidgets(
-      'one decision named by two areas appears grouped under both, '
+  testWidgets('one decision named by two areas appears grouped under both, '
       'neither merged nor dropped', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(MaterialApp(home: ProjectScreen(folder: folder)));

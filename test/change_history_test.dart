@@ -175,40 +175,34 @@ void main() {
       expect(isLoggedChange(record, log), LoggedMatch.yes);
     });
 
-    test(
-      'a same-day line naming only a different file is changed, not '
-      'logged — the exact gap the drill found',
-      () {
-        final record = ChangeRecord(
-          path: 'CHARTER.md',
-          timestamp: DateTime(2026, 9, 28, 15, 30),
-          before: 'a',
-          after: 'b',
-        );
-        final log = [
-          (
-            date: DateTime(2026, 9, 28),
-            text: r'confirmed the webinar month · plan\1-marketing.md',
-          ),
-        ];
-        expect(isLoggedChange(record, log), LoggedMatch.no);
-      },
-    );
+    test('a same-day line naming only a different file is changed, not '
+        'logged — the exact gap the drill found', () {
+      final record = ChangeRecord(
+        path: 'CHARTER.md',
+        timestamp: DateTime(2026, 9, 28, 15, 30),
+        before: 'a',
+        after: 'b',
+      );
+      final log = [
+        (
+          date: DateTime(2026, 9, 28),
+          text: r'confirmed the webinar month · plan\1-marketing.md',
+        ),
+      ];
+      expect(isLoggedChange(record, log), LoggedMatch.no);
+    });
 
-    test(
-      'a same-day line that names no file at all falls back to '
-      'probably logged, not a certain yes',
-      () {
-        final record = ChangeRecord(
-          path: 'CHARTER.md',
-          timestamp: DateTime(2026, 9, 28, 15, 30),
-          before: 'a',
-          after: 'b',
-        );
-        final log = [(date: DateTime(2026, 9, 28), text: 'did something')];
-        expect(isLoggedChange(record, log), LoggedMatch.probably);
-      },
-    );
+    test('a same-day line that names no file at all falls back to '
+        'probably logged, not a certain yes', () {
+      final record = ChangeRecord(
+        path: 'CHARTER.md',
+        timestamp: DateTime(2026, 9, 28, 15, 30),
+        before: 'a',
+        after: 'b',
+      );
+      final log = [(date: DateTime(2026, 9, 28), text: 'did something')];
+      expect(isLoggedChange(record, log), LoggedMatch.probably);
+    });
 
     test('a change with no log line that day is changed, not logged', () {
       final record = ChangeRecord(

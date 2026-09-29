@@ -219,9 +219,7 @@ class _LogViewState extends State<LogView> {
           Row(
             children: [
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AsaColors.green,
-                ),
+                style: FilledButton.styleFrom(backgroundColor: AsaColors.green),
                 onPressed: () => _recordYesFor(item),
                 child: const Text('Yes'),
               ),
@@ -231,10 +229,7 @@ class _LogViewState extends State<LogView> {
                 child: const Text('Changes…'),
               ),
               const Spacer(),
-              Text(
-                '${index + 1} of ${waiting.length}',
-                style: AsaText.meta,
-              ),
+              Text('${index + 1} of ${waiting.length}', style: AsaText.meta),
               if (waiting.length > 1)
                 TextButton(
                   onPressed: () => setState(() => _needsYouIndex++),
@@ -342,8 +337,18 @@ class _LogViewState extends State<LogView> {
     final mondayOffset = date.weekday - DateTime.monday;
     final monday = date.subtract(Duration(days: mondayOffset));
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${monday.day} ${months[monday.month - 1]}';
   }

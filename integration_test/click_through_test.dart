@@ -84,6 +84,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Round 38 §F's own done-tasks fold means a tick's own visible effect
+  /// (the count text `waitFor` used to poll for) no longer exists on the
+  /// area's own dedicated tab — the fold auto-expands on toggle (its own
+  /// local `setState`, immediate) well before the real write actually
+  /// lands, so it can't stand in for "the write finished" either. Polling
+  /// the file itself sidesteps the widget tree entirely — the one signal
+  /// that only changes once the real write actually has.
+  Future<void> waitForFileChange(
+    WidgetTester tester,
+    File file,
+    String before, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (file.readAsStringSync() == before) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail('Timed out waiting for ${file.path} to change');
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pumpAndSettle();
+  }
+
   Future<void> pumpAndLoad(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(home: ProjectsScreen(settingsPath: settingsPath)),
@@ -93,7 +116,13 @@ void main() {
       await tester.enterText(find.byType(TextField), root);
       await tester.tap(find.text('Use this folder'));
     }
-    await waitFor(tester, find.text('Kundenakte'));
+    // Round 38 §F, ADR 0036 — Kundenakte (`paused`, canonically on-hold)
+    // no longer shows on the main overview at all, so it can't be this
+    // helper's own "finished loading" signal any more; Northwind (never
+    // hidden) always is. Not `.last` here — `waitFor`'s own polling calls
+    // `.evaluate()` before either match exists at all, and `.last` throws
+    // on an empty candidate set rather than reporting it empty.
+    await waitFor(tester, find.text('Northwind partnership'));
   }
 
   Future<void> tap(WidgetTester tester, Finder finder) async {
@@ -134,23 +163,44 @@ void main() {
     // right — "other" only toggles expand/collapse, it never opens its
     // own screen (projects_view.dart's own `_otherGroup`), so its children
     // only show once it's tapped open.
+    //
+    // Round 38 §F, ADR 0036 — real behaviour on real fixture data, not
+    // assumed: Kundenakte (`paused`) and Legacy app (`on hold`) both
+    // canonicalise to `on-hold` and now leave the main list for the
+    // overview's own hidden line instead. Legacy app was "other"'s only
+    // child and named the parent legacy-app-docs nests under — with it
+    // filtered out before the forest is built, `buildProjectForest`'s own
+    // documented rule ("or when that field names a project not present in
+    // this scan") promotes legacy-app-docs to a root in its place, so it
+    // shows directly now, "other" tap or not.
     await pumpAndLoad(tester);
-    expect(find.text('Kundenakte'), findsOneWidget);
-    expect(find.text('Northwind partnership'), findsOneWidget);
+    expect(find.text('Kundenakte'), findsNothing);
+    expect(find.text('Legacy app'), findsNothing);
+    // Two, not one — Round 38 §E's own Needs-you card also names the
+    // project holding decision 0011 (proposed from the fixture's own
+    // start), above the list, real and expected, not a stray duplicate.
+    expect(find.text('Northwind partnership'), findsNWidgets(2));
     expect(find.text('Vibe coding kit'), findsOneWidget);
     expect(find.text('Toolkit plugin'), findsOneWidget); // nested, no tap
-    expect(find.text('Legacy app'), findsNothing); // inside "other", closed
-    await tap(tester, find.text('other'));
+    expect(find.text('Legacy app docs'), findsOneWidget); // promoted to root
+
+    // The hidden line names both, folded; opened, both are real rows.
+    expect(find.textContaining('On hold 2'), findsOneWidget);
+    await tap(tester, find.textContaining('show ›'));
+    expect(find.text('Kundenakte'), findsOneWidget);
     expect(find.text('Legacy app'), findsOneWidget);
-    expect(find.text('Legacy app docs'), findsOneWidget); // grandchild too
 
     // 2. Click Northwind partnership → Plan tab, Next line, five area rows.
-    await tap(tester, find.text('Northwind partnership'));
+    // `.last` — the needs-you card's own pill is the other match.
+    await tap(tester, find.text('Northwind partnership').last);
     expect(find.text('Plan'), findsOneWidget);
     expect(find.text('NEXT'), findsOneWidget);
     expect(find.text('Quarterly check-in with the partner'), findsWidgets);
+    // Round 38 §B — each area's name now shows twice on the default
+    // "All" view: the area tab strip's own label, and "All"'s own
+    // summary row for it.
     for (final area in ['Marketing', 'Sales', 'Enablement', 'Finance']) {
-      expect(find.text(area), findsOneWidget);
+      expect(find.text(area), findsNWidgets(2));
     }
     expect(find.text('Not in an area'), findsOneWidget);
 
@@ -158,10 +208,26 @@ void main() {
     // the overview segment and the Tasks view all changed. Assert the
     // file: exactly one line differs, and the write log grew by one entry.
     // Untick → the file is byte-identical to before.
+    //
+    // Round 38 §F — Sales' own real 5 tasks are 2 done, 3 open; done
+    // tasks now fold behind "✓ N done · show ›" by default, so only the
+    // 3 open ones show here, not all 5 — "Second demo" (the real fixture
+    // file's own third line, the first *open* one) is the first
+    // *visible* checkbox now, index 0, not index 2. The "2 / 5"/"3 / 5"
+    // counts this step used to read lived on the "All" row's own summary
+    // (`_areaSummaryRow`), never on this dedicated area tab — §B replaced
+    // "expand in place" with a real tab switch, and that summary line
+    // never came with it. `waitForFileChange` replaces the old
+    // count-text polling as this step's own "the write actually landed"
+    // signal — the fold's own local `setState` (ticking a task
+    // auto-reveals its own list, so it never vanishes mid-tap) fires
+    // before the real write does, so it can't be that signal either.
     final beforeTick = salesFile.readAsStringSync();
     final logCountBefore = (await readWriteLog()).length;
 
-    await tap(tester, find.text('Sales'));
+    // `.first` — Round 38 §B — the area tab strip's own label; the "All"
+    // row underneath repeats the same name, either one switches tabs.
+    await tap(tester, find.text('Sales').first);
     await waitFor(tester, find.text('GOAL')); // only renders once expanded
     expect(
       find.text(
@@ -170,15 +236,12 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('2 / 5'), findsOneWidget);
+    expect(find.textContaining('✓ 2 done'), findsOneWidget);
 
     // The checkbox, not the label — only the Checkbox itself has an
-    // onChanged; the row's own Text is plain, unclickable. Sales lists 5
-    // tasks, none of the other areas are expanded, so its own 5 checkboxes
-    // are the only ones on screen; "Second demo" is the third (2 already
-    // done, then this one).
-    await tap(tester, find.byType(Checkbox).at(2));
-    await waitFor(tester, find.text('3 / 5'));
+    // onChanged; the row's own Text is plain, unclickable.
+    await tap(tester, find.byType(Checkbox).at(0));
+    await waitForFileChange(tester, salesFile, beforeTick);
 
     final afterTick = salesFile.readAsStringSync();
     final tickDiff = _diffLines(beforeTick, afterTick);
@@ -212,11 +275,19 @@ void main() {
     // second one after the untick's own reload: that reload no longer
     // collapses it (see project_screen.dart's own "Round 36 cp6" comment
     // on why the whole tab body must stay mounted through a reload).
-    await tap(tester, find.text('Northwind partnership'));
-    await tap(tester, find.text('Sales'));
+    //
+    // Round 38 §F — Sales is now 3 done, 2 open; "Second demo" is done
+    // again and folded away, so it needs the fold opened first, same as
+    // the file's own real shape, not the number "2" this step's own name
+    // would suggest at a glance.
+    await tap(tester, find.text('Northwind partnership').last);
+    await tap(tester, find.text('Sales').first);
     await waitFor(tester, find.text('GOAL'));
+    await tap(tester, find.textContaining('✓ 3 done'));
+    // Expanded, tasks show in the file's own order again — "Second
+    // demo" is the third line there, same index §6 always used.
     await tap(tester, find.byType(Checkbox).at(2));
-    await waitFor(tester, find.text('2 / 5'));
+    await waitForFileChange(tester, salesFile, afterTick);
     expect(salesFile.readAsStringSync(), beforeTick);
     expect(find.text('GOAL'), findsOneWidget); // still expanded, not reset
 
@@ -242,22 +313,34 @@ void main() {
       find.text('0003 · Deals go through the partner portal'),
       findsOneWidget,
     );
+    // Round 38 §B — `_selectedAreaTab` is owned by `ProjectScreen`, not
+    // `PlanView`; a Strategy round trip doesn't touch it, so this lands
+    // back on Sales' own tab, not "All" — a real improvement over the
+    // old expand-in-place model's own collapse-on-return, found here
+    // rather than assumed still true.
     await tap(tester, find.text('Plan'));
-    expect(find.text('Sales'), findsOneWidget); // back, but collapsed again
+    expect(find.text('Sales'), findsOneWidget); // its own tab, still active
     expect(
       find.text(
         'Serves Objective 1 — would show: 3 deals registered by the '
         'partner this quarter.',
       ),
-      findsNothing,
+      findsOneWidget,
     );
 
-    // 5. Decisions → the proposed decision → Accept with a reason →
-    // assert it moves out of "Needs a look" and the verdict is readable
-    // by the parser (the screen itself re-reads the file through it).
-    await tap(tester, find.text('Decisions'));
-    expect(find.textContaining('NEEDS A LOOK'), findsOneWidget);
-    await tap(tester, find.text('Run the webinar before any paid ads'));
+    // 5. Log → the proposed decision, on its own Needs-your-yes card →
+    // Accept with a reason → assert it moves off that card and the
+    // verdict is readable by the parser (the screen itself re-reads the
+    // file through it). Round 38 §E (ADR 0034) retired the old flat
+    // Decisions tab and its "Needs a look" group in favour of this one
+    // card, reached from the tab now named Log.
+    await tap(tester, find.text('Log'));
+    expect(find.text('NEEDS YOUR YES'), findsOneWidget);
+    // `.first` — the card's own title, above the fold; "What happened"'s
+    // own timeline names every decision too, proposed ones included, as
+    // its own row further down (tapping that one expands it in place,
+    // it doesn't push this screen).
+    await tap(tester, find.text('Run the webinar before any paid ads').first);
     expect(find.byType(DecisionDetailScreen), findsOneWidget);
 
     await tester.enterText(
@@ -299,16 +382,22 @@ void main() {
       findsOneWidget,
     );
 
-    // Back on Decisions, "Needs a look" is gone — a healthy project falls
-    // back to one flat list, no empty group header ever shown.
-    await tap(tester, find.text('Decisions'));
-    expect(find.textContaining('NEEDS A LOOK'), findsNothing);
-    expect(find.textContaining('SETTLED'), findsNothing);
+    // Back on Log, the Needs-your-yes card is gone — nothing left
+    // waiting. "Decisions in force" now shows this decision settled,
+    // alongside the project's other two, one flat list, no empty group
+    // header ever shown.
+    await tap(tester, find.text('Log'));
+    expect(find.text('NEEDS YOUR YES'), findsNothing);
+    await tap(tester, find.text('Decisions in force'));
     expect(find.text('Run the webinar before any paid ads'), findsOneWidget);
     expect(find.text('Deals go through the partner portal'), findsOneWidget);
+    // Two, not one — ADR 0006 is named back by both Sales' and Finance's
+    // own `## Decisions` sections; "Decisions in force" groups a decision
+    // under every area that names it (Round 34's own real two-areas
+    // case), so it's a real row in both groups, not a duplicate.
     expect(
       find.text('No discount beyond the standard partner margin'),
-      findsOneWidget,
+      findsNWidgets(2),
     );
 
     // 7. Start → Copy opener → assert the clipboard names the project and
@@ -345,6 +434,9 @@ void main() {
     // shape as the Plan/Strategy finding, on the overview instead of a
     // project screen, and out of scope for the same reason.
     await tap(tester, find.byIcon(Icons.arrow_back));
+    // Round 38 §F — still absent, now because it's on-hold and hidden
+    // globally, not because "other" reset to collapsed (it has nothing
+    // left to reveal either way — legacy-app was its only child).
     expect(find.text('Legacy app'), findsNothing);
 
     // Tasks view → an area sub-heading → Plan, that area open.
@@ -360,9 +452,12 @@ void main() {
     );
 
     // 9. The project without areas → Plan opens and shows its tasks;
-    // Strategy, Decisions, Details open with no error text.
+    // Strategy, Log, Details open with no error text.
     await tap(tester, find.byIcon(Icons.arrow_back)); // Northwind → overview
     await tap(tester, find.byIcon(Icons.view_agenda_outlined)); // Tasks → Bars
+    // Round 38 §F — Kundenakte is on-hold now; the hidden line is the
+    // only way to it.
+    await tap(tester, find.textContaining('show ›'));
     await tap(tester, find.text('Kundenakte'));
     // cp8, round-36.md §9 point 1 — Kundenakte has neither `PLAN.md` nor
     // `plan\`, and used to skip the Plan tab entirely, landing on
@@ -377,7 +472,7 @@ void main() {
       findsWidgets,
     );
     expect(find.textContaining('No areas yet'), findsOneWidget);
-    for (final tabName in ['Details', 'Decisions']) {
+    for (final tabName in ['Details', 'Log']) {
       await tap(tester, find.text(tabName));
       await assertNoErrorText(tester);
     }
@@ -389,42 +484,53 @@ void main() {
       'Northwind partnership',
       'Vibe coding kit',
       'Toolkit plugin',
+      'Legacy app docs', // Round 38 §F — promoted to a root, see step 1
     ]) {
-      await tap(tester, find.text(projectName));
+      // `.last` — Northwind's own needs-you pill is otherwise a second,
+      // inert match (Round 38 §E).
+      await tap(tester, find.text(projectName).last);
       _expectPlanIsActiveTab(tester);
       await tap(tester, find.byIcon(Icons.arrow_back));
     }
-    if (find.text('Legacy app').evaluate().isEmpty) {
-      await tap(tester, find.text('other'));
+    // Round 38 §F — Legacy app is on-hold; the hidden line reaches it,
+    // "other" no longer does (nothing left under it, see step 1).
+    if (find.textContaining('show ›').evaluate().isNotEmpty) {
+      await tap(tester, find.textContaining('show ›'));
     }
-    for (final projectName in ['Legacy app', 'Legacy app docs']) {
-      await tap(tester, find.text(projectName));
-      _expectPlanIsActiveTab(tester);
-      await tap(tester, find.byIcon(Icons.arrow_back));
-    }
+    await tap(tester, find.text('Legacy app'));
+    _expectPlanIsActiveTab(tester);
+    await tap(tester, find.byIcon(Icons.arrow_back));
 
     // 10. Every tab of every fixture project opens once, no exception and
     // no red error text. Not every project has all four — Strategy needs
-    // a CHARTER.md, Plan/Decisions/Details always exist now. Tapping only
-    // the tabs actually on screen is the point of this step, not an
-    // assumption to work around. Already on the overview, "other" still
-    // open — the count test just above only pushed and popped projects,
-    // never touched the Bars/Tasks toggle that resets it.
+    // a CHARTER.md, Plan/Log/Details always exist now. Tapping only the
+    // tabs actually on screen is the point of this step, not an
+    // assumption to work around. Legacy app is on-hold (§F) — the hidden
+    // line, re-expanded defensively, is what reaches it, not a plain tap.
     for (final projectName in [
       'Northwind partnership',
       'Vibe coding kit',
       'Toolkit plugin',
-      'Legacy app',
       'Legacy app docs',
     ]) {
-      await tap(tester, find.text(projectName));
-      for (final tabName in ['Plan', 'Strategy', 'Decisions', 'Details']) {
+      await tap(tester, find.text(projectName).last);
+      for (final tabName in ['Plan', 'Strategy', 'Log', 'Details']) {
         if (find.text(tabName).evaluate().isEmpty) continue;
         await tap(tester, find.text(tabName));
         await assertNoErrorText(tester);
       }
       await tap(tester, find.byIcon(Icons.arrow_back));
     }
+    if (find.textContaining('show ›').evaluate().isNotEmpty) {
+      await tap(tester, find.textContaining('show ›'));
+    }
+    await tap(tester, find.text('Legacy app'));
+    for (final tabName in ['Plan', 'Strategy', 'Log', 'Details']) {
+      if (find.text(tabName).evaluate().isEmpty) continue;
+      await tap(tester, find.text(tabName));
+      await assertNoErrorText(tester);
+    }
+    await tap(tester, find.byIcon(Icons.arrow_back));
   });
 
   testWidgets(
@@ -439,14 +545,18 @@ void main() {
       expect(find.text('Northwind partnership'), findsOneWidget);
 
       await tap(tester, find.text('Northwind partnership'));
-      await tap(tester, find.text('Sales'));
+      await tap(tester, find.text('Sales').first);
       await waitFor(tester, find.text('GOAL'));
-      expect(find.text('3 / 5'), findsNothing);
-      expect(find.text('2 / 5'), findsOneWidget); // untick really landed
+      // Round 38 §F — sales.md is back to its original 2 done, 3 open;
+      // the fold names the count now, not a "2 / 5" line on this tab
+      // (see step 3's own comment).
+      expect(find.textContaining('✓ 2 done'), findsOneWidget); // untick landed
 
-      await tap(tester, find.text('Decisions'));
-      // Still flat — the accepted decision from pass one stayed accepted.
-      expect(find.textContaining('NEEDS A LOOK'), findsNothing);
+      await tap(tester, find.text('Log'));
+      // Nothing waiting — the accepted decision from pass one stayed
+      // accepted; it shows in "Decisions in force" now, not the card.
+      expect(find.text('NEEDS YOUR YES'), findsNothing);
+      await tap(tester, find.text('Decisions in force'));
       expect(find.text('Run the webinar before any paid ads'), findsOneWidget);
       await tap(tester, find.text('Run the webinar before any paid ads'));
       expect(
@@ -460,16 +570,24 @@ void main() {
 
       // Every tab of every fixture project opens once, no exception and
       // no red error text — the same step 10, proving reopening doesn't
-      // break anything.
+      // break anything. Round 38 §F — Kundenakte is on-hold; the hidden
+      // line reaches it, a plain tap on the overview no longer does.
       await tap(tester, find.byIcon(Icons.arrow_back)); // Northwind → overview
+      await tap(tester, find.textContaining('show ›'));
+      await tap(tester, find.text('Kundenakte'));
+      for (final tabName in ['Plan', 'Strategy', 'Log', 'Details']) {
+        if (find.text(tabName).evaluate().isEmpty) continue;
+        await tap(tester, find.text(tabName));
+        await assertNoErrorText(tester);
+      }
+      await tap(tester, find.byIcon(Icons.arrow_back));
       for (final projectName in [
-        'Kundenakte',
         'Northwind partnership',
         'Vibe coding kit',
         'Toolkit plugin',
       ]) {
         await tap(tester, find.text(projectName));
-        for (final tabName in ['Plan', 'Strategy', 'Decisions', 'Details']) {
+        for (final tabName in ['Plan', 'Strategy', 'Log', 'Details']) {
           if (find.text(tabName).evaluate().isEmpty) continue;
           await tap(tester, find.text(tabName));
           await assertNoErrorText(tester);
