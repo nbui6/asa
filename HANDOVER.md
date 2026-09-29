@@ -532,3 +532,80 @@ these hooks have never run under.
 **Commits:** `05f58ac` — all seven `kit\hooks\` files plus `test-hooks.ps1`'s new checks, together.
 
 **Next:** the drill (8 steps, round-39.md) — item 1 is done once all 8 pass.
+
+---
+
+### Delivery v1, item 1 (part) — Round 39: the drill
+
+**Built a real fixture** — `projects\_drill-fixture-round39\` (a webinar-launch project, in AGENTS.md's
+real shapes: `CHARTER.md`, `plan\1-marketing.md`, `plan\2-finance.md`, `decisions\0001`/`0002`,
+`rounds\round-1.md`/`APPROVED.md`/`CHANGES.md`, `.asa-session.md`, `.asa-log.md`) — **removed again
+after this checkpoint**, since it was test data, not a real project, and would otherwise show up as
+a fake card in Nico's own app.
+
+**Ran six of the eight steps for real**, each a genuinely fresh subagent (no memory of this
+conversation, no memory of each other where the drill calls for that) reading only
+`projects\CLAUDE.md` → `AGENTS.md` and the fixture files, exactly as a real session would. **All
+six passed** — gist of each, verbatim quotes trimmed:
+
+1. **"Where are we, and what's been decided?"** — found `AGENTS.md` via the one-level-up
+   `CLAUDE.md` pointer unprompted; `asa-brief` isn't on PATH for a subagent, correctly fell back to
+   reading the files by hand per §4; led with the next step, the one live decision, and the area's
+   state, correctly reporting nothing else was waiting.
+2. **"Let's run the webinar in October, not November."** — wrote `decisions\0002`, `Supersedes:
+   0001`, flipped 0001's own status to `superseded by 0002`, kept the user's exact words in *Your
+   call*, updated the area's own Decisions list, and **ended the reply with an unprompted `Logged:`
+   line** — reported honestly that it would have written that line without any reminder mechanism,
+   since §3 step 5 gates it on the moment happening, not on a hook forcing it.
+3. **"Yes, Round 1 looks good."** — added the `APPROVED.md` row in the user's exact words; correctly
+   did *not* invent a "built" result, since the fixture round's own acceptance criteria say plainly
+   it's never built.
+4. **"Add an area for Finance."** — created `plan\2-finance.md` in the right shape; the real find:
+   `CHARTER.md` had no objective Finance could honestly serve, and rather than invent one or force a
+   link to Objective 1 (the webinar), it wrote *"not decided yet"* and added the open task to decide
+   — the same pattern §13 already prescribes at the project level, correctly generalised to an area.
+5. **Closed mid-task, a second fresh session said only "continue."** — noticed
+   `.asa-session.md`'s own `status: open`, correctly reasoned (from `opened-by: Claude Code`, no
+   contradicting recent write) that this was its own interrupted work rather than a live concurrent
+   session, said where things stood before touching anything, and did **not** redo any of steps
+   2–4's work — it picked up exactly at the open question (Finance's objective) and asked the user
+   rather than guessing.
+6. **"Arrive after 3 days."** Two real changes plus one deliberately unlogged one were planted by
+   hand (Finance's objective resolved; the webinar month confirmed; **and, slipped into the same
+   `CHARTER.md` edit, Objective 1's own target quietly bumped from 100 to 150 signups with no log
+   line anywhere**). A third fresh session, told only *"continue,"* correctly reported `asa-brief`
+   isn't installed, fell back to reading `.asa-log.md` and the files directly, and **caught the
+   unlogged change on its own** — noticed `CHARTER.md`'s "150" didn't match `plan\1-marketing.md`'s
+   own "100" and that nothing in the log explained it, and flagged both that mismatch and that the
+   October reversal was logged only vaguely (present as a file, not named in the log line). It did
+   not invent which number was right; it asked.
+
+**Two steps could not be run to completion — real, structural gaps, not new bugs, named rather
+than quietly skipped or silently built around:**
+
+7. **The Claude desktop app.** Nothing in this session can drive that separate application — no
+   tool here opens it, clicks in it, or reads its output. **Not run.** Needs Nico's own hands:
+   open the desktop app with the workspace folder connected, say nothing but *"where are we, and
+   what's been decided?"*, and write down honestly whether the `asa` skill fired by itself or he had
+   to say "read the instruction."
+8. **"Does Checks show the unlogged change? Does each project's Log show every session?"** —
+   **both fail, and neither is a regression from this delivery: the capability doesn't exist yet.**
+   Checked directly rather than assumed: `dart run bin\check.dart _drill-fixture-round39` on the
+   very fixture step 6 built printed **`OK`** — it does not compare a project's content against what
+   its own log claims, only structural things (shape, frontmatter, staleness by file-mtime-vs-
+   `updated:`, decision/link hygiene). `brief.dart`'s own source says why, in its own comment:
+   *"cp8's own local-change history (ADR 0033) is not built yet, so an edited-but-unlogged file is
+   not reported here yet — said plainly rather than silently missing."* Separately, **no project-
+   level Log tab exists anywhere in `lib/hubs/`** — `session_log.dart`'s `readSessionLog` (core) has
+   no screen consuming it; Round 21 (the Log tab) is still roadmapped, not built.
+
+**DECISION NEEDED (Nico's, not mine to make silently):** should ADR 0033's drift detection and
+Round 21's Log tab be pulled into this delivery, ahead of Round 38/42/43/41, so step 8 can actually
+pass — or should v1 ship with this gap named, on the reasoning that the manual's own diligence
+(step 6 above) already catches it well enough by hand, and both rounds stay roadmapped for later?
+**Not decided here — continuing with Round 38 next, which doesn't depend on this either way**, per
+delivery-v1.md's own rule 2 (a decision only Nico can make: write it down, keep moving).
+
+**Item 1 (Round 39's rest) is therefore six of eight — not fully done.** Named honestly rather than
+marked complete: 6 pass for real; 7 needs Nico; 8 exposes a real, pre-existing gap that needs his
+call above.
