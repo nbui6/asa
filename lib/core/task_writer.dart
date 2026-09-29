@@ -182,6 +182,226 @@ Future<List<Task>> rereadTasks(String path) async {
   return parseTasks(contents);
 }
 
+/// Round 42 §B, ADR 0039 — the Tasks view's own "＋ Add a task", at the
+/// top of "Not in an area": a new, open, top-level line, first in the
+/// `## Tasks` section rather than last (an area's own add lands at the
+/// bottom instead — [captureTask] already does that, unchanged). Creates
+/// the section, or the whole file, exactly as [captureTask] does when
+/// neither exists yet.
+Future<void> addTaskAtTop(
+  String path,
+  String text, {
+  String? writeLogPath,
+}) async {
+  final line = '- [ ] $text';
+  final file = File(path);
+  final content = file.existsSync() ? await file.readAsString() : '';
+  final range = sectionRange(content, 'Tasks');
+
+  final String newContent;
+  if (range == null) {
+    final prefix = content.trimRight();
+    newContent = prefix.isEmpty
+        ? '## Tasks\n\n$line\n'
+        : '$prefix\n\n## Tasks\n\n$line\n';
+  } else {
+    final (start, end) = range;
+    final section = content.substring(start, end);
+    final trimmedStart = section.trimLeft();
+    final leadingBlank = section.substring(
+      0,
+      section.length - trimmedStart.length,
+    );
+    final newSection = trimmedStart.isEmpty
+        ? '\n$line\n'
+        : '$leadingBlank$line\n$trimmedStart';
+    newContent =
+        content.substring(0, start) + newSection + content.substring(end);
+  }
+
+  await _writeAtomically(path, newContent);
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-added',
+    from: '',
+    to: line,
+    logPath: writeLogPath,
+  );
+}
+
+/// Round 42 §B, ADR 0039 — "click a task's text to edit in place." Only
+/// the human-readable sentence changes; [oldText] (the task's own
+/// [Task.text], tags already stripped) is matched as a literal substring
+/// of [rawLine] — everything around it (the checkbox, leading
+/// indentation, a trailing `(Code)`/`(parked)` tag, a `[[project]]`
+/// reference) sits outside that substring and travels untouched. Throws a
+/// [StateError] if [rawLine] (or [oldText] within it) can no longer be
+/// found — the same drift refusal every writer here already gives.
+Future<void> editTaskText(
+  String path, {
+  required String rawLine,
+  required String oldText,
+  required String newText,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+
+  final range = sectionRange(content, 'Tasks');
+  if (range == null) {
+    throw StateError('No ## Tasks section in $path — nothing to update.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final lineIndex = section.indexOf(rawLine);
+  if (lineIndex == -1) {
+    throw StateError(
+      'That task line was not found in $path — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  final textIndex = rawLine.indexOf(oldText);
+  if (textIndex == -1) {
+    throw StateError(
+      "That task's own text was not found on its line in $path — it may "
+      'have changed on disk since it was read.',
+    );
+  }
+
+  final newLine = rawLine.replaceRange(
+    textIndex,
+    textIndex + oldText.length,
+    newText,
+  );
+  final newSection = section.replaceRange(
+    lineIndex,
+    lineIndex + rawLine.length,
+    newLine,
+  );
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-text',
+    from: oldText,
+    to: newText,
+    logPath: writeLogPath,
+  );
+}
+
+/// Round 42 §B, ADR 0039 — one subtask level, set by dragging a task to
+/// the right (indent 1) or left again (indent 0, undoing it). Rewrites
+/// only [rawLine]'s own leading whitespace — the checkbox, its text and
+/// any trailing tag are untouched. Throws a [StateError] if [rawLine] can
+/// no longer be found, same drift refusal as every writer here.
+Future<void> setTaskIndent(
+  String path, {
+  required String rawLine,
+  required int indent,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+
+  final range = sectionRange(content, 'Tasks');
+  if (range == null) {
+    throw StateError('No ## Tasks section in $path — nothing to update.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final index = section.indexOf(rawLine);
+  if (index == -1) {
+    throw StateError(
+      'That task line was not found in $path — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  final wasIndent = (rawLine.length - rawLine.trimLeft().length) >= 2 ? 1 : 0;
+  final newLine = '${'  ' * indent}${rawLine.trimLeft()}';
+  final newSection = section.replaceRange(
+    index,
+    index + rawLine.length,
+    newLine,
+  );
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-indent',
+    from: wasIndent.toString(),
+    to: indent.toString(),
+    logPath: writeLogPath,
+  );
+}
+
+/// Round 42 §B, ADR 0039 — reordering within one section: [currentOrder]
+/// must name every raw line the section holds **right now**, in the order
+/// the caller last saw them; a mismatch (any line changed, added or
+/// removed since) refuses with a [StateError] rather than reorder against
+/// stale data. [newOrder] must be the same lines, permuted — an unequal
+/// set is refused too, since this writer only ever reorders, it never
+/// adds or drops a line.
+Future<void> reorderTasks(
+  String path, {
+  required List<String> currentOrder,
+  required List<String> newOrder,
+  String? writeLogPath,
+}) async {
+  // Sorted-copy comparison, not a Set — two tasks can genuinely share the
+  // exact same text, and a Set would silently collapse them.
+  final sortedCurrent = [...currentOrder]..sort();
+  final sortedNew = [...newOrder]..sort();
+  if (!_sameOrder(sortedCurrent, sortedNew)) {
+    throw ArgumentError(
+      'reorderTasks: newOrder must be a permutation of currentOrder.',
+    );
+  }
+
+  final content = await File(path).readAsString();
+  final range = sectionRange(content, 'Tasks');
+  if (range == null) {
+    throw StateError('No ## Tasks section in $path — nothing to reorder.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final trimmedSection = section.trim();
+  final actualLines = trimmedSection.isEmpty
+      ? const <String>[]
+      : trimmedSection.split('\n');
+  if (!_sameOrder(actualLines, currentOrder)) {
+    throw StateError(
+      'The task list in $path changed on disk since it was read — refusing '
+      'to reorder against stale data.',
+    );
+  }
+
+  final newSection = section.replaceFirst(trimmedSection, newOrder.join('\n'));
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'tasks-reordered',
+    from: currentOrder.join(' | '),
+    to: newOrder.join(' | '),
+    logPath: writeLogPath,
+  );
+}
+
 /// Appends one new, open task — quick capture, ADR 0014's "one input, type
 /// anything, it lands in `## Tasks`, always". Creates the `## Tasks`
 /// section, at the end of the file, if the file has none yet — `HOME.md`'s
@@ -206,20 +426,26 @@ Future<void> captureTask(
 
 /// Moves one task line from one file's `## Tasks` section to another's —
 /// the write half of "drag it onto a project" (ADR 0014's addendum, "one
-/// inbox, assignment is a drag too"). The line's exact text — done state,
-/// a trailing `(Code)` tag, a `[[project]]` reference — travels unchanged;
-/// only which file's `## Tasks` section holds it changes.
+/// inbox, assignment is a drag too"; Round 42, ADR 0039, drag onto another
+/// project or area). The line's exact text — done state, a trailing
+/// `(Code)` tag, a `[[project]]` reference — travels unchanged; only which
+/// file's `## Tasks` section holds it changes.
 ///
-/// Writes the destination **before** touching the source: if anything
-/// fails partway (a bad path, a full disk), the task ends up duplicated in
-/// both files rather than deleted from the one it started in — the same
-/// "fail by keeping too much, never by losing" choice every other write in
-/// this app makes.
+/// **Round 42 supersedes this function's own older "destination first,
+/// duplicate rather than lose" tradeoff** — round-42.md's own tests ask
+/// for the stronger promise directly: "a move where the second write
+/// fails → neither file changed." Both new file contents are computed
+/// before either write touches disk; if [toPath] is written but
+/// [fromPath] then fails, [toPath] is put back to exactly what it held
+/// before this call (a fresh file it created is deleted instead) and the
+/// error is rethrown — one logged step either way, never a half-moved
+/// task.
 ///
 /// Throws a [StateError] if [rawLine] can no longer be found in
 /// [fromPath]'s `## Tasks` section — same discipline as [setTaskDone]: the
 /// file changed on disk since it was read, and guessing which line was
-/// meant would be worse than refusing.
+/// meant would be worse than refusing. Logs **one** entry for the whole
+/// move (ADR 0039: "a move... is one logged step"), not one per file.
 Future<void> moveTask({
   required String fromPath,
   required String toPath,
@@ -242,32 +468,41 @@ Future<void> moveTask({
     );
   }
 
-  final trimmedLine = rawLine.trim();
-  await _appendTaskLine(toPath, trimmedLine);
-  await appendWriteLogEntry(
-    path: toPath,
-    field: 'task-added',
-    from: '',
-    to: trimmedLine,
-    logPath: writeLogPath,
-  );
-
   // Remove the line and the one newline that follows it, if any — leaves
   // no blank line behind, same as if it had never been there.
   var lineEnd = index + rawLine.length;
   if (lineEnd < section.length && section[lineEnd] == '\n') lineEnd += 1;
   final newSection = section.substring(0, index) + section.substring(lineEnd);
+  final newFromContent =
+      fromContent.substring(0, start) +
+      newSection +
+      fromContent.substring(end);
 
-  await _writeAtomically(
-    fromPath,
-    fromContent.substring(0, start) + newSection + fromContent.substring(end),
-  );
+  final trimmedLine = rawLine.trim();
+  final toFile = File(toPath);
+  final toExistedBefore = toFile.existsSync();
+  final originalToContent = toExistedBefore
+      ? await toFile.readAsString()
+      : null;
+
+  await _appendTaskLine(toPath, trimmedLine);
+
+  try {
+    await _writeAtomically(fromPath, newFromContent);
+  } on Object {
+    if (originalToContent == null) {
+      if (toFile.existsSync()) await toFile.delete();
+    } else {
+      await _writeAtomically(toPath, originalToContent);
+    }
+    rethrow;
+  }
 
   await appendWriteLogEntry(
-    path: fromPath,
-    field: 'task-removed',
-    from: rawLine,
-    to: '',
+    path: toPath,
+    field: 'task-moved',
+    from: fromPath,
+    to: trimmedLine,
     logPath: writeLogPath,
   );
 }
@@ -298,4 +533,12 @@ Future<void> _writeAtomically(String path, String contents) async {
   final tempFile = File('$path.tmp');
   await tempFile.writeAsString(contents);
   await tempFile.rename(path);
+}
+
+bool _sameOrder(List<String> a, List<String> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

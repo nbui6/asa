@@ -146,5 +146,37 @@ Shape:
       expect(tasks, hasLength(1));
       expect(tasks.single.text, 'the only real one');
     });
+
+    test('Round 42 §B — a line indented two spaces is a subtask, indent '
+        '1; a plain line is indent 0', () {
+      const body = '''
+## Tasks
+
+- [ ] Parent task
+  - [ ] Subtask
+- [ ] Another top-level task
+''';
+      final tasks = parseTasks(body);
+      expect(tasks, hasLength(3));
+      expect(tasks[0].indent, 0);
+      expect(tasks[1].indent, 1);
+      expect(tasks[1].text, 'Subtask');
+      expect(tasks[2].indent, 0);
+    });
+
+    test('Round 42 §B — a done, tagged subtask keeps every other field '
+        'once indent is derived', () {
+      // A parent task first — `sectionText` trims the whole section, which
+      // would otherwise strip a lone first line's own leading spaces too,
+      // a fixture artefact rather than a real `## Tasks` shape (a subtask
+      // always follows a real parent in practice).
+      const body =
+          '## Tasks\n\n- [ ] Parent\n  - [x] Done subtask (Code)\n';
+      final task = parseTasks(body)[1];
+      expect(task.indent, 1);
+      expect(task.done, isTrue);
+      expect(task.isCode, isTrue);
+      expect(task.text, 'Done subtask');
+    });
   });
 }

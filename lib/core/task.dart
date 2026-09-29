@@ -18,6 +18,7 @@ class Task {
     this.isCode = false,
     this.parked = false,
     this.crossProjectRef,
+    this.indent = 0,
   });
 
   /// The exact original line this was parsed from, whitespace and all —
@@ -50,6 +51,13 @@ class Task {
   /// — shown as a small chip. Not resolved against real projects in this
   /// version; static display is enough.
   final String? crossProjectRef;
+
+  /// Round 42 §B — one subtask level, from the line's own leading
+  /// whitespace: `0` for a normal task, `1` for one indented under it.
+  /// ADR 0039 caps this at one level ("one indent level; left again undoes
+  /// it") — this field never holds anything past `1`, whatever the file
+  /// itself might contain.
+  final int indent;
 }
 
 final RegExp _checkboxLine = RegExp(r'^\s*-\s*\[([ xX])\]\s*(.*)$');
@@ -60,9 +68,14 @@ final RegExp _trailingParkedTag = RegExp(
 final RegExp _trailingCodeTag = RegExp(r'\(code\)\s*$', caseSensitive: false);
 final RegExp _crossProjectPattern = RegExp(r'\[\[([^\]]+)\]\]');
 
-/// Reads the `## Tasks` section of a project note as a flat list. No
-/// nested indentation is parsed — no real project note has a real subtask
-/// yet; when one does, that is its own round, not guessed here.
+/// Reads the `## Tasks` section of a project note as a flat list, one
+/// subtask level deep (Round 42 §B, ADR 0039: "one indent level; left
+/// again undoes it") — a line indented two or more spaces is that
+/// level's own subtask, under whichever non-indented task precedes it.
+/// [parseTaskLine] itself stays indent-agnostic (`roadmap.dart` also
+/// calls it, on lines already indented under a milestone for an
+/// unrelated reason); only this flat `## Tasks` reader derives [Task.indent]
+/// from the raw line's own leading whitespace.
 ///
 /// Returns an empty list, never an error, when there is no `## Tasks`
 /// section — `vibe-coding-kit.md` is exactly that case today.
@@ -73,7 +86,22 @@ List<Task> parseTasks(String fileContents) {
   final tasks = <Task>[];
   for (final line in section.split('\n')) {
     final task = parseTaskLine(line);
-    if (task != null) tasks.add(task);
+    if (task == null) continue;
+    final leadingSpaces = line.length - line.trimLeft().length;
+    final indent = leadingSpaces >= 2 ? 1 : 0;
+    tasks.add(
+      indent == 0
+          ? task
+          : Task(
+              rawLine: task.rawLine,
+              text: task.text,
+              done: task.done,
+              isCode: task.isCode,
+              parked: task.parked,
+              crossProjectRef: task.crossProjectRef,
+              indent: indent,
+            ),
+    );
   }
   return tasks;
 }
