@@ -416,6 +416,187 @@ foreach ($r in @($flutterRepo, $nodeRepo, $plainRepo)) {
     Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# --- Round 39 cp10: the projects\-scoped hooks --------------------------
+#
+# These read %APPDATA%\Asa\settings.json and take their own "where am I"
+# from the hook JSON's own `cwd`, not $env:CLAUDE_PROJECT_DIR - a second,
+# sandboxed %APPDATA% is the thing that has to be faked here, not the repo
+# root Invoke-Hook already fakes for the kit's own dev hooks.
+
+$projSandbox = Join-Path ([System.IO.Path]::GetTempPath()) ("hooktest_proj_" + [guid]::NewGuid().ToString('N').Substring(0,8))
+$projAppData = Join-Path $projSandbox 'AppData'
+$projWorkspace = Join-Path $projSandbox 'workspace'
+$projRoot = Join-Path $projWorkspace 'projects'
+$projAsaRepo = Join-Path $projWorkspace 'asa'
+$projDemo = Join-Path $projRoot 'demo'
+
+New-Item -ItemType Directory -Path $projAppData -Force | Out-Null
+New-Item -ItemType Directory -Path $projDemo -Force | Out-Null
+New-Item -ItemType Directory -Path $projAsaRepo -Force | Out-Null
+
+$asaSettingsDir = Join-Path $projAppData 'Asa'
+New-Item -ItemType Directory -Path $asaSettingsDir -Force | Out-Null
+$settingsJson = @{ projectsFolder = $projRoot } | ConvertTo-Json
+Set-Content -LiteralPath (Join-Path $asaSettingsDir 'settings.json') -Value $settingsJson -Encoding UTF8
+
+function Invoke-ProjectsHook {
+    param([string]$Script, [string]$Json, [string]$Root)
+    $inFile  = Join-Path $Root '_in.json'
+    $errFile = Join-Path $Root '_err.txt'
+    $outFile = Join-Path $Root '_out.txt'
+    Set-Content -LiteralPath $inFile -Value $Json -Encoding ASCII
+
+    $oldAppData = $env:APPDATA
+    $env:APPDATA = $projAppData
+    try {
+        $p = Start-Process -FilePath $script:psExe `
+            -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File', (Join-Path $hooksSource $Script)) `
+            -RedirectStandardInput $inFile `
+            -RedirectStandardError $errFile `
+            -RedirectStandardOutput $outFile `
+            -NoNewWindow -Wait -PassThru
+        return $p.ExitCode
+    } finally {
+        $env:APPDATA = $oldAppData
+    }
+}
+
+function New-ProjHookJson {
+    param([string]$Cwd, [string]$LastUserMessage = '', [string]$LastAssistantMessage = '', [string]$FilePath = '')
+    $obj = @{ cwd = $Cwd; stop_hook_active = $false }
+    if ($LastUserMessage) { $obj.last_user_message = $LastUserMessage }
+    if ($LastAssistantMessage) { $obj.last_assistant_message = $LastAssistantMessage }
+    if ($FilePath) { $obj.tool_input = @{ file_path = $FilePath } }
+    return ($obj | ConvertTo-Json)
+}
+
+# 1. Outside projects\, nothing runs - every one of the five hooks.
+$outsideJson = New-ProjHookJson -Cwd $projSandbox
+foreach ($script in @('projects-session-start.ps1', 'projects-post-tool-use.ps1', 'projects-stop-six-moments.ps1', 'projects-stop-check.ps1', 'projects-session-end.ps1')) {
+    $code = Invoke-ProjectsHook -Script $script -Json $outsideJson -Root $projSandbox
+    Check "$script exits 0 outside projects\" ($code -eq 0) "exit code was $code"
+}
+
+# 2. A write inside a project updates its own .asa-session.md.
+$demoSessionPath = Join-Path $projDemo '.asa-session.md'
+if (Test-Path $demoSessionPath) { Remove-Item -LiteralPath $demoSessionPath -Force }
+$writeJson = New-ProjHookJson -Cwd $projDemo -FilePath (Join-Path $projDemo 'demo.md')
+Invoke-ProjectsHook -Script 'projects-post-tool-use.ps1' -Json $writeJson -Root $projSandbox | Out-Null
+Check 'a write inside a project opens/updates .asa-session.md' (Test-Path $demoSessionPath) 'no session file was written'
+if (Test-Path $demoSessionPath) {
+    $sessionText = Get-Content -LiteralPath $demoSessionPath -Raw -Encoding UTF8
+    Check '.asa-session.md is open after a write' ($sessionText -match '(?m)^status:\s*open\s*$') $sessionText
+    Check '.asa-session.md names the file that was written' ($sessionText -match 'Last write: demo\.md') $sessionText
+}
+
+# 3. Stop (six moments): blocks on a fixture turn with an unrecorded
+# decision - a moment word, no recent write, no Logged: line. Backdates
+# the session file's own `updated:` first - test 2 just wrote it seconds
+# ago, and a real recent write is exactly the other case this hook must
+# tell apart from a real unrecorded decision.
+$oldSessionText = (Get-Content -LiteralPath $demoSessionPath -Raw -Encoding UTF8) `
+    -replace '(?m)^updated:.*$', 'updated: 2020-01-01T00:00:00'
+Set-Content -LiteralPath $demoSessionPath -Value $oldSessionText -Encoding UTF8 -NoNewline
+$blockJson = New-ProjHookJson -Cwd $projDemo -LastUserMessage 'Yes, let''s change the plan.' -LastAssistantMessage 'Sure, I will look into it.'
+$blockCode = Invoke-ProjectsHook -Script 'projects-stop-six-moments.ps1' -Json $blockJson -Root $projSandbox
+Check 'Stop (six moments) blocks an unrecorded decision' ($blockCode -eq 2) "exit code was $blockCode"
+
+# 4. Passes when the answer already has a Logged: line.
+$loggedJson = New-ProjHookJson -Cwd $projDemo -LastUserMessage 'Yes, let''s change the plan.' -LastAssistantMessage "Done.`nLogged: decision 0099."
+$loggedCode = Invoke-ProjectsHook -Script 'projects-stop-six-moments.ps1' -Json $loggedJson -Root $projSandbox
+Check 'Stop (six moments) passes once the answer has a Logged: line' ($loggedCode -eq 0) "exit code was $loggedCode"
+
+# 5. Passes on a turn with no moment words at all.
+$noWordsJson = New-ProjHookJson -Cwd $projDemo -LastUserMessage 'What time is it in Tokyo?' -LastAssistantMessage 'Around 9am.'
+$noWordsCode = Invoke-ProjectsHook -Script 'projects-stop-six-moments.ps1' -Json $noWordsJson -Root $projSandbox
+Check 'Stop (six moments) passes on a turn with no moment words' ($noWordsCode -eq 0) "exit code was $noWordsCode"
+
+# 6. SessionEnd closes an open session and appends a log line.
+Set-Content -LiteralPath $demoSessionPath -Value @"
+---
+status: open
+opened: 2026-09-28T10:00:00
+opened-by: test
+updated: 2026-09-28T10:05:00
+---
+Doing: something
+Last done:
+Next:
+"@ -Encoding UTF8
+$demoLogPath = Join-Path $projDemo '.asa-log.md'
+if (Test-Path $demoLogPath) { Remove-Item -LiteralPath $demoLogPath -Force }
+$endJson = New-ProjHookJson -Cwd $projDemo
+Invoke-ProjectsHook -Script 'projects-session-end.ps1' -Json $endJson -Root $projSandbox | Out-Null
+$closedText = Get-Content -LiteralPath $demoSessionPath -Raw -Encoding UTF8
+Check 'SessionEnd closes a still-open session' ($closedText -match '(?m)^status:\s*closed\s*$') $closedText
+Check 'SessionEnd appends a .asa-log.md line' (Test-Path $demoLogPath) 'no .asa-log.md was written'
+
+Remove-Item -LiteralPath $projSandbox -Recurse -Force -ErrorAction SilentlyContinue
+
+# --- Round 39 cp10: install-hooks.ps1 -Scope user -----------------------
+#
+# A sandboxed $HOME/$env:USERPROFILE, never the real one - Start-Process
+# inherits the parent's environment block, so overriding it here before
+# spawning the child is enough for that child's own $HOME to resolve
+# inside the sandbox.
+
+$userHomeSandbox = Join-Path ([System.IO.Path]::GetTempPath()) ("hooktest_userhome_" + [guid]::NewGuid().ToString('N').Substring(0,8))
+New-Item -ItemType Directory -Path $userHomeSandbox -Force | Out-Null
+
+$projectsHookFileNames = @(
+    'asa-projects-common.ps1',
+    'projects-session-start.ps1',
+    'projects-post-tool-use.ps1',
+    'projects-stop-six-moments.ps1',
+    'projects-stop-check.ps1',
+    'projects-session-end.ps1'
+)
+
+function Invoke-ScopeUserInstall([string]$OutName) {
+    $out = Join-Path $userHomeSandbox $OutName
+    $oldUserProfile = $env:USERPROFILE
+    $oldHome = $env:HOME
+    $env:USERPROFILE = $userHomeSandbox
+    $env:HOME = $userHomeSandbox
+    try {
+        $p = Start-Process -FilePath $script:psExe `
+            -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File', (Join-Path $hooksSource 'install-hooks.ps1'), '-Scope', 'user') `
+            -RedirectStandardOutput $out -NoNewWindow -Wait -PassThru
+        return $p.ExitCode
+    } finally {
+        $env:USERPROFILE = $oldUserProfile
+        $env:HOME = $oldHome
+    }
+}
+
+$userInstallCode = Invoke-ScopeUserInstall '_install-user1.txt'
+Check '-Scope user exits 0' ($userInstallCode -eq 0) "exit code was $userInstallCode"
+
+$userHooksDir = Join-Path (Join-Path $userHomeSandbox '.claude') 'hooks'
+foreach ($f in $projectsHookFileNames) {
+    Check "-Scope user copies $f" (Test-Path (Join-Path $userHooksDir $f)) "not found in $userHooksDir"
+}
+
+$userSettingsPath = Join-Path (Join-Path $userHomeSandbox '.claude') 'settings.json'
+Check '-Scope user writes settings.json' (Test-Path $userSettingsPath) 'no settings.json written'
+
+if (Test-Path $userSettingsPath) {
+    $userSettings = Get-Content -LiteralPath $userSettingsPath -Raw | ConvertFrom-Json
+    Check '-Scope user registers SessionStart' ($null -ne $userSettings.hooks.SessionStart) 'no SessionStart entry'
+    Check '-Scope user registers PostToolUse' ($null -ne $userSettings.hooks.PostToolUse) 'no PostToolUse entry'
+    Check '-Scope user registers both Stop hooks' (@($userSettings.hooks.Stop).Count -eq 2) ("got " + (@($userSettings.hooks.Stop).Count) + " Stop entries")
+    Check '-Scope user registers SessionEnd' ($null -ne $userSettings.hooks.SessionEnd) 'no SessionEnd entry'
+}
+
+# Running it again is safe - no duplicate entries, same as -Scope project.
+Invoke-ScopeUserInstall '_install-user2.txt' | Out-Null
+if (Test-Path $userSettingsPath) {
+    $userSettings2 = Get-Content -LiteralPath $userSettingsPath -Raw | ConvertFrom-Json
+    Check '-Scope user run twice does not duplicate hooks' (@($userSettings2.hooks.Stop).Count -eq 2) ("got " + (@($userSettings2.hooks.Stop).Count) + " Stop entries after a second run")
+}
+
+Remove-Item -LiteralPath $userHomeSandbox -Recurse -Force -ErrorAction SilentlyContinue
+
 # --- done --------------------------------------------------------------
 
 Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
