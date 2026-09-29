@@ -712,3 +712,21 @@ writers).
 **Commits:** `9fbf68a` (round_file.dart + round_call_writer.dart), `f02e187` (the deciding session's own HANDOVER note), `907867a` (ADR 0048's follow-ups), `049e1ba` (log_visit.dart), `7ea2d84` (log_entries.dart), `befb522` (LogView, standalone), `d924eb9` (wired into ProjectScreen) — round_call_screen.dart's own commit is folded into `9fbf68a`'s follow-up work, precisely: it landed as part of the cp2 round described above.
 
 **Next:** the overview half of §E, then §D (Asa's own Plan/Strategy show work, not documents), then §F (status takes a project out of sight) and §G (the title, the row, deadline periods).
+
+---
+
+### Delivery v1, item 2 — Round 38 §E closed: the overview's own Needs you panel and markers
+
+**§E is now fully built** — the Log tab itself (cp3b, previous entry) plus this overview half, round-38.md's own remaining "and what's new on the overview" text.
+
+- `ProjectOpenTarget` gains `openLog`; `ProjectScreen.initialOpenLog` sets `_activeTab = _Tab.log` at `initState` — a project can now be opened straight onto its Log tab, not just Plan/an area/"Not in an area".
+- `ProjectsScreen._load()` gains a per-project pass (`readAllDecisions`, `readRoundApprovals`, `lastLogVisit`, then `readProjectNews`) alongside the scan itself. Feeds two things: a global **Needs you** panel above the project list (one item at a time, oldest waiting first, across every project) and per-row markers in `ProjectsView` (a blue *N new*, or amber *changed without a note* when both apply — the amber signal wins, since it names a real gap rather than just activity).
+- **A named simplification, not the round's own literal wording, flagged rather than hidden:** the overview's own **Yes**/**Changes…** buttons open that project on its Log tab (where the real, fully-working Needs-your-yes panel already lives) rather than writing inline from the overview too — one write path, not two copies of the same logic to keep in sync. `LogView`'s own panel already does the real write; this one navigates to it.
+
+**Tests:** `project_news_test.dart` (7, the core logic — `readProjectNews`, `waitingAcrossProjects`, oldest-first sorting, an undated round sorting last); `projects_view_test.dart` (+3, the row marker: N new, changed-without-a-note taking priority, no marker when there's nothing); `projects_screen_needs_you_test.dart` (1, new — the real `ProjectsScreen` end to end against a real fixture with one proposed decision, confirming the heavier `_load()` reaches the panel with no hang). 745 total, `flutter analyze` clean.
+
+**Checked specifically, not assumed:** ran the full suite after wiring this in, watching for the `runAsync`/`FakeAsync` hang found twice earlier this round (cp1's `+ Add area` dialog, cp2's `RoundCallScreen`) — `_load()` is now meaningfully heavier (three extra real-disk reads per project, on every scan), and several existing tests reload the overview more than once within one test. All 745 stayed green with no hang; this specific heavier load path never triggers it (nothing here calls a second real async function from inside a button's own `onPressed` the way the two earlier cases did).
+
+**Commits:** `ab35690` (`project_news.dart`, core layer alone), `72d31b1` (wired into the overview, both markers and the panel).
+
+**Next:** §D (Asa's own Plan/Strategy show work, not documents), then §F (status takes a project out of sight) and §G (the title, the row, deadline periods).
