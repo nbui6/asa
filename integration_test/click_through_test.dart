@@ -260,8 +260,9 @@ void main() {
     await waitFor(tester, find.text('Sales 3/5'));
     expect(find.text('Sales 2/5'), findsNothing);
 
-    // The Tasks view: the ticked task only shows under "Show completed"
-    // now.
+    // The Tasks view: the ticked task is done now, folded away behind
+    // "✓ N done" — Round 42's rebuild opens on Next up by default, so this
+    // holds regardless of which project (if any) is selected.
     await tap(tester, find.byIcon(Icons.checklist));
     expect(
       find.text('Second demo for the account from the first pitch'),
@@ -439,9 +440,12 @@ void main() {
     // left to reveal either way — legacy-app was its only child).
     expect(find.text('Legacy app'), findsNothing);
 
-    // Tasks view → an area sub-heading → Plan, that area open.
+    // Tasks view → select the project in the rail (Round 42 — one project
+    // at a time, not the old flat everything-at-once list) → an area
+    // sub-heading → Plan, that area open.
     // Round 37 §D1 — the sub-heading is normal case now, not all-caps.
     await tap(tester, find.byIcon(Icons.checklist));
+    await tap(tester, find.text('Northwind partnership'));
     await tap(tester, find.text('Enablement'));
     expect(
       find.text(
