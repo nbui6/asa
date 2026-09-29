@@ -95,6 +95,35 @@ void main() {
       },
     );
 
+    test(
+      'objectiveWhy — Round 38 §D.1 — the "Served by" line, collapsed to '
+      "one paragraph, for the row's own expanded state",
+      () async {
+        File('${tempDir.path}${Platform.pathSeparator}CHARTER.md')
+            .writeAsStringSync(_realShaped);
+
+        final strategy = await readCharter(tempDir.path);
+        final why = objectiveWhy(strategy.objectives.first);
+
+        expect(why, 'Served by Round 0, Round 1, and Round 6.');
+      },
+    );
+
+    test('objectiveWhy is null when there is nothing after the evidence '
+        'line at all', () async {
+      const noWhy = '''
+## Objectives
+
+1. **A short one.**
+   Would show: something checkable.
+''';
+      File(
+        '${tempDir.path}${Platform.pathSeparator}CHARTER.md',
+      ).writeAsStringSync(noWhy);
+      final strategy = await readCharter(tempDir.path);
+      expect(objectiveWhy(strategy.objectives.first), isNull);
+    });
+
     test('missing any one of the four sections makes the whole Strategy '
         'empty — no partial screen', () async {
       const missingObjectives = '''

@@ -426,8 +426,12 @@ class _PlanViewState extends State<PlanView> {
     }
   }
 
-  /// Round 27's own screen, unchanged — a project with no `plan\` folder
-  /// (`asa` today) never sees anything Round 34 added.
+  /// Round 27's own screen, unchanged — a project with a `PLAN.md` but no
+  /// `plan\` folder never sees anything Round 34 added. Asa itself no
+  /// longer takes this path (it gained a real `plan\` folder alongside
+  /// its own `PLAN.md`, round-38.md §D's own "done by the deciding
+  /// session" note) — this stays as the general fallback for any other
+  /// project still in that shape.
   Widget _legacyBody() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,8 +445,6 @@ class _PlanViewState extends State<PlanView> {
         ..._outline(),
         const SizedBox(height: AsaSpace.lg),
         _strategyPointer(),
-        const SizedBox(height: AsaSpace.md),
-        _readOnlyNote(),
       ],
     );
   }
@@ -1000,8 +1002,6 @@ class _PlanViewState extends State<PlanView> {
                 const SectionLabel('The plan'),
                 const SizedBox(height: AsaSpace.xs),
                 ..._outline(),
-                const SizedBox(height: AsaSpace.md),
-                _readOnlyNote(),
               ],
             ),
           ),
@@ -1315,24 +1315,6 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _readOnlyNote() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AsaSpace.md,
-        vertical: AsaSpace.sm,
-      ),
-      decoration: BoxDecoration(
-        color: AsaColors.panel,
-        border: Border.all(color: AsaColors.line),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        'Read-only. Tapping anything opens the real file. Nothing here '
-        'edits PLAN.md.',
-        style: AsaText.meta.copyWith(color: AsaColors.ink2),
-      ),
-    );
-  }
 }
 
 // --- Pure helpers, tested directly ------------------------------------

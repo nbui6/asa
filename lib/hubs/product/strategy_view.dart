@@ -303,6 +303,15 @@ class _StrategyViewState extends State<StrategyView> {
                   for (final round in rounds)
                     _roundRow(round.milestone, round.state),
                   if (adrLinks.isNotEmpty) _adrRow(adrLinks),
+                  // Round 38 §D.1 — anything else CHARTER.md holds for
+                  // this objective (most often "Served by Round N, …")
+                  // shows only now, opened, never in the collapsed row.
+                  if (objectiveWhy(objective) case final why?) ...[
+                    const SizedBox(height: AsaSpace.sm),
+                    const SectionLabel('Why'),
+                    const SizedBox(height: 2),
+                    Text(_plain(why), style: AsaText.body),
+                  ],
                 ],
               ),
             ),

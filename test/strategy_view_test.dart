@@ -78,6 +78,41 @@ void main() {
       expect(find.text('Round 1 — a real round'), findsOneWidget);
     });
 
+    testWidgets(
+      'Round 38 §D.1 — anything CHARTER.md holds beyond the evidence '
+      'line shows only once expanded, under Why',
+      (tester) async {
+        const strategy = Strategy(
+          origin: 'o',
+          whoItsFor: 'the user',
+          painPoints: '1. a pain',
+          objectives: [
+            Objective(
+              title: 'Ship the thing',
+              evidence: 'it ships',
+              sentence: 'Ship the thing. Would show: it ships. Served by '
+                  'Round 1.',
+            ),
+          ],
+        );
+
+        await _pump(
+          tester,
+          strategy: strategy,
+          roadmap: [_round('1', done: true)],
+        );
+
+        expect(find.text('WHY'), findsNothing);
+        expect(find.textContaining('Served by Round 1.'), findsNothing);
+
+        await tester.tap(find.byIcon(Icons.chevron_right));
+        await tester.pump();
+
+        expect(find.text('WHY'), findsOneWidget);
+        expect(find.text('Served by Round 1.'), findsOneWidget);
+      },
+    );
+
     testWidgets('the progress sentence and segment bar show even '
         'collapsed', (tester) async {
       const strategy = Strategy(

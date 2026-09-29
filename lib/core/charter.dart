@@ -133,6 +133,24 @@ String _evidenceIn(String block) {
   return _collapseWhitespace(block.substring(start, end));
 }
 
+/// Round 38 §D.1 — "anything else in `CHARTER.md` under that objective
+/// shows only when the row is opened, under *Why*": whatever real
+/// content sits after the *Would show:* line — most often "Served by
+/// Round N, Round M…", a real objective's own sentence (asa's own
+/// CHARTER.md) — collapsed to one paragraph, or null when there is
+/// nothing past the evidence line at all.
+String? objectiveWhy(Objective objective) {
+  final block = objective.sentence;
+  final wouldShow = block.indexOf('Would show:');
+  if (wouldShow == -1) return null;
+
+  final servedBy = block.indexOf('Served by', wouldShow);
+  if (servedBy == -1) return null;
+
+  final rest = _collapseWhitespace(block.substring(servedBy));
+  return rest.isEmpty ? null : rest;
+}
+
 /// Round 37 cp6, §D5 — a markdown paragraph often wraps across physical
 /// lines in the source file (`CHARTER.md`'s own 80-ish-column style);
 /// `.trim()` alone only strips the ends, leaving the source's own line
