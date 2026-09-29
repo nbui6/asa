@@ -466,3 +466,69 @@ tests, together; `templates\AGENTS.md` v3.8 in its own commit; `.claude\hooks\de
 committed as an inert file (not yet wired in).
 
 **Next:** cp10 — recording happens by itself (hooks).
+
+---
+
+### Delivery v1, item 1 (part) — Round 39 cp10: the projects\-scoped hooks
+
+**Built:** five hooks under `kit\hooks\` (source; `.claude\hooks\` in this repo is a separately
+installed copy, unaffected until reinstalled) plus a shared dot-sourced helper
+(`asa-projects-common.ps1` — `Get-AsaSettings`, `Get-AsaProjectsRoot`, `Get-AsaRepoPath`,
+`Test-InsideProjects`, `Get-ProjectNameUnderRoot`, `Read-HookInput`, `Get-HookCwd`), so any project
+folder under `projects\` gets these without this repo's own `.claude\settings.json` naming it:
+
+- `projects-session-start.ps1` — `dart run bin\brief.dart <project>` on open, no-op outside `projects\`
+- `projects-post-tool-use.ps1` — keeps `.asa-session.md` current on every Write/Edit/MultiEdit
+- `projects-stop-six-moments.ps1` — a plain word match (English + German) against the six moments'
+  own trigger words (Instruction for AI §3 step 5); blocks once, with a reminder, only when nothing
+  was written this turn *and* the answer has no `Logged:` line — a word match will sometimes remind
+  when nothing actually happened, which costs one line, not a real error
+- `projects-stop-check.ps1` — runs `bin\check.dart <project>`, blocks on a real finding, fails open
+  on anything it can't run
+- `projects-session-end.ps1` — closes a still-open `.asa-session.md`, appends the `.asa-log.md` line
+
+**`install-hooks.ps1` grew `-Scope user`** (default stays `-Scope project`, unchanged, still
+verified green): copies the six files into `~/.claude/hooks` and merges them into
+`~/.claude/settings.json`, same merge-not-overwrite discipline as the existing project-scope path.
+Shares `Test-Prop`/`Set-Prop` with the unchanged project-scope code further down the same file
+(identical bodies in both places, kept rather than risk breaking the existing path). **Checked, not
+assumed, before trusting it:** the new `-Scope user` branch defines its own `New-HookEntry`
+(`-Command` param) and calls it, then exits — the *old* `New-HookEntry` (`-ScriptName` param) and
+`Add-Hook`, unchanged, sit further down the same file for the project-scope path. Verified
+empirically with a two-function throwaway script that PowerShell binds a call to whichever
+definition already executed by that point in a top-to-bottom run, not to whichever is textually
+last in the file — so the early exit means the `-Scope user` branch never sees the later
+redefinition. Both scopes' own tests (55 pre-existing + the new ones below) confirm this holds, not
+just the isolated throwaway check.
+
+**Tests:** `test-hooks.ps1` grew from 42 to 68 checks (source file — running the *installed* copy in
+`.claude\hooks\` showed the old 42 with none of the new ones, a real mid-session mistake, fixed by
+always testing the source until a reinstall syncs it). New coverage: all five hooks no-op outside
+`projects\`; a write updates `.asa-session.md`; six-moments blocks an unrecorded decision, passes
+with a `Logged:` line, passes with no moment words; SessionEnd closes and logs; `-Scope user` copies
+all six files, writes `~/.claude/settings.json`, registers all five hook entries, and running it
+twice does not duplicate them — all inside a sandboxed `%APPDATA%`/`$HOME`, never the real ones. One
+real test-isolation bug caught along the way: the six-moments "was something written recently" check
+was seeing the *previous* test's own write and treating an unrecorded decision as already recorded —
+fixed by explicitly backdating the session file's `updated:` field before that specific test.
+
+**BLOCKED, real, named rather than worked around:** `install-hooks.ps1 -Scope user` against the real
+`~/.claude/settings.json` was refused twice by Claude Code's own auto-mode classifier
+(*"Self-Modification"*) — once for the install itself, once even for a plain `git status --short`
+run immediately after (the classifier's scope for this session appears broader than just editing
+`.claude/settings.json` directly; not investigated further, not worked around either way).
+`git add`/`git commit` on the already-known file list, and `git diff --staged --stat`, were **not**
+refused, which is how this entry exists. **Nico needs to run this once himself, on each machine that
+should get the projects\-scoped hooks:**
+
+```
+powershell -File kit\hooks\install-hooks.ps1 -Scope user
+```
+
+Restart Claude Code afterwards so it reads the new `~/.claude/settings.json`. The drill (next) tests
+whether these fire for real — step 7 explicitly covers the Claude desktop app, a second surface
+these hooks have never run under.
+
+**Commits:** `05f58ac` — all seven `kit\hooks\` files plus `test-hooks.ps1`'s new checks, together.
+
+**Next:** the drill (8 steps, round-39.md) — item 1 is done once all 8 pass.
