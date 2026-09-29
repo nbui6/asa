@@ -683,3 +683,32 @@ writers).
 ## From the deciding session — 2026-09-29 · ADR 0048 answered; keep going
 
 **0048 is answered, not Nico's call:** the Log is Round 38 §E (approved), and cp6's Checks already shows *changed without a note*. So: build §E as specced; add cp8's finding to `checkProject`; match a change to a log line **by file and day** (day alone only for old lines without files, shown as *probably logged*); fix the stale comment on `briefSince`. Drill step 7 (desktop app) goes into Nico's v1 test. Carry on with Round 38.
+
+---
+
+### Delivery v1, item 2 — Round 38 cp2 + cp3b: the round "Your call" screen, ADR 0048's follow-ups, the Log tab
+
+**cp2 (§C, finished):** `round_file.dart` (Round 39 cp2) gains `parseRoundTitle`/`cutToLines`; `round_call_writer.dart` (new) — `approveRound`/`requestRoundChanges` append one row each to `rounds\APPROVED.md`/`CHANGES.md`, the "in Asa" convention (Round 39 cp9) when nothing was typed in the feedback box, the round's own title reused verbatim as `APPROVED.md`'s own "result" column (a judgment call, flagged in the writer's own header: Asa has no honest way to summarise "what changed" the way a human reviewer would). `round_call_screen.dart` (new) — title, pills, *What was built*/*How to check it* (cut to ~5 lines each), *open the round file ↗*, then Yes/Needs changes, collapsing to one line once settled.
+
+**A real near-miss, caught and fixed, not smoothed over:** an early `Write` call overwrote `round_file.dart` and its own test file — both already existed (Round 39 cp2, real functions `brief.dart` and `instruction_for_ai_screen.dart` depend on) — without reading them first. Caught immediately by `flutter analyze` (undefined-function errors naming both real callers), restored via `git checkout`, the needed additions written in properly the second time. No functionality lost; named here rather than left for someone else to discover.
+
+**A second real, reproducible issue, found twice, same shape both times:** a widget test driving `round_call_screen.dart`'s Yes/Needs-changes buttons through the real `dart:io`-backed writer functions hung for the full 10-minute test timeout — a second real async disk call, triggered from inside a button's own `onPressed`, stalls inside `runAsync`'s own fake-async zone once that zone's first window has closed; not a production risk (no `FakeAsync` exists outside a test). Fixed both times the same way: the writer/reader calls are **injected** (`loadRoundText`/`onApprove`/`onRequestChanges` on `RoundCallScreen`; `loadRoundText`/`onApproveRound`/`onRequestRoundChanges` on `LogView`), never called directly from the widget — the same seam `PlanView`'s own `onCreateArea` already used for its `+ Add area` dialog, for the identical reason.
+
+**ADR 0048's own two follow-ups (the deciding session's answer, this file, above):** `isLoggedChange` now returns `LoggedMatch` (yes/no/probably), not a bool — a same-day log line has to actually **name the file** to count as a real match (§7.11's own line shape ends with the files written); day alone survives only as a fallback for an older line naming no file at all. `checkProject` (`asa-check`) gets the identical finding cp8's history already gives `asa-brief --since` — read-only, nothing recorded by `asa-check` itself.
+
+**cp3b (§E, ADR 0034) — the Log tab, replacing Decisions in the same place:**
+- `log_entries.dart` — one merged, typed, newest-first timeline from all six sources the round names (`decisions\` — sketch approvals correctly map to *your yes*, not *decision*; `rounds\APPROVED.md`/`CHANGES.md`; `.asa-log.md`; area results; cp8's own history for *change*/*changed without a note*). Nothing written for the Log itself.
+- `log_visit.dart` — "since you were last here," per project, in `%APPDATA%\Asa\log-visits.json`, same pattern as `settings.dart`/`write_log.dart`.
+- `log_view.dart` — two views (*What happened*, *Decisions in force*), a *Needs your yes* panel cycling through proposed decisions and waiting rounds one at a time (replacing §C's own flat list and "Yes to selected," per the round's own explicit override), older timeline entries folded by week.
+- Wired into `ProjectScreen`: `_Tab.decisions` renamed to `_Tab.log` (rule 12), the tab's amber count becomes a plain dot (round-38.md §E's own override of §A).
+- **Two real gaps the wiring itself exposed, fixed rather than left broken:** "Decisions in force" grouping by `decision.links.area` alone missed a decision an area page names back without its own Links line (Round 34's own real two-areas case) — fixed to reuse the existing `areasNamingDecision(...)`, grouping under every area that names it. The old per-row area chip has no equivalent once decisions are grouped by area already — the area's own heading is the tap target now, same `onOpenArea` navigation.
+
+**Renamed one method before it ever shipped:** `_needsYouCard` → `_needsYouPanel` — as written, it contained the literal substring `Card(`, which would have false-tripped `one_look_test.dart`'s own banned-pattern scan. Caught by actually running that test, not by assuming a clean file.
+
+**Not yet built, named rather than silently skipped:** §E's own overview-level half (the global *Needs you* card across all projects, the *N new*/*changed without a note* row markers, "waiting on someone" chase items) — that lives in `ProjectsScreen`/`ProjectsView`, not `ProjectScreen`, and is next.
+
+**Tests:** `round_file_test.dart` (+4), `round_call_writer_test.dart` (6, new), `round_call_screen_test.dart` (8, new), `change_history_test.dart` (3→6), `check_test.dart` (+3), `log_entries_test.dart` (9, new), `log_visit_test.dart` (5, new), `log_view_test.dart` (7, new); `links_test.dart`/`plan_area_decision_chip_test.dart` updated for the new shape, not just patched. 734 total, `flutter analyze` clean.
+
+**Commits:** `9fbf68a` (round_file.dart + round_call_writer.dart), `f02e187` (the deciding session's own HANDOVER note), `907867a` (ADR 0048's follow-ups), `049e1ba` (log_visit.dart), `7ea2d84` (log_entries.dart), `befb522` (LogView, standalone), `d924eb9` (wired into ProjectScreen) — round_call_screen.dart's own commit is folded into `9fbf68a`'s follow-up work, precisely: it landed as part of the cp2 round described above.
+
+**Next:** the overview half of §E, then §D (Asa's own Plan/Strategy show work, not documents), then §F (status takes a project out of sight) and §G (the title, the row, deadline periods).
