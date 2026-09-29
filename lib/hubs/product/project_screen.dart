@@ -149,6 +149,15 @@ class _ProjectScreenState extends State<ProjectScreen> {
   _Tab _activeTab = _Tab.plan;
   bool _provenanceExpanded = false;
 
+  /// Round 38 §A — the header's own Next line hoists `PlanView`'s old
+  /// `_nextLineRow`, so it shows above every tab, not only Plan. Tapping
+  /// it still has to land on the right area (or "Not in an area") and
+  /// highlight the right task, the same as before the hoist — these two
+  /// carry that into a freshly built `PlanView` exactly like
+  /// `_areaToOpen` already does for the decision-row-area-chip case.
+  bool _openHomeNow = false;
+  String? _highlightRawLine;
+
   // Editing one of the five whitelisted fields — Round 20. Only one field
   // is ever mid-edit at a time; starting a new one silently drops any
   // other in-progress edit, since nothing unsaved is lost by that (the
@@ -270,10 +279,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
     });
   }
 
-  /// Round 37 §D2 — always all four, in this fixed order. A tab with
-  /// nothing to show yet still shows, explaining why and what to do,
-  /// rather than disappearing (`_tabBody`'s own empty-state bodies).
-  static const _tabs = [_Tab.plan, _Tab.strategy, _Tab.decisions, _Tab.details];
+  /// Round 37 §D2 — always all four; Round 38 §A reorders them
+  /// `Strategy · Plan · Decisions · Details` (the user, testing Round
+  /// 36/37: *"Strategy should come before Plan"*), but a project still
+  /// **opens** on Plan (`asa-project-page-v1`'s rule: you land on the
+  /// work — see `_activeTab`'s own initial value). A tab with nothing to
+  /// show yet still shows, explaining why and what to do, rather than
+  /// disappearing (`_tabBody`'s own empty-state bodies).
+  static const _tabs = [_Tab.strategy, _Tab.plan, _Tab.decisions, _Tab.details];
 
   @override
   Widget build(BuildContext context) {
@@ -345,6 +358,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
           const SizedBox(height: AsaSpace.md),
         ],
+        if (read.isSuccess) ...[
+          _headerNextLine(read),
+          const SizedBox(height: AsaSpace.md),
+        ],
         _tabRow(),
         const SizedBox(height: AsaSpace.xs),
         const Divider(height: 1, color: AsaColors.soft),
@@ -368,17 +385,29 @@ class _ProjectScreenState extends State<ProjectScreen> {
       _Tab.decisions: 'Decisions',
       _Tab.details: 'Details',
     };
+    // Round 38 §A — a small amber count of what needs your yes, only
+    // when it's more than 0. cp0's own scope: the Decisions tab's
+    // existing "Needs a look" group (proposed decisions); §C later folds
+    // rounds waiting for approval into the same count.
+    final needsYouCount =
+        groupForReview(_decisions ?? const []).needsALook.length;
     return Row(
       children: [
         for (final tab in _tabs) ...[
           if (tab != _tabs.first) const SizedBox(width: AsaSpace.xl),
-          _tabLabel(labels[tab]!, tab),
+          _tabLabel(
+            labels[tab]!,
+            tab,
+            count: tab == _Tab.decisions && needsYouCount > 0
+                ? needsYouCount
+                : null,
+          ),
         ],
       ],
     );
   }
 
-  Widget _tabLabel(String label, _Tab tab) {
+  Widget _tabLabel(String label, _Tab tab, {int? count}) {
     final active = _activeTab == tab;
     return InkWell(
       onTap: () => setState(() => _activeTab = tab),
@@ -392,14 +421,107 @@ class _ProjectScreenState extends State<ProjectScreen> {
             ),
           ),
         ),
-        child: Text(
-          label,
-          style: AsaText.rowName.copyWith(
-            color: active ? AsaColors.ink : AsaColors.ink3,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AsaText.rowName.copyWith(
+                color: active ? AsaColors.ink : AsaColors.ink3,
+              ),
+            ),
+            if (count != null) ...[
+              const SizedBox(width: AsaSpace.xs),
+              Text(
+                '$count',
+                style: AsaText.meta.copyWith(
+                  color: AsaMeaning.needsYou.fg,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
+  }
+
+  /// Round 38 §A — the Next line, hoisted out of `PlanView` into the
+  /// header so it shows above every tab, not only Plan. Same visual
+  /// shape and same `effectiveNextStepWithArea` chain `PlanView`'s old
+  /// `_nextLineRow` used; tapping it switches to Plan and tells the next
+  /// `PlanView` which area (or "Not in an area") and task to open.
+  Widget _headerNextLine(ProjectReadResult read) {
+    final result = effectiveNextStepWithArea(
+      read.project!.tasks,
+      read.project!.nextStep,
+      areas: _areas,
+    );
+    final text = result.text;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AsaSpace.md,
+        vertical: AsaSpace.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AsaColors.panel,
+        border: Border.all(color: AsaColors.line),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: text == null
+                  ? null
+                  : () => _openNextFromHeader(result.area, result.task),
+              child: Row(
+                children: [
+                  const SectionLabel('Next'),
+                  const SizedBox(width: AsaSpace.sm),
+                  Expanded(
+                    child: Text(
+                      text ?? 'No next step',
+                      style: AsaText.rowName.copyWith(
+                        fontStyle: text == null
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                        color: text == null ? AsaColors.ink3 : AsaColors.ink,
+                      ),
+                    ),
+                  ),
+                  if (result.area != null) ...[
+                    const SizedBox(width: AsaSpace.sm),
+                    AreaChip(result.area!.name),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: AsaSpace.md),
+          StartMenu(
+            projectName: read.project!.name,
+            projectFolder: widget.folder,
+            repoPath: read.project!.repoPath,
+            nextTaskText: result.task != null ? text : null,
+            areaSourceFile: result.area?.sourceFile,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openNextFromHeader(Area? area, Task? task) {
+    setState(() {
+      _activeTab = _Tab.plan;
+      if (area == null) {
+        _openHomeNow = true;
+      } else {
+        _areaToOpen = area.sourceFile;
+      }
+      _highlightRawLine = task?.rawLine;
+    });
   }
 
   Widget _tabBody(ProjectReadResult read) {
@@ -450,15 +572,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
           onDataChanged: _load,
           onToggleTask: _toggleAreaOrHomeTask,
           areaToOpen: _areaToOpen,
-          openHomeOnStart: widget.initialOpenHome,
-          highlightTaskRawLine: widget.initialHighlightRawLine,
+          openHomeOnStart: widget.initialOpenHome || _openHomeNow,
+          highlightTaskRawLine:
+              _highlightRawLine ?? widget.initialHighlightRawLine,
           projectSourceFile: read.isSuccess
               ? read.project!.sourceFile
               : widget.folder,
-          typedNextStep: read.isSuccess ? read.project!.nextStep : '',
-          projectName: read.isSuccess ? read.project!.name : '',
-          projectFolder: widget.folder,
-          repoPath: read.isSuccess ? read.project!.repoPath : '',
         );
       case _Tab.decisions:
         return _decisionsTab(read);

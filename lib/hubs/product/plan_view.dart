@@ -28,11 +28,8 @@ import 'package:asa/core/decision.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
-import 'package:asa/core/project_row.dart' show effectiveNextStepWithArea;
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
-import 'package:asa/hubs/product/start_menu.dart';
-import 'package:asa/hubs/product/ui/area_chip.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/progress_bar.dart';
@@ -58,10 +55,6 @@ class PlanView extends StatefulWidget {
     this.areaToOpen,
     this.openHomeOnStart = false,
     this.highlightTaskRawLine,
-    this.typedNextStep = '',
-    this.projectName = '',
-    this.projectFolder = '',
-    this.repoPath = '',
     super.key,
   });
 
@@ -137,21 +130,6 @@ class PlanView extends StatefulWidget {
   /// at all — the ordinary case for every existing caller.
   final String? highlightTaskRawLine;
 
-  /// The project's own typed `next-step:` field — round-36 §2 b's "Next"
-  /// line falls back to this only when no home or area task is open,
-  /// same chain [effectiveNextStepWithArea] already implements. Empty
-  /// keeps that chain's own honest-absence behaviour.
-  final String typedNextStep;
-
-  /// Round-36 §2 b's Next line needs these three, unchanged, to draw its
-  /// own [StartMenu] — the same Start button already on every project row
-  /// and the header, now repeated here so starting work never requires
-  /// leaving the Plan tab. Empty defaults keep every existing test, which
-  /// does not exercise Start from this widget, working unchanged.
-  final String projectName;
-  final String projectFolder;
-  final String repoPath;
-
   @override
   State<PlanView> createState() => _PlanViewState();
 }
@@ -214,6 +192,13 @@ class _PlanViewState extends State<PlanView> {
     if (target != null && target != oldWidget.areaToOpen) {
       _expandedAreas.add(target);
     }
+    // Round 38 §A — the header's own Next line can now point at a home
+    // task (no area) while this PlanView is already mounted (the tab was
+    // already Plan, so it never remounts); without this,
+    // `_notInAnAreaExpanded` only ever got set once, in `initState`.
+    if (widget.openHomeOnStart && !oldWidget.openHomeOnStart) {
+      setState(() => _notInAnAreaExpanded = true);
+    }
     final line = widget.highlightTaskRawLine;
     if (line != null && line != oldWidget.highlightTaskRawLine) {
       setState(() => _highlightedRawLine = line);
@@ -244,14 +229,7 @@ class _PlanViewState extends State<PlanView> {
       // row, so open by default — see initState), and one quiet pointer
       // to how it would grow areas at all.
       if (widget.plan.isEmpty) return _noPlanBody();
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _nextLineRow(),
-          const SizedBox(height: AsaSpace.xs),
-          _legacyBody(),
-        ],
-      );
+      return _legacyBody();
     }
 
     return Column(
@@ -261,8 +239,6 @@ class _PlanViewState extends State<PlanView> {
           _whatThisProjectIsFor(widget.strategy!),
           const SizedBox(height: AsaSpace.xs),
         ],
-        _nextLineRow(),
-        const SizedBox(height: AsaSpace.xs),
         for (final area in widget.areas) _areaRow(area),
         _notInAnAreaRow(),
         const SizedBox(height: AsaSpace.lg),
@@ -294,10 +270,11 @@ class _PlanViewState extends State<PlanView> {
 
   /// Round 36 cp8, §9 point 1 — a project with neither `PLAN.md` nor
   /// `plan\`: no areas, no legacy roadmap, nothing invented to fill the
-  /// gap. Just the Next line, why the project exists if that's known, its
-  /// own home tasks (the only row here, open by default), and one honest
-  /// pointer to how it would grow areas at all — never a button that
-  /// writes anything itself, matching ADR 0021's own read-only rule.
+  /// gap. Why the project exists if that's known (the Next line above it
+  /// is now the header's own, Round 38 §A), its own home tasks (the only
+  /// row here, open by default), and one honest pointer to how it would
+  /// grow areas at all — never a button that writes anything itself,
+  /// matching ADR 0021's own read-only rule.
   Widget _noPlanBody() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,8 +283,6 @@ class _PlanViewState extends State<PlanView> {
           _whatThisProjectIsFor(widget.strategy!),
           const SizedBox(height: AsaSpace.xs),
         ],
-        _nextLineRow(),
-        const SizedBox(height: AsaSpace.xs),
         _notInAnAreaRow(),
         const SizedBox(height: AsaSpace.md),
         const EmptyLine(
@@ -364,98 +339,6 @@ class _PlanViewState extends State<PlanView> {
         ),
       ),
     );
-  }
-
-  // --- The Next line — round-36 §2 b ------------------------------------
-
-  /// The project's single next step, wherever it actually comes from —
-  /// same chain [effectiveNextStepWithArea] already implements for the
-  /// overview — with the area it belongs to as a small chip, and the real
-  /// Start menu on the right so starting work never needs a second tab.
-  Widget _nextLineRow() {
-    final result = effectiveNextStepWithArea(
-      widget.homeTasks,
-      widget.typedNextStep,
-      areas: widget.areas,
-    );
-    final text = result.text;
-
-    // A bounded card, not just a bottom-bordered row — asa-project-page-v1's
-    // own drawing of this line sets it apart from the area list below it,
-    // the same way `_readOnlyNote` already sets its own box apart.
-    return Container(
-      margin: const EdgeInsets.only(bottom: AsaSpace.md),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AsaSpace.md,
-        vertical: AsaSpace.sm,
-      ),
-      decoration: BoxDecoration(
-        // Round 37 cp6, §D6 item 6 — violet means an area (one of the
-        // five meanings); this box isn't one, so it's a plain white
-        // panel, no tint, matching `asa-one-look-v1`'s own drawing.
-        color: AsaColors.panel,
-        border: Border.all(color: AsaColors.line),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: text == null
-                  ? null
-                  : () => _openNextTask(result.area, result.task),
-              child: Row(
-                children: [
-                  const SectionLabel('Next'),
-                  const SizedBox(width: AsaSpace.sm),
-                  Expanded(
-                    child: Text(
-                      text ?? 'No next step',
-                      style: AsaText.rowName.copyWith(
-                        fontStyle: text == null
-                            ? FontStyle.italic
-                            : FontStyle.normal,
-                        color: text == null ? AsaColors.ink3 : AsaColors.ink,
-                      ),
-                    ),
-                  ),
-                  if (result.area != null) ...[
-                    const SizedBox(width: AsaSpace.sm),
-                    AreaChip(result.area!.name),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: AsaSpace.md),
-          StartMenu(
-            projectName: widget.projectName,
-            projectFolder: widget.projectFolder,
-            repoPath: widget.repoPath,
-            // L10 — only a real task names itself and its area page; the
-            // typed field or honest absence has no task to point at.
-            nextTaskText: result.task != null ? text : null,
-            areaSourceFile: result.area?.sourceFile,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// L9 — tapping the Next line's task opens the area holding it (or
-  /// "Not in an area" for a home task) and briefly highlights the task
-  /// row itself, same mechanism L3 (the overview's own next-step text)
-  /// uses to land here.
-  void _openNextTask(Area? area, Task? task) {
-    setState(() {
-      if (area == null) {
-        _notInAnAreaExpanded = true;
-      } else {
-        _expandedAreas.add(area.sourceFile);
-      }
-      if (task != null) _highlightedRawLine = task.rawLine;
-    });
-    if (task != null) _armHighlightTimer();
   }
 
   // --- One area's row ---------------------------------------------------
