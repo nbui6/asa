@@ -679,3 +679,7 @@ found while correcting the drill's step 8).
 
 **Next:** cp2 (§C — Strategy links to Decisions/Log, the round *Your call* screen, its two
 writers).
+
+## From the deciding session — 2026-09-29 · ADR 0048 answered; keep going
+
+**0048 is answered, not Nico's call:** the Log is Round 38 §E (approved), and cp6's Checks already shows *changed without a note*. So: build §E as specced; add cp8's finding to `checkProject`; match a change to a log line **by file and day** (day alone only for old lines without files, shown as *probably logged*); fix the stale comment on `briefSince`. Drill step 7 (desktop app) goes into Nico's v1 test. Carry on with Round 38.
