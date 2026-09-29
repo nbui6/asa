@@ -247,16 +247,47 @@ Future<List<ChangeRecord>> readChangeHistory(
   return records;
 }
 
-/// Whether [record] has a matching `.asa-log.md` line — same calendar day
-/// is close enough; the log's own lines don't carry a reliable time
-/// component for every real line (cp5 found one with a dropped start
-/// time). A change with no matching line is *changed, not logged*
-/// (cp6's own amber finding); this is the check behind it.
-bool isLoggedChange(ChangeRecord record, List<SessionLogEntry> log) {
-  return log.any(
+/// [isLoggedChange]'s own answer — three states, never collapsed to a
+/// bool: a real match is not the same claim as a fallback guess, and
+/// showing them the same way is exactly the gap ADR 0048 (2026-09-29)
+/// found. [probably] is the whole reason this is not a bool.
+enum LoggedMatch { yes, no, probably }
+
+/// A same-day log line that never names a single file at all — the
+/// shape a line had before §7.11's own convention (or one that dropped
+/// it) — vs. one that does name at least one, in the current shape or
+/// not. Deliberately loose (any `word.ext`-shaped token), matching this
+/// file's own general policy of reading a real line's shape rather than
+/// re-parsing it into fields that don't always apply.
+final RegExp _looksLikeAFileName = RegExp(r'\S+\.\w{1,6}\b');
+
+/// Whether [record] has a matching `.asa-log.md` line. **Corrected**
+/// (ADR 0048, 2026-09-29, after the drill's own step 6 found the gap): a
+/// change counts as logged when a same-day line actually **names that
+/// file** — §7.11's own line shape ends with the files written — not
+/// merely when *something* was logged that day. Two edits to different
+/// files on the same day used to read as identically "logged" either
+/// way; only the specifically named one does now. Day alone survives as
+/// a fallback only for a same-day line that names no file at all (an
+/// older line, before this convention, or one that dropped it) —
+/// [LoggedMatch.probably], never claimed with the same certainty as a
+/// real name match.
+LoggedMatch isLoggedChange(ChangeRecord record, List<SessionLogEntry> log) {
+  final sameDay = log.where(
     (entry) =>
         entry.date.year == record.timestamp.year &&
         entry.date.month == record.timestamp.month &&
         entry.date.day == record.timestamp.day,
   );
+  if (sameDay.isEmpty) return LoggedMatch.no;
+
+  final fileName = record.path.split(RegExp(r'[\\/]')).last;
+  if (sameDay.any((entry) => entry.text.contains(fileName))) {
+    return LoggedMatch.yes;
+  }
+
+  final anyLineNamesFiles = sameDay.any(
+    (entry) => _looksLikeAFileName.hasMatch(entry.text),
+  );
+  return anyLineNamesFiles ? LoggedMatch.no : LoggedMatch.probably;
 }

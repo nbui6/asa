@@ -6,9 +6,12 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/area.dart';
+import 'package:asa/core/change_history.dart';
+import 'package:asa/core/decisions_reader.dart' show DiskFileAccess;
 import 'package:asa/core/freshness.dart';
 import 'package:asa/core/project_reader.dart';
 import 'package:asa/core/session_file.dart';
+import 'package:asa/core/session_log.dart';
 import 'package:asa/core/status_words.dart';
 
 /// One problem `asa-check` found, already in the words a person could read
@@ -49,6 +52,7 @@ const _oldShapeHeadings = [
 Future<List<Finding>> checkProject(
   String projectFolder, {
   DateTime? now,
+  String? historyRoot,
 }) async {
   final effectiveNow = now ?? DateTime.now();
   final findings = <Finding>[];
@@ -135,6 +139,28 @@ Future<List<Finding>> checkProject(
           'over the ~300-line budget.',
         ),
       );
+    }
+
+    // ADR 0048 (2026-09-29) — the same "changed without a note" cp8
+    // already gives asa-brief --since, now in asa-check and the
+    // Instruction for AI screen's own Checks too, so the two agree.
+    // Read-only, same as everything else here: nothing is recorded by
+    // this command itself — only what asa-brief already captured.
+    final history = await readChangeHistory(
+      projectFolder,
+      historyRoot: historyRoot,
+    );
+    if (history.isNotEmpty) {
+      final log = await readSessionLog(projectFolder, const DiskFileAccess());
+      for (final record in history) {
+        if (record.before == null) continue; // first seen, not a change
+        final match = isLoggedChange(record, log);
+        if (match == LoggedMatch.yes) continue;
+        final word = match == LoggedMatch.probably
+            ? 'probably logged'
+            : 'not logged';
+        findings.add(Finding('${record.path} changed, $word.'));
+      }
     }
   }
 

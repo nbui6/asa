@@ -542,10 +542,13 @@ Future<String> briefSince(
       // A first-ever snapshot has nothing to compare against — that is
       // Asa noticing the file, not a change to it, so "changed, not
       // logged" (a real edit with no log line) doesn't apply to it.
-      final logged =
-          record.before == null || log == null || isLoggedChange(record, log)
+      final logged = record.before == null || log == null
           ? ''
-          : ' — changed, not logged';
+          : switch (isLoggedChange(record, log)) {
+              LoggedMatch.yes => '',
+              LoggedMatch.no => ' — changed, not logged',
+              LoggedMatch.probably => ' — changed, probably logged',
+            };
       final date = record.timestamp.toIso8601String().split('T').first;
       final verb = record.before == null ? 'first seen' : 'changed';
       final lineCounts = record.before == null

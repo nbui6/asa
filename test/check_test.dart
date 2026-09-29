@@ -3,6 +3,7 @@
 
 import 'dart:io';
 
+import 'package:asa/core/change_history.dart';
 import 'package:asa/core/check.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -322,6 +323,90 @@ updated: 2026-09-28
 
     test('null when the quote shape is not there at all', () {
       expect(bossFillPrompt('# Nothing here'), isNull);
+    });
+  });
+
+  group('changed without a note (ADR 0048) — real, not merely read-only', () {
+    late Directory historyDir;
+
+    setUp(() {
+      historyDir = Directory.systemTemp.createTempSync(
+        'asa-check-history-test-',
+      );
+    });
+
+    tearDown(() => historyDir.deleteSync(recursive: true));
+
+    test('nothing recorded yet (asa-brief never ran) reports OK, not a '
+        'false finding', () async {
+      writeSetup();
+      writeFilledBoss();
+      final dir = makeProject('demo', wellShapedNote);
+
+      final findings = await checkProject(
+        dir.path,
+        now: DateTime(2026, 9, 28),
+        historyRoot: historyDir.path,
+      );
+      expect(findings, isEmpty);
+    });
+
+    test('an unlogged CHARTER.md edit is a real finding, same as '
+        "asa-brief --since's own", () async {
+      writeSetup();
+      writeFilledBoss();
+      final dir = makeProject('demo', wellShapedNote);
+      final charterPath = sep(dir.path, 'CHARTER.md');
+      File(charterPath).writeAsStringSync('## Objectives\n1. First.\n');
+
+      // Baseline snapshot — same as asa-brief --all's own first look.
+      await recordChanges(dir.path, root, historyRoot: historyDir.path);
+
+      // The unlogged edit, with no matching .asa-log.md line at all.
+      File(charterPath).writeAsStringSync('## Objectives\n1. Changed.\n');
+      await recordChanges(dir.path, root, historyRoot: historyDir.path);
+
+      final findings = await checkProject(
+        dir.path,
+        now: DateTime(2026, 9, 28),
+        historyRoot: historyDir.path,
+      );
+      expect(
+        findings.map((f) => f.message),
+        contains(contains('CHARTER.md changed, not logged')),
+      );
+    });
+
+    test('a same-day log line naming CHARTER.md clears the finding', () async {
+      writeSetup();
+      writeFilledBoss();
+      final dir = makeProject('demo', wellShapedNote);
+      final charterPath = sep(dir.path, 'CHARTER.md');
+      File(charterPath).writeAsStringSync('## Objectives\n1. First.\n');
+      await recordChanges(dir.path, root, historyRoot: historyDir.path);
+
+      File(charterPath).writeAsStringSync('## Objectives\n1. Changed.\n');
+      final today = DateTime.now();
+      await recordChanges(
+        dir.path,
+        root,
+        historyRoot: historyDir.path,
+        now: today,
+      );
+      final logLine =
+          '- ${today.toIso8601String().split("T").first} 10:00-10:05 · '
+          'test · updated the objective · CHARTER.md\n';
+      File(sep(dir.path, '.asa-log.md')).writeAsStringSync(logLine);
+
+      final findings = await checkProject(
+        dir.path,
+        now: DateTime(2026, 9, 28),
+        historyRoot: historyDir.path,
+      );
+      expect(
+        findings.map((f) => f.message),
+        isNot(contains(contains('CHARTER.md'))),
+      );
     });
   });
 }
