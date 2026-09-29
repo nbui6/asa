@@ -51,6 +51,7 @@ library;
 import 'package:asa/core/area.dart';
 import 'package:asa/core/freshness.dart';
 import 'package:asa/core/open_url.dart';
+import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
@@ -70,10 +71,17 @@ class ProjectsView extends StatefulWidget {
     required this.forest,
     required this.onOpenProject,
     required this.onAssignTask,
+    this.news = const {},
     super.key,
   });
 
   final List<ProjectNode> forest;
+
+  /// Round 38 §E — one project's own news (a blue *N new*, an amber
+  /// *changed without a note*), keyed by its folder. Empty for a node
+  /// whose project this map has nothing for — no marker at all, the same
+  /// honest absence as everywhere else.
+  final Map<String, ProjectNews> news;
 
   /// Opens the project's own detail screen — round-36 §3, L1/L2/L3/L4: a
   /// plain row tap builds a bare [ProjectOpenTarget] (lands wherever the
@@ -279,6 +287,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                       onTap: () => openUrl(project.jira!),
                                     ),
                                   ],
+                                  ..._newsMarker(widget.news[node.folder]),
                                 ],
                               ),
                               // `asa-front2` draws the pills directly under
@@ -382,6 +391,50 @@ class _ProjectsViewState extends State<ProjectsView> {
   /// glance. Deciding that two parked items are really the same subject,
   /// and acting on it, stays the user's own judgement — this only makes the
   /// count impossible to overlook.
+  /// Round 38 §E — "only if something happened since [the user] last
+  /// opened that project's Log: a blue N new marker, or amber changed
+  /// without a note if any change has no log line." The amber signal
+  /// wins when both apply — it names a real gap, not just activity.
+  List<Widget> _newsMarker(ProjectNews? news) {
+    if (news == null || !news.hasAnything) return const [];
+    if (news.hasUnloggedChange) {
+      return [
+        const SizedBox(width: AsaSpace.sm),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AsaSpace.xs,
+            vertical: 1,
+          ),
+          decoration: BoxDecoration(
+            color: AsaColors.amberBg,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          child: Text(
+            'changed without a note',
+            style: AsaText.meta.copyWith(color: AsaColors.amber),
+          ),
+        ),
+      ];
+    }
+    return [
+      const SizedBox(width: AsaSpace.sm),
+      Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsaSpace.xs,
+          vertical: 1,
+        ),
+        decoration: BoxDecoration(
+          color: AsaColors.blueBg,
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: Text(
+          '${news.newCount} new',
+          style: AsaText.meta.copyWith(color: AsaColors.blue),
+        ),
+      ),
+    ];
+  }
+
   Widget _parkedBadge(int count) {
     final message = count == 1 ? '1 task parked' : '$count tasks parked';
     final ruleOfTwo = count > 1;

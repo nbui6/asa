@@ -11,12 +11,17 @@ library;
 
 import 'dart:io';
 
-import 'package:asa/core/decisions_reader.dart' show DiskFileAccess;
+import 'package:asa/core/decision.dart';
+import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/inbox.dart';
+import 'package:asa/core/log_visit.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
+import 'package:asa/core/roadmap.dart';
+import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/settings.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
@@ -28,6 +33,7 @@ import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
 import 'package:asa/hubs/product/ui/asa_page.dart';
 import 'package:asa/hubs/product/ui/asa_panel.dart';
+import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -80,6 +86,19 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   List<Task>? _inboxTasks;
   bool _loading = false;
   _ViewMode _viewMode = _ViewMode.projects;
+
+  /// Round 38 §E — one project's own news (a blue *N new*, an amber
+  /// *changed without a note*), keyed by its folder. Empty for a project
+  /// this scan's own gathering step could not read for some reason —
+  /// same honest-absence rule as everywhere else, never a guess.
+  Map<String, ProjectNews> _news = const {};
+
+  /// Round 38 §E — every proposed decision and round waiting for
+  /// approval, across every project, oldest first — the global *Needs
+  /// you* card's own source.
+  List<WaitingAcrossProjects> _waiting = const [];
+
+  int _needsYouIndex = 0;
 
   /// Round 27's navigation fix — set when `ProjectScreen`'s Tasks button
   /// pops back here, so [TasksView] sorts that project's group first.
@@ -269,14 +288,63 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final inboxTasks = home == null
         ? const <Task>[]
         : await readInbox(home, const DiskFileAccess());
+    final newsAndWaiting = scan.error == null
+        ? await _readNewsAndWaiting(scan.projects)
+        : (
+            news: const <String, ProjectNews>{},
+            waiting: const <WaitingAcrossProjects>[],
+          );
 
     if (!mounted) return;
     setState(() {
       _scan = scan;
       _taskGroups = taskGroups;
       _inboxTasks = inboxTasks;
+      _news = newsAndWaiting.news;
+      _waiting = newsAndWaiting.waiting;
       _loading = false;
     });
+  }
+
+  /// Round 38 §E — one extra real-disk pass per project, alongside the
+  /// scan itself: its own news since its own last Log visit, and whether
+  /// it has anything waiting for a yes. Read here rather than inside
+  /// `ProjectsView`'s own row so a slow read never blocks the row it
+  /// belongs to from painting with whatever it already has.
+  Future<({Map<String, ProjectNews> news, List<WaitingAcrossProjects> waiting})>
+  _readNewsAndWaiting(List<ProjectSummary> projects) async {
+    const files = DiskFileAccess();
+    final news = <String, ProjectNews>{};
+    final waitingInputs =
+        <
+          ({
+            String folder,
+            String name,
+            List<DecisionReadResult> decisions,
+            List<Milestone> roadmap,
+            RoundApprovals approvals,
+          })
+        >[];
+
+    for (final summary in projects) {
+      final decisions = await readAllDecisions(summary.folder, files);
+      final approvals = await readRoundApprovals(summary.folder, files);
+      final lastVisit = await lastLogVisit(summary.folder);
+      news[summary.folder] = await readProjectNews(
+        summary.folder,
+        files,
+        lastVisit: lastVisit,
+      );
+      waitingInputs.add((
+        folder: summary.folder,
+        name: summary.project.name,
+        decisions: decisions,
+        roadmap: summary.project.roadmap,
+        approvals: approvals,
+      ));
+    }
+
+    return (news: news, waiting: waitingAcrossProjects(waitingInputs));
   }
 
   /// Re-reads the inbox from disk after a capture or an assignment — never
@@ -408,6 +476,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           initialAreaToOpen: target.areaSourceFile,
           initialOpenHome: target.openHome,
           initialHighlightRawLine: target.highlightRawLine,
+          initialOpenLog: target.openLog,
           onOpenTasks: (projectName) {
             Navigator.of(context).pop();
             setState(() {
@@ -509,10 +578,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             InstructionForAiScreen(settingsPath: widget.settingsPath)
           else if (scan != null && scan.error == null) ...[
             if (_viewMode == _ViewMode.projects) ...[
+              if (_waiting.isNotEmpty) ...[
+                _needsYouPanel(),
+                const SizedBox(height: AsaSpace.lg),
+              ],
               ProjectsView(
                 forest: buildProjectForest(scan.projects),
                 onOpenProject: _openProject,
                 onAssignTask: _assignInboxTask,
+                news: _news,
               ),
               if (scan.skipped.isNotEmpty) ...[
                 const SizedBox(height: AsaSpace.xl),
@@ -593,6 +667,71 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             color: selected ? AsaColors.panel : AsaColors.ink2,
           ),
         ),
+      ),
+    );
+  }
+
+  /// Round 38 §E — one item at a time, oldest waiting first, across
+  /// every project. **A named simplification, not the round's own literal
+  /// wording:** "Yes"/"Changes…" here open that project on its Log tab
+  /// (where the real, fully-working Needs-your-yes panel already lives)
+  /// rather than writing inline from this screen too — one write path,
+  /// not two copies of the same logic to keep in sync.
+  Widget _needsYouPanel() {
+    final index = _needsYouIndex % _waiting.length;
+    final item = _waiting[index];
+    return Container(
+      padding: const EdgeInsets.all(AsaSpace.md),
+      decoration: BoxDecoration(
+        color: AsaMeaning.needsYou.bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Needs you', style: AsaText.rowName),
+              const SizedBox(width: AsaSpace.sm),
+              Pill(item.projectName, meaning: AsaMeaning.area),
+            ],
+          ),
+          const SizedBox(height: AsaSpace.xs),
+          InkWell(
+            onTap: () => _openProject(
+              openTarget(item.projectFolder, openLog: true),
+            ),
+            child: Text(item.title, style: AsaText.body),
+          ),
+          const SizedBox(height: AsaSpace.sm),
+          Row(
+            children: [
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AsaColors.green,
+                ),
+                onPressed: () => _openProject(
+                  openTarget(item.projectFolder, openLog: true),
+                ),
+                child: const Text('Yes'),
+              ),
+              const SizedBox(width: AsaSpace.sm),
+              OutlinedButton(
+                onPressed: () => _openProject(
+                  openTarget(item.projectFolder, openLog: true),
+                ),
+                child: const Text('Changes…'),
+              ),
+              const Spacer(),
+              Text('${index + 1} of ${_waiting.length}', style: AsaText.meta),
+              if (_waiting.length > 1)
+                TextButton(
+                  onPressed: () => setState(() => _needsYouIndex++),
+                  child: const Text('next ›'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

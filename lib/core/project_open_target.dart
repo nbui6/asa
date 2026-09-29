@@ -13,6 +13,7 @@ typedef ProjectOpenTarget = ({
   String? areaSourceFile,
   bool openHome,
   String? highlightRawLine,
+  bool openLog,
 });
 
 ProjectOpenTarget openTarget(
@@ -20,9 +21,11 @@ ProjectOpenTarget openTarget(
   String? areaSourceFile,
   bool openHome = false,
   String? highlightRawLine,
+  bool openLog = false,
 }) => (
   folder: folder,
   areaSourceFile: areaSourceFile,
   openHome: openHome,
   highlightRawLine: highlightRawLine,
+  openLog: openLog,
 );

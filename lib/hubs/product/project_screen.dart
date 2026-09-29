@@ -94,6 +94,7 @@ class ProjectScreen extends StatefulWidget {
     this.initialAreaToOpen,
     this.initialOpenHome = false,
     this.initialHighlightRawLine,
+    this.initialOpenLog = false,
     super.key,
   });
 
@@ -121,6 +122,12 @@ class ProjectScreen extends StatefulWidget {
   /// Round-36 §3, L3 — same as [initialAreaToOpen], for "Not in an area"
   /// instead, from `ProjectOpenTarget.openHome`.
   final bool initialOpenHome;
+
+  /// Round 38 §E — the overview's own *Needs you* card and per-row
+  /// markers land here, from `ProjectOpenTarget.openLog`, so tapping one
+  /// opens straight onto the Log tab rather than wherever the project
+  /// screen opens by default.
+  final bool initialOpenLog;
 
   /// Round-36 §3, L3/L9 — the exact task row to briefly highlight once
   /// the Plan tab first shows, from `ProjectOpenTarget.highlightRawLine`.
@@ -179,6 +186,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   void initState() {
     super.initState();
     _selectedAreaTab = widget.initialAreaToOpen;
+    if (widget.initialOpenLog) _activeTab = _Tab.log;
     _load();
   }
 

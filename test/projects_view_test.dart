@@ -5,6 +5,7 @@
 import 'package:asa/core/area.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
@@ -30,6 +31,7 @@ Future<void> _pump(
   WidgetTester tester,
   List<ProjectNode> forest, {
   void Function(ProjectOpenTarget target)? onOpenProject,
+  Map<String, ProjectNews> news = const {},
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -38,6 +40,7 @@ Future<void> _pump(
           forest: forest,
           onOpenProject: onOpenProject ?? (_) {},
           onAssignTask: (_, _) async {},
+          news: news,
         ),
       ),
     ),
@@ -382,6 +385,63 @@ void main() {
       expect(opened?.areaSourceFile, isNull);
       expect(opened?.openHome, isTrue);
       expect(opened?.highlightRawLine, task.rawLine);
+    });
+  });
+
+  group("Round 38 §E — the overview's own news markers", () {
+    testWidgets('a project with new entries shows a blue "N new"', (
+      tester,
+    ) async {
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+
+      await _pump(
+        tester,
+        [node],
+        news: const {
+          'demo': ProjectNews(newCount: 3, hasUnloggedChange: false),
+        },
+      );
+
+      expect(find.text('3 new'), findsOneWidget);
+    });
+
+    testWidgets(
+      'an unlogged change shows amber "changed without a note" instead, '
+      'even when there is also new activity',
+      (tester) async {
+        final node = ProjectNode(
+          project: _project(status: 'in-progress'),
+          folder: 'demo',
+        );
+
+        await _pump(
+          tester,
+          [node],
+          news: const {
+            'demo': ProjectNews(newCount: 2, hasUnloggedChange: true),
+          },
+        );
+
+        expect(find.text('changed without a note'), findsOneWidget);
+        expect(find.text('2 new'), findsNothing);
+      },
+    );
+
+    testWidgets('a project with no news shows no marker at all', (
+      tester,
+    ) async {
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+
+      await _pump(tester, [node]);
+
+      expect(find.text('changed without a note'), findsNothing);
+      expect(find.textContaining(' new'), findsNothing);
     });
   });
 }
