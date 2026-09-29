@@ -23,6 +23,7 @@ import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/settings.dart';
+import 'package:asa/core/status_words.dart' show isHiddenStatus;
 import 'package:asa/core/task.dart';
 import 'package:asa/core/task_writer.dart';
 import 'package:asa/core/tasks_reader.dart';
@@ -97,6 +98,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   /// approval, across every project, oldest first — the global *Needs
   /// you* card's own source.
   List<WaitingAcrossProjects> _waiting = const [];
+
+  /// Round 38 §F, ADR 0036 — every scanned project whose status is
+  /// `on-hold`, `done` or `canceled`. Kept alongside the visible list
+  /// [_scan]'s own `.projects` is filtered down to below, so
+  /// [ProjectsView] can fold them into its own one quiet line instead of
+  /// showing them in the main list.
+  List<ProjectSummary> _hiddenProjects = const [];
 
   int _needsYouIndex = 0;
 
@@ -280,15 +288,25 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     setState(() => _loading = true);
 
     final scan = await scanProjects(_rootField.text.trim());
+    // Round 38 §F, ADR 0036 — on-hold/done/canceled projects leave the
+    // Tasks view, Needs you and the N-new markers the same way they
+    // leave the main list; one filter, reused for all three, rather than
+    // three separate places that could each forget it.
+    final visible = scan.error == null
+        ? scan.projects.where((s) => !isHiddenStatus(s.project.status)).toList()
+        : const <ProjectSummary>[];
+    final hidden = scan.error == null
+        ? scan.projects.where((s) => isHiddenStatus(s.project.status)).toList()
+        : const <ProjectSummary>[];
     final taskGroups = scan.error == null
-        ? await buildTaskGroups(scan.projects, const DiskFileAccess())
+        ? await buildTaskGroups(visible, const DiskFileAccess())
         : const <TaskGroup>[];
     final home = _homePath;
     final inboxTasks = home == null
         ? const <Task>[]
         : await readInbox(home, const DiskFileAccess());
     final newsAndWaiting = scan.error == null
-        ? await _readNewsAndWaiting(scan.projects)
+        ? await _readNewsAndWaiting(visible)
         : (
             news: const <String, ProjectNews>{},
             waiting: const <WaitingAcrossProjects>[],
@@ -297,6 +315,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     if (!mounted) return;
     setState(() {
       _scan = scan;
+      _hiddenProjects = hidden;
       _taskGroups = taskGroups;
       _inboxTasks = inboxTasks;
       _news = newsAndWaiting.news;
@@ -589,10 +608,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 const SizedBox(height: AsaSpace.lg),
               ],
               ProjectsView(
-                forest: buildProjectForest(scan.projects),
+                forest: buildProjectForest(
+                  scan.projects
+                      .where((s) => !isHiddenStatus(s.project.status))
+                      .toList(),
+                ),
                 onOpenProject: _openProject,
                 onAssignTask: _assignInboxTask,
                 news: _news,
+                hidden: _hiddenProjects,
               ),
               if (scan.skipped.isNotEmpty) ...[
                 const SizedBox(height: AsaSpace.xl),

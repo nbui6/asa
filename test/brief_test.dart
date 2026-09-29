@@ -118,6 +118,76 @@ void main() {
     });
   });
 
+  group('briefAll — Round 38 §F, ADR 0036 — hidden statuses collapse to '
+      'one line', () {
+    late Directory hiddenRoot;
+
+    setUpAll(() {
+      hiddenRoot = Directory.systemTemp.createTempSync(
+        'asa-brief-hidden-test-',
+      );
+      final active = Directory(
+        '${hiddenRoot.path}${Platform.pathSeparator}active-project',
+      )..createSync();
+      File(
+        '${active.path}${Platform.pathSeparator}active-project.md',
+      ).writeAsStringSync('''
+---
+project: Active Project
+status: building
+updated: 2026-09-13
+---
+
+## Tasks
+''');
+      final paused = Directory(
+        '${hiddenRoot.path}${Platform.pathSeparator}paused-project',
+      )..createSync();
+      File(
+        '${paused.path}${Platform.pathSeparator}paused-project.md',
+      ).writeAsStringSync('''
+---
+project: Paused Project
+status: on-hold
+updated: 2026-09-13
+---
+
+## Tasks
+''');
+      final canceled = Directory(
+        '${hiddenRoot.path}${Platform.pathSeparator}canceled-project',
+      )..createSync();
+      File(
+        '${canceled.path}${Platform.pathSeparator}canceled-project.md',
+      ).writeAsStringSync('''
+---
+project: Canceled Project
+status: canceled
+updated: 2026-09-13
+---
+
+## Tasks
+''');
+    });
+
+    tearDownAll(() {
+      hiddenRoot.deleteSync(recursive: true);
+    });
+
+    test('an active project keeps its own full section; on-hold and '
+        'canceled collapse into one "Out of sight" line instead', () async {
+      final text = await briefAll(hiddenRoot.path);
+
+      expect(text, contains('## Active Project'));
+      expect(text, isNot(contains('## Paused Project')));
+      expect(text, isNot(contains('## Canceled Project')));
+
+      expect(text, contains('## Out of sight'));
+      expect(text, contains('On hold 1'));
+      expect(text, contains('Canceled 1'));
+    });
+  });
+
   group('briefSince', () {
     test('a date after every real decision finds nothing', () async {
       final text = await briefSince(root, DateTime(2030));

@@ -54,7 +54,10 @@ import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_tree.dart';
+import 'package:asa/core/projects_scan.dart' show ProjectSummary;
 import 'package:asa/core/roadmap.dart';
+import 'package:asa/core/status_words.dart'
+    show canonicalStatus, statusLabel;
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
@@ -71,10 +74,17 @@ class ProjectsView extends StatefulWidget {
     required this.onOpenProject,
     required this.onAssignTask,
     this.news = const {},
+    this.hidden = const [],
     super.key,
   });
 
   final List<ProjectNode> forest;
+
+  /// Round 38 §F, ADR 0036 — every project whose status is `on-hold`,
+  /// `done` or `canceled`; already excluded from [forest] by the caller,
+  /// so this view only has to fold them into the one quiet line below the
+  /// list and, once that line is opened, one group per status.
+  final List<ProjectSummary> hidden;
 
   /// Round 38 §E — one project's own news (a blue *N new*, an amber
   /// *changed without a note*), keyed by its folder. Empty for a node
@@ -99,6 +109,11 @@ class ProjectsView extends StatefulWidget {
 
 class _ProjectsViewState extends State<ProjectsView> {
   bool _otherExpanded = false;
+  bool _hiddenExpanded = false;
+
+  /// Round 38 §F — the order the ADR's own words, and the sketch, list
+  /// the three statuses in: on-hold, then done, then canceled.
+  static const _hiddenOrder = ['on-hold', 'done', 'canceled'];
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +145,14 @@ class _ProjectsViewState extends State<ProjectsView> {
         if (split.other != null) ...[
           const SizedBox(height: AsaSpace.lg),
           _otherGroup(split.other!),
+        ],
+        if (widget.hidden.isNotEmpty) ...[
+          const SizedBox(height: AsaSpace.lg),
+          _hiddenSection(),
+          if (_hiddenExpanded) ...[
+            const SizedBox(height: AsaSpace.sm),
+            _hiddenGroups(),
+          ],
         ],
       ],
     );
@@ -167,6 +190,129 @@ class _ProjectsViewState extends State<ProjectsView> {
       if (_otherExpanded)
         for (final child in other.children) _row(child, depth: 1),
     ]);
+  }
+
+  /// Round 38 §F, ADR 0036 — the one quiet line below the list: "On hold
+  /// N · Done N · Canceled N · show ›". Folded by default, same shape as
+  /// [_otherGroup]; opened, it groups every hidden project by its own
+  /// status instead of showing one combined row list.
+  Widget _hiddenSection() {
+    final counts = <String, int>{};
+    for (final summary in widget.hidden) {
+      final canonical = canonicalStatus(summary.project.status);
+      counts[canonical] = (counts[canonical] ?? 0) + 1;
+    }
+    final parts = [
+      for (final word in _hiddenOrder)
+        if (counts[word] != null) '${statusLabel(word)} ${counts[word]}',
+    ];
+
+    return InkWell(
+      onTap: () => setState(() => _hiddenExpanded = !_hiddenExpanded),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AsaSpace.xs),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: '${parts.join(' · ')}  ', style: AsaText.meta),
+              TextSpan(
+                text: _hiddenExpanded ? 'hide' : 'show ›',
+                style: const TextStyle(
+                  color: AsaColors.blue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The per-status groups themselves, shown below [_hiddenSection]'s own
+  /// line once it's tapped open — one group per status that actually has
+  /// a project, newest first by `updated:`. A row opens the whole project
+  /// as usual; there is no "Bring back" button — changing the status
+  /// field back is the only way back, per the round's own wording.
+  Widget _hiddenGroups() {
+    final byStatus = <String, List<ProjectSummary>>{};
+    for (final summary in widget.hidden) {
+      final canonical = canonicalStatus(summary.project.status);
+      (byStatus[canonical] ??= []).add(summary);
+    }
+    for (final group in byStatus.values) {
+      group.sort((a, b) => b.project.updated.compareTo(a.project.updated));
+    }
+
+    return _rowPanel([
+      for (final word in _hiddenOrder)
+        if (byStatus[word] != null) ...[
+          _hiddenGroupHeader(word),
+          for (final summary in byStatus[word]!) _hiddenRow(summary),
+        ],
+    ]);
+  }
+
+  Widget _hiddenGroupHeader(String canonicalStatusWord) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AsaSpace.md,
+        vertical: AsaSpace.sm,
+      ),
+      child: Pill(
+        statusLabel(canonicalStatusWord),
+        meaning: meaningForStatus(canonicalStatusWord),
+      ),
+    );
+  }
+
+  Widget _hiddenRow(ProjectSummary summary) {
+    final lastResult = _newestResultOf(summary);
+    return InkWell(
+      onTap: () => widget.onOpenProject(openTarget(summary.folder)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsaSpace.md,
+          vertical: AsaSpace.sm,
+        ),
+        decoration: _rowHairline,
+        child: Row(
+          children: [
+            Text(summary.project.name, style: AsaText.rowName),
+            const SizedBox(width: AsaSpace.sm),
+            Expanded(
+              child: Text(
+                [
+                  if (asaListDate(summary.project.updated) != null)
+                    asaListDate(summary.project.updated)!,
+                  if (lastResult != null) 'last: "$lastResult"',
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AsaText.meta,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The single newest dated result across every one of [summary]'s own
+  /// areas — `AreaResult.results` is already sorted newest-first per
+  /// area (`area.dart`'s own `_parseResults`), so only each area's own
+  /// first dated entry is a candidate; null when no area has one, same
+  /// honest absence as everywhere else on this row.
+  String? _newestResultOf(ProjectSummary summary) {
+    AreaResult? newest;
+    for (final area in summary.areas) {
+      final firstDated = area.results.where((r) => r.date != null).firstOrNull;
+      if (firstDated == null) continue;
+      if (newest == null || firstDated.date!.isAfter(newest.date!)) {
+        newest = firstDated;
+      }
+    }
+    return newest?.text;
   }
 
   /// `asa-front2` — one bordered panel, hairlines between rows, not a

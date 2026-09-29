@@ -12,6 +12,7 @@ import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/round_file.dart' show sectionTextContaining;
 import 'package:asa/core/settings.dart';
 import 'package:asa/core/skills_catalog.dart';
+import 'package:asa/core/status_words.dart' show isHiddenStatus;
 import 'package:asa/hubs/product/ui/asa_panel.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
@@ -102,7 +103,12 @@ class _InstructionForAiScreenState extends State<InstructionForAiScreen> {
 
     final scan = await scanProjects(root);
     final findings = <({String project, Finding finding})>[];
+    // Round 38 §F, ADR 0036 — on-hold/done/canceled projects leave the
+    // Checks the same way they leave the overview list, the Tasks view
+    // and the N-new markers; opening one directly still shows it as
+    // usual, this only keeps it out of the aggregate list here.
     for (final summary in scan.projects) {
+      if (isHiddenStatus(summary.project.status)) continue;
       for (final finding in await checkProject(summary.folder)) {
         findings.add((project: summary.project.name, finding: finding));
       }

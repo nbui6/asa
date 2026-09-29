@@ -154,4 +154,32 @@ updated: 2026-09-28
     await tester.pumpAndSettle();
     expect(find.textContaining('OK'), findsOneWidget);
   });
+
+  testWidgets(
+    'Round 38 §F, ADR 0036 — an on-hold project never reaches the '
+    'aggregate Checks, even though it would otherwise be a real finding',
+    (tester) async {
+      // A second, real project — deliberately missing "## Tasks" (a real
+      // asa-check finding on its own) and set on-hold, so this proves
+      // exclusion rather than a fixture that was clean anyway.
+      final projectsRoot = join([workspace.path, 'projects']);
+      final paused = '$projectsRoot${Platform.pathSeparator}paused';
+      Directory(paused).createSync(recursive: true);
+      File('$paused${Platform.pathSeparator}paused.md').writeAsStringSync('''
+---
+project: Paused Project
+status: on-hold
+updated: 2026-09-28
+---
+# Paused Project
+''');
+
+      await pump(tester);
+      await tester.tap(find.textContaining('Checks ('));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('OK'), findsOneWidget);
+      expect(find.textContaining('Paused Project'), findsNothing);
+    },
+  );
 }

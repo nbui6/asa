@@ -420,6 +420,83 @@ void main() {
       expect(find.text('None yet'), findsOneWidget); // Decisions
     });
 
+    testWidgets(
+      'Round 38 §F — done tasks fold into "✓ N done · show ›", tapping it '
+      'reveals them',
+      (tester) async {
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              tasks: [
+                const Task(
+                  rawLine: '- [ ] open one',
+                  text: 'open one',
+                  done: false,
+                ),
+                const Task(
+                  rawLine: '- [x] done one',
+                  text: 'done one',
+                  done: true,
+                ),
+                const Task(
+                  rawLine: '- [x] done two',
+                  text: 'done two',
+                  done: true,
+                ),
+              ],
+            ),
+          ],
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+
+        expect(find.text('open one'), findsOneWidget);
+        expect(find.text('done one'), findsNothing);
+        expect(find.text('done two'), findsNothing);
+        expect(find.textContaining('✓ 2 done'), findsOneWidget);
+
+        await tester.tap(find.textContaining('✓ 2 done'));
+        await tester.pump();
+
+        expect(find.text('done one'), findsOneWidget);
+        expect(find.text('done two'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Round 38 §F — results show only the newest two, then "N older ›"',
+      (tester) async {
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              results: [
+                AreaResult(date: DateTime(2026, 9, 20), text: 'newest'),
+                AreaResult(date: DateTime(2026, 9, 15), text: 'second'),
+                AreaResult(date: DateTime(2026, 9, 10), text: 'third'),
+                AreaResult(date: DateTime(2026, 9), text: 'oldest'),
+              ],
+            ),
+          ],
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+
+        expect(find.text('newest'), findsOneWidget);
+        expect(find.text('second'), findsOneWidget);
+        expect(find.text('third'), findsNothing);
+        expect(find.text('oldest'), findsNothing);
+        expect(find.textContaining('2 older'), findsOneWidget);
+
+        await tester.tap(find.textContaining('2 older'));
+        await tester.pump();
+
+        expect(find.text('third'), findsOneWidget);
+        expect(find.text('oldest'), findsOneWidget);
+      },
+    );
+
     testWidgets("ticking a task calls onToggleTask with the area's own "
         'sourceFile', (tester) async {
       String? calledWith;
@@ -475,6 +552,13 @@ void main() {
         await tester.tap(find.text('Not in an area'));
         await tester.pump();
         expect(find.text('c'), findsOneWidget);
+        // Round 38 §F — the one done task folds into "✓ 1 done · show ›",
+        // not shown until that link itself is tapped.
+        expect(find.text('d'), findsNothing);
+        expect(find.textContaining('1 done'), findsOneWidget);
+
+        await tester.tap(find.textContaining('1 done'));
+        await tester.pump();
         expect(find.text('d'), findsOneWidget);
       },
     );

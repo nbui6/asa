@@ -164,6 +164,16 @@ class _PlanViewState extends State<PlanView> {
   bool _overviewExpanded = false;
   bool _notInAnAreaExpanded = false;
 
+  /// Round 38 §F (ADR 0036) — "the same rule inside a project: done tasks
+  /// ... fold into one line." Keyed by the same `sourceFile` a task row
+  /// already carries (the project's own home note, or one area's page),
+  /// so the home task list and every area's own list fold independently.
+  final Set<String> _doneTasksShown = {};
+
+  /// Round 38 §F — results fold the same way, "newest two, then N older
+  /// ›." Keyed by the area's own `sourceFile` — results are area-only.
+  final Set<String> _olderResultsShown = {};
+
   /// Round-36 §3, L3/L9 — the task row currently drawn highlighted, or
   /// null for none. Cleared automatically about 2 s after it is set —
   /// [_armHighlightTimer]. Never left showing.
@@ -639,7 +649,7 @@ class _PlanViewState extends State<PlanView> {
         _goalField(area),
         _textField('Plan', area.planText, empty: 'No plan yet'),
         _tasksField(area.tasks, sourceFile: area.sourceFile),
-        _resultsField(area.results),
+        _resultsField(area.results, sourceFile: area.sourceFile),
         _decisionsField(area.decisionNumbers),
         const SizedBox(height: AsaSpace.xs),
         LinkChip('open the page ↗', onTap: () => openUrl(area.sourceFile)),
@@ -742,12 +752,6 @@ class _PlanViewState extends State<PlanView> {
   }
 
   Widget _tasksField(List<Task> tasks, {required String sourceFile}) {
-    // Round 37 cp6, §D6 item 5 — the same first-open-unparked-task rule
-    // `_areaNextTaskLabel` already uses for the closed row's own summary;
-    // an opened area's task list gets the same "next" pill the sketch
-    // draws, not just that closed-row text.
-    final openTasks = tasks.where((t) => !t.done && !t.parked);
-    final nextTask = openTasks.isEmpty ? null : openTasks.first.rawLine;
     return Padding(
       padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
@@ -755,17 +759,57 @@ class _PlanViewState extends State<PlanView> {
         children: [
           const SectionLabel('Tasks'),
           const SizedBox(height: 2),
-          if (tasks.isEmpty)
-            const EmptyLine('Nothing yet')
-          else
-            for (final task in tasks)
-              _taskRow(
-                task,
-                sourceFile: sourceFile,
-                isNext: task.rawLine == nextTask,
-              ),
+          _taskListBody(tasks, sourceFile: sourceFile),
         ],
       ),
+    );
+  }
+
+  /// The task rows themselves, with no section heading of their own — so
+  /// [_notInAnAreaRow] can drop them straight under its own header without
+  /// a second, redundant "Tasks" label. Round 38 §F — done tasks fold into
+  /// "✓ N done · show ›", same shape `tasks_view.dart`'s own "Show
+  /// completed" already uses on the front page.
+  Widget _taskListBody(List<Task> tasks, {required String sourceFile}) {
+    if (tasks.isEmpty) return const EmptyLine('Nothing yet');
+
+    // Round 37 cp6, §D6 item 5 — the same first-open-unparked-task rule
+    // `_areaNextTaskLabel` already uses for the closed row's own summary;
+    // an opened area's task list gets the same "next" pill the sketch
+    // draws, not just that closed-row text.
+    final nextEligible = tasks.where((t) => !t.done && !t.parked);
+    final nextTask = nextEligible.isEmpty ? null : nextEligible.first.rawLine;
+    final doneCount = tasks.where((t) => t.done).length;
+    final expanded = _doneTasksShown.contains(sourceFile);
+    // Original file order either way — folding removes rows, it never
+    // reorders them, so a task's own position never jumps out from under
+    // whichever row was just tapped.
+    final visibleTasks = expanded
+        ? tasks
+        : tasks.where((t) => !t.done).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final task in visibleTasks)
+          _taskRow(
+            task,
+            sourceFile: sourceFile,
+            isNext: task.rawLine == nextTask,
+          ),
+        if (doneCount > 0)
+          _foldLink(
+            expanded: expanded,
+            collapsedLabel: '✓ $doneCount done',
+            onTap: () => setState(() {
+              if (expanded) {
+                _doneTasksShown.remove(sourceFile);
+              } else {
+                _doneTasksShown.add(sourceFile);
+              }
+            }),
+          ),
+      ],
     );
   }
 
@@ -781,12 +825,54 @@ class _PlanViewState extends State<PlanView> {
       isNext: isNext,
       highlighted: _highlightedRawLine == task.rawLine,
       onToggle: canToggle
-          ? (_) => widget.onToggleTask!(sourceFile, task)
+          ? (_) {
+              // Round 38 §F — a task ticked just now must not vanish out
+              // from under the tap that ticked it; auto-reveal this list's
+              // own fold rather than let the newly-done row fold away
+              // before the reload even lands.
+              setState(() => _doneTasksShown.add(sourceFile));
+              widget.onToggleTask!(sourceFile, task);
+            }
           : null,
     );
   }
 
-  Widget _resultsField(List<AreaResult> results) {
+  /// Round 38 §F — "show ›" once folded, "Hide" once expanded, same wording
+  /// `tasks_view.dart`'s own "Show completed"/"Hide completed" already
+  /// uses for the identical done-tasks fold on the front page.
+  Widget _foldLink({
+    required bool expanded,
+    required String collapsedLabel,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: InkWell(
+        onTap: onTap,
+        child: Text.rich(
+          TextSpan(
+            children: [
+              if (!expanded)
+                TextSpan(text: '$collapsedLabel  ', style: AsaText.meta),
+              TextSpan(
+                text: expanded ? 'Hide' : 'show ›',
+                style: const TextStyle(
+                  color: AsaColors.blue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _resultsField(List<AreaResult> results, {required String sourceFile}) {
+    final expanded = _olderResultsShown.contains(sourceFile);
+    final visible = expanded ? results : results.take(2).toList();
+    final olderCount = results.length - 2;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
@@ -796,8 +882,21 @@ class _PlanViewState extends State<PlanView> {
           const SizedBox(height: 2),
           if (results.isEmpty)
             const EmptyLine('Nothing yet')
-          else
-            for (final result in results) _resultRow(result),
+          else ...[
+            for (final result in visible) _resultRow(result),
+            if (olderCount > 0)
+              _foldLink(
+                expanded: expanded,
+                collapsedLabel: '$olderCount older',
+                onTap: () => setState(() {
+                  if (expanded) {
+                    _olderResultsShown.remove(sourceFile);
+                  } else {
+                    _olderResultsShown.add(sourceFile);
+                  }
+                }),
+              ),
+          ],
         ],
       ),
     );
@@ -902,10 +1001,6 @@ class _PlanViewState extends State<PlanView> {
   // --- Not in an area ----------------------------------------------------
 
   Widget _notInAnAreaRow() {
-    final openHomeTasks = widget.homeTasks.where((t) => !t.done && !t.parked);
-    final nextHomeTask = openHomeTasks.isEmpty
-        ? null
-        : openHomeTasks.first.rawLine;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: AsaSpace.sm),
       decoration: const BoxDecoration(
@@ -939,19 +1034,10 @@ class _PlanViewState extends State<PlanView> {
           if (_notInAnAreaExpanded)
             Padding(
               padding: const EdgeInsets.only(left: 22, top: AsaSpace.xs),
-              child: widget.homeTasks.isEmpty
-                  ? const EmptyLine('Nothing yet')
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final task in widget.homeTasks)
-                          _taskRow(
-                            task,
-                            sourceFile: widget.projectSourceFile,
-                            isNext: task.rawLine == nextHomeTask,
-                          ),
-                      ],
-                    ),
+              child: _taskListBody(
+                widget.homeTasks,
+                sourceFile: widget.projectSourceFile,
+              ),
             ),
         ],
       ),

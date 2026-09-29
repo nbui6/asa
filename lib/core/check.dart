@@ -31,11 +31,6 @@ final RegExp _waitingMarker = RegExp(
   caseSensitive: false,
 );
 
-/// ADR 0036, in the new words — a project this quiet has no deadline left
-/// to miss and no urgency left to flag; *note behind the work* and *over
-/// budget* would only ever be noise for it.
-const _inactiveStatuses = {'on-hold', 'done', 'canceled'};
-
 /// Headings §13's move folds away — a note still carrying one of these is
 /// the project the manual's own "getting a project into shape" is for.
 const _oldShapeHeadings = [
@@ -85,7 +80,10 @@ Future<List<Finding>> checkProject(
   final project = readResult.project!;
   final canonical = canonicalStatus(project.status);
   final isKnownNewWord = statusWords.any((w) => w.stored == canonical);
-  final isInactive = _inactiveStatuses.contains(canonical);
+  // ADR 0036, in the new words — a project this quiet has no deadline left
+  // to miss and no urgency left to flag; *note behind the work* and *over
+  // budget* would only ever be noise for it.
+  final isInactive = isHiddenStatus(project.status);
 
   if (isOldStatusWord(project.status)) {
     findings.add(

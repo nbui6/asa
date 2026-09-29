@@ -27,11 +27,14 @@ Project _project({required String status}) {
   );
 }
 
+const _emptyGit = GitState(command: '', rawOutput: '');
+
 Future<void> _pump(
   WidgetTester tester,
   List<ProjectNode> forest, {
   void Function(ProjectOpenTarget target)? onOpenProject,
   Map<String, ProjectNews> news = const {},
+  List<ProjectSummary> hidden = const [],
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -41,6 +44,7 @@ Future<void> _pump(
           onOpenProject: onOpenProject ?? (_) {},
           onAssignTask: (_, _) async {},
           news: news,
+          hidden: hidden,
         ),
       ),
     ),
@@ -442,6 +446,130 @@ void main() {
 
       expect(find.text('changed without a note'), findsNothing);
       expect(find.textContaining(' new'), findsNothing);
+    });
+  });
+
+  group('Round 38 §F, ADR 0036 — the hidden line', () {
+    ProjectSummary hiddenSummary({
+      required String name,
+      required String status,
+      required String folder,
+      String updated = '2026-09-01',
+    }) {
+      return ProjectSummary(
+        project: Project(
+          name: name,
+          status: status,
+          milestone: '',
+          nextStep: '',
+          repoPath: '',
+          updated: updated,
+          sourceFile: '$folder/$folder.md',
+        ),
+        git: _emptyGit,
+        folder: folder,
+      );
+    }
+
+    testWidgets('no hidden line at all when nothing is hidden', (
+      tester,
+    ) async {
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+      await _pump(tester, [node]);
+
+      expect(find.textContaining('show ›'), findsNothing);
+    });
+
+    testWidgets('folded by default: "On hold N · Done N · Canceled N · '
+        'show ›", one project each', (tester) async {
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+      await _pump(
+        tester,
+        [node],
+        hidden: [
+          hiddenSummary(name: 'Paused', status: 'on-hold', folder: 'paused'),
+          hiddenSummary(name: 'Finished', status: 'done', folder: 'finished'),
+          hiddenSummary(name: 'Dropped', status: 'canceled', folder: 'dropped'),
+        ],
+      );
+
+      expect(
+        find.textContaining('On hold 1 · Done 1 · Canceled 1'),
+        findsOneWidget,
+      );
+      expect(find.text('Paused'), findsNothing);
+      expect(find.text('Finished'), findsNothing);
+      expect(find.text('Dropped'), findsNothing);
+    });
+
+    testWidgets('only the statuses actually present are named — one '
+        'on-hold project shows only "On hold 1"', (tester) async {
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+      await _pump(
+        tester,
+        [node],
+        hidden: [
+          hiddenSummary(name: 'Paused', status: 'on-hold', folder: 'paused'),
+        ],
+      );
+
+      expect(find.textContaining('On hold 1'), findsOneWidget);
+      expect(find.textContaining('Done'), findsNothing);
+      expect(find.textContaining('Canceled'), findsNothing);
+    });
+
+    testWidgets('tapping "show ›" opens one group per status, newest '
+        'first by updated:, and a row opens the whole project', (
+      tester,
+    ) async {
+      ProjectOpenTarget? opened;
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+      await _pump(
+        tester,
+        [node],
+        onOpenProject: (target) => opened = target,
+        hidden: [
+          hiddenSummary(
+            name: 'Older hold',
+            status: 'on-hold',
+            folder: 'older-hold',
+            updated: '2026-08-01',
+          ),
+          hiddenSummary(
+            name: 'Newer hold',
+            status: 'on-hold',
+            folder: 'newer-hold',
+            updated: '2026-09-20',
+          ),
+          hiddenSummary(name: 'Finished', status: 'done', folder: 'finished'),
+        ],
+      );
+
+      await tester.tap(find.textContaining('show ›'));
+      await tester.pump();
+
+      expect(find.text('Older hold'), findsOneWidget);
+      expect(find.text('Newer hold'), findsOneWidget);
+      expect(find.text('Finished'), findsOneWidget);
+
+      final onHoldY = tester.getTopLeft(find.text('Newer hold')).dy;
+      final olderY = tester.getTopLeft(find.text('Older hold')).dy;
+      expect(onHoldY, lessThan(olderY));
+
+      await tester.tap(find.text('Finished'));
+      expect(opened?.folder, 'finished');
     });
   });
 }

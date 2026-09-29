@@ -21,6 +21,7 @@ import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_file.dart';
 import 'package:asa/core/session_file.dart';
 import 'package:asa/core/session_log.dart';
+import 'package:asa/core/status_words.dart';
 
 const FileAccess _files = DiskFileAccess();
 
@@ -446,6 +447,12 @@ Future<String> briefAll(
     return buffer.toString();
   }
 
+  // Round 38 §F, ADR 0036 — on-hold/done/canceled collapse to one summary
+  // line each, same as the overview's own folded line, instead of a full
+  // section per project; keeps this reading from growing the way the
+  // overview no longer does.
+  final hiddenCounts = <String, int>{};
+
   for (final summary in scan.projects) {
     await _recordScan(
       recordHistory,
@@ -456,6 +463,13 @@ Future<String> briefAll(
     );
 
     final project = summary.project;
+
+    if (isHiddenStatus(project.status)) {
+      final canonical = canonicalStatus(project.status);
+      hiddenCounts[canonical] = (hiddenCounts[canonical] ?? 0) + 1;
+      continue;
+    }
+
     final days = summary.daysStale(effectiveNow);
     final freshness = days == null
         ? 'unknown'
@@ -492,6 +506,18 @@ Future<String> briefAll(
     if (waiting > 0) {
       buffer.writeln('- Waiting for the user: $waiting decision(s)');
     }
+  }
+
+  if (hiddenCounts.isNotEmpty) {
+    final parts = <String>[];
+    for (final word in const ['on-hold', 'done', 'canceled']) {
+      final count = hiddenCounts[word];
+      if (count != null) parts.add('${statusLabel(word)} $count');
+    }
+    buffer
+      ..writeln()
+      ..writeln('## Out of sight')
+      ..writeln(parts.join(' · '));
   }
 
   for (final skip in scan.skipped) {

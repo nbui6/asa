@@ -202,6 +202,9 @@ void main() {
 
         await tester.tap(find.byType(DropdownButton<String>));
         await tester.pumpAndSettle();
+        // Round 38 §F, ADR 0036 — the menu's own hint for the three
+        // statuses that leave the list, `asa-status-v2`'s own wording.
+        expect(find.textContaining('leaves the list'), findsNWidgets(3));
         await tester.tap(find.text('On hold').last);
         await tester.pumpAndSettle();
 
