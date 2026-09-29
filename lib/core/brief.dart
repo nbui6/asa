@@ -505,10 +505,14 @@ Future<String> briefAll(
 }
 
 /// `asa-brief --since <date>` — everything any AI recorded across every
-/// project since [since]: new change requests, and proposed/`Scope:
-/// always` decisions dated on or after it. cp8's own local-change history
-/// (ADR 0033) is not built yet, so an edited-but-unlogged file is not
-/// reported here yet — said plainly rather than silently missing.
+/// project since [since]: new change requests, proposed/`Scope: always`
+/// decisions dated on or after it, and — from cp8's own local-change
+/// history (ADR 0033) — every watched file that changed, flagged
+/// *"changed, not logged"* when `isLoggedChange` finds no `.asa-log.md`
+/// line on the same calendar day. Corrected 2026-09-29 — this comment
+/// used to say cp8 "is not built yet," which stopped being true once cp8
+/// landed and was never updated here; the drift-check drove past this
+/// exact comment before catching that it, not the code, was stale.
 Future<String> briefSince(
   String projectsRoot,
   DateTime since, {

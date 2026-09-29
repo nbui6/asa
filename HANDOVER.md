@@ -589,22 +589,33 @@ than quietly skipped or silently built around:**
    what's been decided?"*, and write down honestly whether the `asa` skill fired by itself or he had
    to say "read the instruction."
 8. **"Does Checks show the unlogged change? Does each project's Log show every session?"** —
-   **both fail, and neither is a regression from this delivery: the capability doesn't exist yet.**
-   Checked directly rather than assumed: `dart run bin\check.dart _drill-fixture-round39` on the
-   very fixture step 6 built printed **`OK`** — it does not compare a project's content against what
-   its own log claims, only structural things (shape, frontmatter, staleness by file-mtime-vs-
-   `updated:`, decision/link hygiene). `brief.dart`'s own source says why, in its own comment:
-   *"cp8's own local-change history (ADR 0033) is not built yet, so an edited-but-unlogged file is
-   not reported here yet — said plainly rather than silently missing."* Separately, **no project-
-   level Log tab exists anywhere in `lib/hubs/`** — `session_log.dart`'s `readSessionLog` (core) has
-   no screen consuming it; Round 21 (the Log tab) is still roadmapped, not built.
+   **fails, for a narrower and more precise reason than first written here — corrected the same
+   day, before this went further on a wrong premise.** First pass wrongly said cp8 (ADR 0033,
+   local change history) "isn't built yet," trusting a doc-comment on `briefSince`
+   (`lib\core\brief.dart`) instead of reading the function's own body six lines below it. Checked
+   directly with a throwaway script calling `recordChanges`/`briefSince` against an isolated
+   scratch folder: **cp8 is real and working** — `asa-brief --since` does say *"changed, not
+   logged"* for a genuinely unlogged edit. What actually explains the drill's result:
+   `isLoggedChange` matches a change to a log line **by calendar day only**, on purpose (its own
+   comment: *"same calendar day is close enough; the log's own lines don't carry a reliable time
+   component for every real line"*) — my fixture's unlogged edit landed the same day as other real,
+   logged work, so cp8 called it logged even though nothing named that specific change. The stale
+   doc-comment itself is now fixed (`brief.dart`, its own small commit). **The two gaps that are
+   real:** `dart run bin\check.dart _drill-fixture-round39` on step 6's own fixture printed **`OK`**
+   — confirmed by reading `checkProject`'s full body that it never calls `change_history.dart` at
+   all, structural checks only; and **no screen anywhere in `lib/hubs/` reads `.asa-log.md` or
+   cp8's history** — the Instruction for AI screen's own *Checks* part (cp6) runs the same
+   structural `checkProject`, not cp8's; Round 21 (the Log tab) is still roadmapped, not built. So
+   the data and the logic already exist and a terminal `asa-brief --since` already shows it
+   correctly (day-granularity caveat aside) — what's actually missing is a **screen**.
 
-**DECISION NEEDED (Nico's, not mine to make silently):** should ADR 0033's drift detection and
-Round 21's Log tab be pulled into this delivery, ahead of Round 38/42/43/41, so step 8 can actually
-pass — or should v1 ship with this gap named, on the reasoning that the manual's own diligence
-(step 6 above) already catches it well enough by hand, and both rounds stay roadmapped for later?
-**Not decided here — continuing with Round 38 next, which doesn't depend on this either way**, per
-delivery-v1.md's own rule 2 (a decision only Nico can make: write it down, keep moving).
+**DECISION NEEDED (Nico's, not mine to make silently):** should Round 21's Log tab be pulled into
+this delivery, ahead of Round 38/42/43/41, so cp8's own findings (and every session) show up
+without a terminal — or should v1 ship with this gap named, on the reasoning that the manual's own
+diligence (step 6 above) already catches it well enough by hand, and the round stays roadmapped for
+later? Written up in full, corrected version, in `projects\asa\decisions\0048-…md`. **Not decided
+here — continuing with Round 38 next, which doesn't depend on this either way**, per delivery-v1.md's
+own rule 2 (a decision only Nico can make: write it down, keep moving).
 
 **Item 1 (Round 39's rest) is therefore six of eight — not fully done.** Named honestly rather than
 marked complete: 6 pass for real; 7 needs Nico; 8 exposes a real, pre-existing gap that needs his
