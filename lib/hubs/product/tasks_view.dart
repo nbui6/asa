@@ -28,6 +28,7 @@ import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/task_row.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -153,6 +154,10 @@ class _TasksViewState extends State<TasksView> {
 
   final _inboxCaptureController = TextEditingController();
 
+  /// Round 42 §B — the old per-screen "Code tasks" `FilterChip` moves into
+  /// a small filter menu; shown by default, same as before.
+  bool _showCode = true;
+
   @override
   void initState() {
     super.initState();
@@ -194,6 +199,40 @@ class _TasksViewState extends State<TasksView> {
       ],
     );
   }
+
+  /// A header row shared by all three right-pane bodies (Next up, Inbox,
+  /// one project): the panel's own title on the left, the Code-tasks
+  /// filter menu on the right — same position regardless of which body is
+  /// showing, so "hides every task marked (Code), everywhere" reads as one
+  /// switch, not three.
+  Widget _paneHeader(Widget title) {
+    return Row(
+      children: [
+        Expanded(child: title),
+        _codeFilterMenu(),
+      ],
+    );
+  }
+
+  /// Round 42 §B — "the *Code tasks* switch moves into a small filter
+  /// menu ((Code) tasks hidden or shown)", replacing the old inline
+  /// `FilterChip` this screen's predecessor showed per group.
+  Widget _codeFilterMenu() {
+    return PopupMenuButton<bool>(
+      tooltip: 'Hides every task marked (Code), everywhere',
+      icon: const Icon(Icons.filter_list, size: 18, color: AsaColors.ink3),
+      onSelected: (value) => setState(() => _showCode = value),
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem<bool>(
+          value: !_showCode,
+          checked: _showCode,
+          child: const Text('Code tasks'),
+        ),
+      ],
+    );
+  }
+
+  bool _codeVisible(Task task) => _showCode || !task.isCode;
 
   // --- The left rail ------------------------------------------------
 
@@ -350,18 +389,21 @@ class _TasksViewState extends State<TasksView> {
   }
 
   Widget _nextUpBody() {
+    final visible = widget.nextUp
+        .where((item) => _codeVisible(item.task))
+        .toList();
     return AsaPanel(
       child: Padding(
         padding: const EdgeInsets.all(AsaSpace.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Next up', style: AsaText.rowName),
+            _paneHeader(const Text('Next up', style: AsaText.rowName)),
             const SizedBox(height: AsaSpace.sm),
-            if (widget.nextUp.isEmpty)
+            if (visible.isEmpty)
               const EmptyLine('Nothing waiting — every project is caught up.')
             else
-              for (final item in widget.nextUp) _nextUpRow(item),
+              for (final item in visible) _nextUpRow(item),
             const SizedBox(height: AsaSpace.xs),
             const Text(
               "Tick one, and that project's next task takes its place.",
@@ -380,38 +422,39 @@ class _TasksViewState extends State<TasksView> {
       done: item.task.done,
       onToggle: (_) => _toggle(item.path, item.task),
       trailing: waiting == null ? null : _waitingChip(waiting),
-      textChild: InkWell(
-        onTap: () => widget.onOpenProject(
-          openTarget(
-            item.projectFolder,
-            areaSourceFile: item.area?.sourceFile,
-            openHome: item.area == null,
-            highlightRawLine: item.task.rawLine,
-          ),
+      // Round 42's own L31 — the project name, not the task text, is the
+      // link: tapping it shows that project's own list, same destination
+      // as clicking it in the left rail (L30) rather than pushing a new
+      // screen. Same inline-span pattern `plan_view.dart`'s Goal text
+      // already uses for its own "Objective N" link.
+      textChild: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: item.text, style: AsaText.body),
+            TextSpan(
+              text: '  · ${item.projectName}',
+              style: AsaText.meta,
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => setState(() => _selected = item.projectFolder),
+            ),
+          ],
         ),
-        child: Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: item.text, style: AsaText.body),
-              TextSpan(text: '  · ${item.projectName}', style: AsaText.meta),
-            ],
-          ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
       ),
     );
   }
 
   Widget _inboxBody() {
     final home = widget.homePath;
+    final visibleInboxTasks = widget.inboxTasks.where(_codeVisible).toList();
     return AsaPanel(
       child: Padding(
         padding: const EdgeInsets.all(AsaSpace.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Inbox', style: AsaText.rowName),
+            _paneHeader(const Text('Inbox', style: AsaText.rowName)),
             const SizedBox(height: AsaSpace.xs),
             const Text(
               'Type here when a task has no project yet; drag it onto one '
@@ -442,10 +485,10 @@ class _TasksViewState extends State<TasksView> {
                 ],
               ),
             const SizedBox(height: AsaSpace.sm),
-            if (widget.inboxTasks.isEmpty)
+            if (visibleInboxTasks.isEmpty)
               const EmptyLine('Inbox empty — nothing unfiled right now.')
             else
-              for (final task in widget.inboxTasks)
+              for (final task in visibleInboxTasks)
                 if (home != null)
                   _draggableTaskRow(
                     path: home,
@@ -469,10 +512,11 @@ class _TasksViewState extends State<TasksView> {
   Widget _projectBody(ProjectTasksSnapshot snapshot) {
     final expanded = _doneShown.contains(snapshot.folder);
     final totalDone =
-        snapshot.homeTasks.where((t) => t.done).length +
+        snapshot.homeTasks.where((t) => t.done && _codeVisible(t)).length +
         snapshot.areas.fold<int>(
           0,
-          (sum, area) => sum + area.tasks.where((t) => t.done).length,
+          (sum, area) =>
+              sum + area.tasks.where((t) => t.done && _codeVisible(t)).length,
         );
 
     return SingleChildScrollView(
@@ -482,21 +526,27 @@ class _TasksViewState extends State<TasksView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  // Round-36 §3, L5 — the project's own name opens its
-                  // Plan tab, same as every other project-name link.
-                  InkWell(
-                    onTap: () =>
-                        widget.onOpenProject(openTarget(snapshot.folder)),
-                    child: Text(snapshot.project.name, style: AsaText.rowName),
-                  ),
-                  const SizedBox(width: AsaSpace.sm),
-                  Pill(
-                    snapshot.project.status,
-                    meaning: meaningForStatus(snapshot.project.status),
-                  ),
-                ],
+              _paneHeader(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Round-36 §3, L5 — the project's own name opens its
+                    // Plan tab, same as every other project-name link.
+                    InkWell(
+                      onTap: () =>
+                          widget.onOpenProject(openTarget(snapshot.folder)),
+                      child: Text(
+                        snapshot.project.name,
+                        style: AsaText.rowName,
+                      ),
+                    ),
+                    const SizedBox(width: AsaSpace.sm),
+                    Pill(
+                      snapshot.project.status,
+                      meaning: meaningForStatus(snapshot.project.status),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: AsaSpace.sm),
               if (snapshot.areas.isEmpty)
@@ -573,7 +623,9 @@ class _TasksViewState extends State<TasksView> {
     required bool showDone,
     required _AddPosition addPosition,
   }) {
-    final visible = showDone ? tasks : tasks.where((t) => !t.done).toList();
+    final visible = (showDone ? tasks : tasks.where((t) => !t.done))
+        .where(_codeVisible)
+        .toList();
     final addField = _addField(path: path, position: addPosition);
 
     return [

@@ -8,6 +8,7 @@ import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/core/tasks_board.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -273,6 +274,140 @@ void main() {
       expect(find.text('Home done'), findsOneWidget);
       expect(find.text('Sales done'), findsOneWidget);
     });
+
+    testWidgets('round 42 §B — the Code-tasks filter menu hides (Code) tasks '
+        'everywhere by default is on, off hides them', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] Human task', text: 'Human task', done: false),
+          Task(
+            rawLine: '- [ ] Robot task (Code)',
+            text: 'Robot task',
+            done: false,
+            isCode: true,
+          ),
+        ],
+        areas: const [],
+      );
+      await tester.pumpWidget(pump(snapshots: [snapshot]));
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+
+      // Shown by default, same as the old per-screen switch.
+      expect(find.text('Robot task'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.filter_list));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Code tasks'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Robot task'), findsNothing);
+      expect(find.text('Human task'), findsOneWidget);
+    });
+  });
+
+  group('§B — drag ⋮⋮ (round-42.md\'s own Tests bullet: "widget tests for '
+      '... drag targets")', () {
+    testWidgets(
+      'dragging a later task onto an earlier one reorders, via onReorder',
+      (tester) async {
+        final snapshot = ProjectTasksSnapshot(
+          project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+          folder: 'demo',
+          homeTasks: const [
+            Task(rawLine: '- [ ] First', text: 'First', done: false),
+            Task(rawLine: '- [ ] Second', text: 'Second', done: false),
+          ],
+          areas: const [],
+        );
+        List<String>? capturedCurrent;
+        List<String>? capturedNew;
+        await tester.pumpWidget(
+          pump(
+            snapshots: [snapshot],
+            onReorder:
+                (
+                  path, {
+                  required List<String> currentOrder,
+                  required List<String> newOrder,
+                }) async {
+                  capturedCurrent = currentOrder;
+                  capturedNew = newOrder;
+                },
+          ),
+        );
+        await tester.tap(find.text('Demo'));
+        await tester.pump();
+
+        final from = tester.getCenter(find.text('Second'));
+        final to = tester.getCenter(find.text('First'));
+        final gesture = await tester.startGesture(from);
+        await tester.pump(const Duration(milliseconds: 50));
+        await gesture.moveTo(to);
+        await tester.pump(const Duration(milliseconds: 50));
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(capturedCurrent, ['- [ ] First', '- [ ] Second']);
+        expect(capturedNew, ['- [ ] Second', '- [ ] First']);
+      },
+    );
+
+    testWidgets(
+      'dragging a task onto another project in the rail moves it there, '
+      'via onMoveToTop',
+      (tester) async {
+        final demo = ProjectTasksSnapshot(
+          project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+          folder: 'demo',
+          homeTasks: const [
+            Task(rawLine: '- [ ] Move me', text: 'Move me', done: false),
+          ],
+          areas: const [],
+        );
+        final other = ProjectTasksSnapshot(
+          project: _project(name: 'Other', sourceFile: 'other/other.md'),
+          folder: 'other',
+          homeTasks: const [],
+          areas: const [],
+        );
+        String? capturedFrom;
+        String? capturedTo;
+        String? capturedLine;
+        await tester.pumpWidget(
+          pump(
+            snapshots: [demo, other],
+            onMoveToTop:
+                ({
+                  required String fromPath,
+                  required String toPath,
+                  required String rawLine,
+                }) async {
+                  capturedFrom = fromPath;
+                  capturedTo = toPath;
+                  capturedLine = rawLine;
+                },
+          ),
+        );
+        await tester.tap(find.text('Demo'));
+        await tester.pump();
+
+        final from = tester.getCenter(find.text('Move me'));
+        final to = tester.getCenter(find.text('Other'));
+        final gesture = await tester.startGesture(from);
+        await tester.pump(const Duration(milliseconds: 50));
+        await gesture.moveTo(to);
+        await tester.pump(const Duration(milliseconds: 50));
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(capturedFrom, 'demo/demo.md');
+        expect(capturedTo, 'other/other.md');
+        expect(capturedLine, '- [ ] Move me');
+      },
+    );
   });
 
   group('§B — add anywhere, edit in place', () {
@@ -505,5 +640,86 @@ void main() {
 
       expect(opened?.folder, 'projects/other-project');
     });
+
+    testWidgets('L30 — a left-list project opens its own list', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] Home task', text: 'Home task', done: false),
+        ],
+        areas: const [],
+      );
+      await tester.pumpWidget(pump(snapshots: [snapshot]));
+
+      // Next up is open by default — the rail is the only place 'Demo'
+      // shows before it's selected.
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+
+      expect(find.text('Home task'), findsOneWidget);
+    });
+
+    testWidgets(
+      "L31 — a Next up row's project name opens that project's own list",
+      (tester) async {
+        final snapshot = ProjectTasksSnapshot(
+          project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+          folder: 'demo',
+          homeTasks: const [
+            Task(
+              rawLine: '- [ ] Do the thing',
+              text: 'Do the thing',
+              done: false,
+            ),
+          ],
+          areas: const [],
+        );
+        final nextUp = [
+          const NextUpItem(
+            projectName: 'Demo',
+            projectFolder: 'demo',
+            path: 'demo/demo.md',
+            text: 'Do the thing',
+            task: Task(
+              rawLine: '- [ ] Do the thing',
+              text: 'Do the thing',
+              done: false,
+            ),
+          ),
+        ];
+        await tester.pumpWidget(pump(snapshots: [snapshot], nextUp: nextUp));
+
+        await tapInlineSpan(tester, '  · Demo');
+
+        // Same destination as L30 — the project's own list, in this same
+        // Tasks view, not a different screen.
+        expect(find.text('Do the thing'), findsOneWidget);
+        expect(find.text('⭐ Next up'), findsOneWidget); // rail unaffected
+      },
+    );
   });
+}
+
+/// Invokes an inline `TextSpan`'s own `TapGestureRecognizer` directly,
+/// rather than simulating a pixel-precise tap — same technique
+/// `links_test.dart`'s `tapObjectiveLink` uses for `plan_view.dart`'s own
+/// inline "Objective N" link, needed here for the Next-up row's own
+/// project-name span (round-42's L31).
+Future<void> tapInlineSpan(WidgetTester tester, String label) async {
+  void searchSpan(InlineSpan span) {
+    if (span is TextSpan) {
+      if (span.text == label && span.recognizer is TapGestureRecognizer) {
+        (span.recognizer! as TapGestureRecognizer).onTap!();
+        return;
+      }
+      span.children?.forEach(searchSpan);
+    }
+  }
+
+  final richTexts = tester.widgetList<RichText>(find.byType(RichText));
+  for (final richText in richTexts) {
+    searchSpan(richText.text);
+  }
+  await tester.pumpAndSettle();
 }
