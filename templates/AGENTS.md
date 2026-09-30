@@ -328,6 +328,9 @@ Last done: …
 Next: …
 ```
 
+**Working in a repo that belongs to a project** (its note's `repo-path`)? The session file and the log line go
+in **that project's** folder, not the repo, and you add a log line at every checkpoint, not only at the end.
+
 At the end: `status: closed`, then one line in `.asa-log.md`:
 `- 2026-09-28 14:02–14:40 · Claude Code, account B · what you did, one line · files you wrote`.
 

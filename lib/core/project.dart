@@ -4,6 +4,7 @@
 /// a running app, and it is the one architecture rule this project has.
 library;
 
+import 'package:asa/core/area.dart' show AreaResult;
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/task.dart';
 
@@ -24,6 +25,7 @@ class Project {
     this.links = const [],
     this.roadmap = const [],
     this.tasks = const [],
+    this.results = const [],
     this.extra = const {},
   });
 
@@ -64,6 +66,13 @@ class Project {
   /// only has a `Project` (the Projects view) can still derive something
   /// from a project's own tasks, e.g. `project_row.dart`'s `countParked`.
   final List<Task> tasks;
+
+  /// Round 43 §B, ADR 0042 — the home note's own `## Results` section,
+  /// same shape and reader (`parseResultsSection`) as an area page's.
+  /// Only ever reached for a task ticked while it has no area of its own
+  /// (`resultForTask` in `task_links.dart` matches by task text, not by
+  /// which of this or an area's own results list it came from).
+  final List<AreaResult> results;
 
   /// Every frontmatter key this file does not already name, in the order
   /// `parseFrontmatter` found them — Round 7's fork seam,
@@ -192,6 +201,7 @@ Project projectFromFields(
   String? description,
   List<Milestone> roadmap = const [],
   List<Task> tasks = const [],
+  List<AreaResult> results = const [],
 }) {
   String field(String key) {
     final value = fields[key];
@@ -230,6 +240,7 @@ Project projectFromFields(
     links: links,
     roadmap: roadmap,
     tasks: tasks,
+    results: results,
     extra: extra,
   );
 }

@@ -6,6 +6,8 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/area.dart' show parseResultsSection;
+import 'package:asa/core/markdown.dart' show sectionText;
 import 'package:asa/core/project.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/task.dart';
@@ -47,6 +49,7 @@ Future<ProjectReadResult> readProject(String projectFolder) async {
       description: deriveDescription(contents),
       roadmap: parseRoadmap(contents),
       tasks: parseTasks(contents),
+      results: parseResultsSection(sectionText(contents, 'Results')),
     ),
     rawFrontmatter: raw,
   );

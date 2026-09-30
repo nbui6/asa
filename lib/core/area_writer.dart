@@ -10,6 +10,7 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/skills_catalog.dart' show asaRepoPathFrom;
+import 'package:asa/core/slug.dart';
 import 'package:asa/core/write_log.dart';
 
 /// What creating an area actually did — [sourceFile] on success, a plain
@@ -24,17 +25,11 @@ class AreaCreateResult {
   bool get isSuccess => error == null;
 }
 
-final RegExp _notSlugChar = RegExp('[^a-z0-9]+');
-final RegExp _edgeDashes = RegExp(r'^-+|-+$');
-
-/// Lowercase, dashes, nothing else — `Finance` → `finance`, `Q4 Ops &
-/// Runway` → `q4-ops-runway`. A name that reduces to nothing (all
-/// punctuation, or empty) slugs to `''`, which [createArea] refuses
-/// rather than write a file with no real name in it.
-String slugifyAreaName(String name) {
-  final lower = name.trim().toLowerCase().replaceAll(_notSlugChar, '-');
-  return lower.replaceAll(_edgeDashes, '');
-}
+/// An area's own name → its filename slug. [createArea] refuses a name
+/// that reduces to `''` rather than write a file with no real name in
+/// it. Thin wrapper over the shared [slugify] — kept under its own name
+/// since callers and tests already read "an area's name, slugged" here.
+String slugifyAreaName(String name) => slugify(name);
 
 /// Writes `plan\<slug>.md` from `templates\area.md`, with the typed
 /// [name] as its own title. [templatePath] and [writeLogPath] exist only

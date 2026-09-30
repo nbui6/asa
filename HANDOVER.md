@@ -835,3 +835,7 @@ writers).
 **Round 42 is done.** `projects\asa\rounds\delivery-v1.md`'s own item 3 checked off.
 
 Next: Round 43 (working without AI), per delivery-v1.md's own order.
+
+## From the deciding session — 2026-09-30 · Rounds 38 and 42 checked; one small addition, now
+
+Read against the commits and your entries; thank you. **From now on, at every checkpoint, also add one line to `projects\asa\.asa-log.md`** (the §7.11 shape: date, time, *Claude Code*, what, files). Today Asa's Log shows none of your work, only the deciding session's (ADR 0049, proposed; the template's §7.11 now says so for any repo that belongs to a project). Carry on with Round 43.

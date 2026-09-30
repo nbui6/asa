@@ -157,7 +157,7 @@ Area parseArea(
     goal: goal,
     planText: sectionText(pageText, 'Plan'),
     tasks: parseTasks(pageText),
-    results: _parseResults(sectionText(pageText, 'Results')),
+    results: parseResultsSection(sectionText(pageText, 'Results')),
     decisionNumbers: decisionNumbers,
     objectiveNumbers: objectiveNumbers,
   );
@@ -214,7 +214,11 @@ final RegExp _resultLinkSegment = RegExp(r'^\[([^\]]+)\]\(([^)]+)\)$');
   return (text: textParts.join(' · ').trim(), task: task, link: link);
 }
 
-List<AreaResult> _parseResults(String? sectionBody) {
+/// The `## Results` section body → every dated (or verbatim undated)
+/// line, Round 43 §B's own `task:`/link segments split out. Public — the
+/// same reader `project.dart`'s own home-note `## Results` (an area-less
+/// project's own section, ADR 0042) needs, not just an area page's.
+List<AreaResult> parseResultsSection(String? sectionBody) {
   if (sectionBody == null) return const [];
 
   final dated = <AreaResult>[];
