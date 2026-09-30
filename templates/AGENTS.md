@@ -246,7 +246,18 @@ who owes what, and for how long. Remove the mark when it moves.
 ### 7.4 A result
 
 `- YYYY-MM-DD — what came out` under the area's `## Results`, newest first. **Never edit an old line.**
-A correction is a new line.
+A correction is a new line. Round 43 — a result may name the task it came from and link to a file, a
+folder or a web page it produced:
+
+```
+- 2026-09-28 — a copy keeps its own period, 24 months · task: Ask legal the RC-16 question · [rc16-answer.pdf](C:\path\to\rc16-answer.pdf)
+```
+
+Both `· task: …` and the trailing `[label](target)` are optional, in either order, each its own
+`·`-separated segment. `target` is a path (a file or a folder, relative to the project folder or
+absolute) or an `https://` address; the label is whatever the file, folder or page is called. A
+result whose `task:` names a task that no longer exists still shows — Asa doesn't hide it, it just
+can't link to it.
 
 ### 7.5 A decision, `decisions\NNNN-short-slug.md` (next free number)
 
@@ -255,7 +266,7 @@ A correction is a new line.
 
 **Date:** 2026-09-28 · **Status:** accepted
 **Decided by:** the user
-**Links:** Area: Sales · Serves: Objective 2
+**Links:** Area: Sales · Serves: Objective 2 · Task: Ask legal the RC-16 question · File: rc16-answer.pdf
 
 ## Decision
 One or two sentences.
@@ -269,6 +280,9 @@ The condition that would make it wrong.
 ## Your call
 **Accepted** — 2026-09-28 — "the user's exact words"
 ```
+
+Round 43 — for more than one `Task:` or `File:`, repeat the key (`Task: … · Task: …`) rather than
+a comma list — a task's own text, or a file path, can contain a comma.
 
 - **If the user said no:** `rejected`.
 - **If only they can decide:** `proposed`, with no *Your call* yet. Asa shows it under *Needs your yes*.

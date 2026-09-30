@@ -175,6 +175,61 @@ void main() {
     });
   });
 
+  group('Round 43 §B — a result names its own task and/or links to a file', () {
+    test('both, task first, then the link', () {
+      final area = parseArea(
+        '# x\n\n## Results\n- 2026-09-28 — a copy keeps its own period, 24 '
+        'months · task: Ask legal the RC-16 question · '
+        '[rc16-answer.pdf](C:\\path\\to\\rc16-answer.pdf)\n',
+        sourceFile: 'x.md',
+        aspect: 'x',
+      );
+      final result = area.results.single;
+      expect(result.text, 'a copy keeps its own period, 24 months');
+      expect(result.task, 'Ask legal the RC-16 question');
+      expect(result.link?.label, 'rc16-answer.pdf');
+      expect(result.link?.target, r'C:\path\to\rc16-answer.pdf');
+    });
+
+    test('the link alone, no task', () {
+      final area = parseArea(
+        '# x\n\n## Results\n- 2026-09-23 — the demo code form is covered '
+        'by the 3-month rule · '
+        '[SharePoint: Rules](https://example.com/rules)\n',
+        sourceFile: 'x.md',
+        aspect: 'x',
+      );
+      final result = area.results.single;
+      expect(result.task, isNull);
+      expect(result.link?.label, 'SharePoint: Rules');
+      expect(result.link?.target, 'https://example.com/rules');
+    });
+
+    test('the task alone, no link', () {
+      final area = parseArea(
+        '# x\n\n## Results\n- 2026-09-28 — done · task: Ask whether they '
+        'approve rules in the abstract\n',
+        sourceFile: 'x.md',
+        aspect: 'x',
+      );
+      final result = area.results.single;
+      expect(result.task, 'Ask whether they approve rules in the abstract');
+      expect(result.link, isNull);
+    });
+
+    test('neither — a plain result reads exactly as before', () {
+      final area = parseArea(
+        '# x\n\n## Results\n- 2026-09-28 — nothing special\n',
+        sourceFile: 'x.md',
+        aspect: 'x',
+      );
+      final result = area.results.single;
+      expect(result.text, 'nothing special');
+      expect(result.task, isNull);
+      expect(result.link, isNull);
+    });
+  });
+
   group('readAreas', () {
     late Directory tempDir;
 

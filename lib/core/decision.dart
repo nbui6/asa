@@ -51,11 +51,25 @@ class DecisionLinks {
     this.area,
     this.objectives = const [],
     this.rounds = const [],
+    this.tasks = const [],
+    this.files = const [],
     this.supersedes,
     this.scopeAlways = false,
   });
 
   final String? area;
+
+  /// Round 43 §B — every task this decision names, as its own plain text
+  /// (matched against a real `Task.text` by whoever has both in hand).
+  /// Repeated-key only (`Task: … · Task: …`), never comma-split like
+  /// [objectives]/[rounds] — a task's own text can contain a comma.
+  final List<String> tasks;
+
+  /// Round 43 §B — every file, folder or web page this decision links to,
+  /// verbatim (a path or an `https://` address) — never resolved here.
+  /// Repeated-key only, same reasoning as [tasks]: a path can contain a
+  /// comma too.
+  final List<String> files;
 
   /// Every bare objective number (`["2"]`, or `["2", "3"]`) — the same
   /// shape `area.dart`'s own `objectiveNumbers` already uses — parsed out
@@ -313,6 +327,8 @@ DecisionLinks _parseLinks(String afterHeading) {
   String? area;
   final objectives = <String>[];
   final rounds = <String>[];
+  final tasks = <String>[];
+  final files = <String>[];
   String? supersedes;
   var scopeAlways = false;
 
@@ -349,6 +365,10 @@ DecisionLinks _parseLinks(String afterHeading) {
           final trimmed = piece.trim();
           if (trimmed.isNotEmpty) rounds.add(trimmed);
         }
+      case 'task':
+        tasks.add(value);
+      case 'file':
+        files.add(value);
       case 'supersedes':
         supersedes = value;
       case 'scope':
@@ -360,6 +380,8 @@ DecisionLinks _parseLinks(String afterHeading) {
     area: area,
     objectives: objectives,
     rounds: rounds,
+    tasks: tasks,
+    files: files,
     supersedes: supersedes,
     scopeAlways: scopeAlways,
   );

@@ -649,4 +649,46 @@ void main() {
       expect(result.decision!.links.rounds, ['38']);
     });
   });
+
+  group('Round 43 §B — Task: and File: on the **Links:** line', () {
+    test("one of each, the manual's own worked example", () {
+      final result = parseDecision(
+        '# ADR 0009 - Title\n\n**Status:** accepted\n**Links:** Area: '
+            'Sales · Serves: Objective 2 · Task: Ask legal the RC-16 '
+            'question · File: rc16-answer.pdf\n\n## Decision\nSomething.\n',
+        '0009.md',
+      );
+      final links = result.decision!.links;
+      expect(links.tasks, ['Ask legal the RC-16 question']);
+      expect(links.files, ['rc16-answer.pdf']);
+    });
+
+    test('repeated keys keep every value — never comma-split, since a '
+        "task's own text or a file path can contain a comma", () {
+      final result = parseDecision(
+        '# ADR 0035 - Title\n\n**Status:** accepted\n**Links:** '
+            'Task: Ask legal the RC-16 question, in writing · '
+            'Task: File the answer · File: C:\\rc16\\answer, final.pdf\n\n'
+            '## Decision\nSomething.\n',
+        '0035.md',
+      );
+      final links = result.decision!.links;
+      expect(links.tasks, [
+        'Ask legal the RC-16 question, in writing',
+        'File the answer',
+      ]);
+      expect(links.files, [r'C:\rc16\answer, final.pdf']);
+    });
+
+    test('neither present reads as empty lists, not null', () {
+      final result = parseDecision(
+        '# ADR 0010 - Title\n\n**Status:** accepted\n**Links:** Area: '
+            'Finance\n\n## Decision\nSomething.\n',
+        '0010.md',
+      );
+      final links = result.decision!.links;
+      expect(links.tasks, isEmpty);
+      expect(links.files, isEmpty);
+    });
+  });
 }

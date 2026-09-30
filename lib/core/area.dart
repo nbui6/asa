@@ -19,15 +19,39 @@ import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/task.dart';
 
+/// Round 43 §B — a result's own link to a file, a folder or a web page:
+/// `[label](target)`. `target` is a path (relative to the project folder,
+/// or absolute) or an `https://` address; `label` is whatever the file,
+/// folder or page is called — never resolved or copied here, just parsed.
+class ResultLink {
+  const ResultLink({required this.label, required this.target});
+
+  final String label;
+  final String target;
+}
+
 /// One dated line from an area's `## Results` section — `- YYYY-MM-DD —
 /// text`, newest first. A line that doesn't match that shape is kept too,
 /// [date] null, [text] verbatim — "anything else in the section is shown
 /// verbatim, undated, and never dropped."
+///
+/// Round 43 §B — a result may also carry `· task: <the task's own text>`
+/// and/or a trailing `[label](target)`, each its own `·`-separated segment,
+/// either order, both optional. [task] is the task's plain text as written
+/// in the result line — matched against a real [Task.text] by the reader
+/// that has both in hand, never resolved here.
 class AreaResult {
-  const AreaResult({required this.date, required this.text});
+  const AreaResult({
+    required this.date,
+    required this.text,
+    this.task,
+    this.link,
+  });
 
   final DateTime? date;
   final String text;
+  final String? task;
+  final ResultLink? link;
 }
 
 /// One area, read from its own `plan\<area>.md` page. Every field but
@@ -151,6 +175,45 @@ final RegExp _datedResultLine = RegExp(
   r'^-\s*(\d{4}-\d{2}-\d{2})\s*[—-]\s*(.*)$',
 );
 
+final RegExp _resultTaskSegment = RegExp(
+  r'^task:\s*(.+)$',
+  caseSensitive: false,
+);
+
+final RegExp _resultLinkSegment = RegExp(r'^\[([^\]]+)\]\(([^)]+)\)$');
+
+/// Round 43 §B — splits a result line's own body on `·` into the free text
+/// (always the first segment) and, in either order, an optional `task:
+/// …` segment and an optional `[label](target)` link segment. A segment
+/// matching neither shape is folded back into the text — a result's own
+/// sentence may legitimately contain a middle dot that isn't one of these
+/// two fields.
+({String text, String? task, ResultLink? link}) _splitResultBody(String body) {
+  final segments = body.split('·').map((s) => s.trim()).toList();
+  final textParts = <String>[];
+  String? task;
+  ResultLink? link;
+
+  for (final segment in segments) {
+    final taskMatch = _resultTaskSegment.firstMatch(segment);
+    if (taskMatch != null) {
+      task = taskMatch.group(1)!.trim();
+      continue;
+    }
+    final linkMatch = _resultLinkSegment.firstMatch(segment);
+    if (linkMatch != null) {
+      link = ResultLink(
+        label: linkMatch.group(1)!,
+        target: linkMatch.group(2)!,
+      );
+      continue;
+    }
+    textParts.add(segment);
+  }
+
+  return (text: textParts.join(' · ').trim(), task: task, link: link);
+}
+
 List<AreaResult> _parseResults(String? sectionBody) {
   if (sectionBody == null) return const [];
 
@@ -163,18 +226,27 @@ List<AreaResult> _parseResults(String? sectionBody) {
 
     final match = _datedResultLine.firstMatch(line);
     if (match != null) {
+      final split = _splitResultBody(match.group(2)!.trim());
       dated.add(
         AreaResult(
           date: DateTime.tryParse(match.group(1)!),
-          text: match.group(2)!.trim(),
+          text: split.text,
+          task: split.task,
+          link: split.link,
         ),
       );
     } else {
       // Not the dated shape — kept verbatim rather than dropped, only the
       // leading bullet marker (list formatting, not the result's own text)
       // stripped, if there is one.
+      final split = _splitResultBody(line.replaceFirst(RegExp(r'^-\s*'), ''));
       undated.add(
-        AreaResult(date: null, text: line.replaceFirst(RegExp(r'^-\s*'), '')),
+        AreaResult(
+          date: null,
+          text: split.text,
+          task: split.task,
+          link: split.link,
+        ),
       );
     }
   }
