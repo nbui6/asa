@@ -25,13 +25,13 @@ import 'package:asa/core/task.dart';
 import 'package:asa/core/tasks_board.dart';
 import 'package:asa/hubs/product/ui/asa_panel.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/task_row.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 /// A task mid-drag, and the file it is dragged **from** — the one thing
 /// every drop target needs to decide "reorder" (same file) from "move"
@@ -876,7 +876,7 @@ class _TasksViewState extends State<TasksView> {
   }
 
   Widget _editField({required String path, required Task task}) {
-    return _SubmitOnEscape(
+    return EscapeToCancel(
       onEscape: _cancelEdit,
       child: TextField(
         controller: _editController,
@@ -921,7 +921,7 @@ class _TasksViewState extends State<TasksView> {
     final isDecision = _resultPromptIsDecision;
     return Padding(
       padding: const EdgeInsets.only(left: AsaSpace.xl, top: 2, bottom: 2),
-      child: _SubmitOnEscape(
+      child: EscapeToCancel(
         onEscape: _cancelResultPrompt,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1059,7 +1059,7 @@ class _TasksViewState extends State<TasksView> {
     }
 
     final controller = _addControllers[key]!;
-    return _SubmitOnEscape(
+    return EscapeToCancel(
       onEscape: () => _closeAddField(key),
       child: SizedBox(
         height: 26,
@@ -1216,28 +1216,6 @@ class _HoverRowState extends State<_HoverRow> {
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: widget.builder(hovering: _hovering),
-    );
-  }
-}
-
-/// Escape cancels an inline field — Round 42 §B: "Esc or an empty Enter
-/// closes it" (the add field) / "Esc cancels" (editing a task's text).
-class _SubmitOnEscape extends StatelessWidget {
-  const _SubmitOnEscape({required this.onEscape, required this.child});
-  final VoidCallback onEscape;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: FocusNode(skipTraversal: true),
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          onEscape();
-        }
-      },
-      child: child,
     );
   }
 }

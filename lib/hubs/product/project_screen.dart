@@ -36,6 +36,7 @@ import 'package:asa/core/area.dart';
 import 'package:asa/core/area_writer.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
+import 'package:asa/core/decision_create_writer.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/log_entries.dart';
@@ -46,6 +47,7 @@ import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
 import 'package:asa/core/project_row.dart';
 import 'package:asa/core/project_writer.dart';
+import 'package:asa/core/result_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_call_writer.dart';
@@ -668,6 +670,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   Widget _logTab(ProjectReadResult read) {
     return LogView(
       projectFolder: widget.folder,
+      homeSourceFile: read.isSuccess ? read.project!.sourceFile : widget.folder,
       entries: _logEntries,
       decisions: _decisions ?? const [],
       roadmap: read.isSuccess ? read.project!.roadmap : const [],
@@ -678,6 +681,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
       loadRoundText: _loadRoundText,
       onApproveRound: _approveRound,
       onRequestRoundChanges: _requestRoundChanges,
+      onWriteResult: _writeLogResult,
+      onCreateDecision: _writeLogDecision,
     );
   }
 
@@ -719,6 +724,56 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _activeTab = _Tab.plan;
     _selectedAreaTab = area.sourceFile;
   });
+
+  void _say(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Round 43 §C — the Log's own "＋ Result" button.
+  Future<void> _writeLogResult({
+    required String path,
+    required String text,
+    String? taskText,
+    ResultLink? link,
+  }) async {
+    try {
+      await writeResult(
+        path,
+        text: text,
+        taskText: taskText,
+        link: link,
+        date: DateTime.now(),
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  /// Same button's own "＋ Decision" sibling.
+  Future<void> _writeLogDecision({
+    required String projectFolder,
+    required String decisionText,
+    String? why,
+    String? area,
+    List<String> objectives = const [],
+    ResultLink? link,
+  }) async {
+    final result = await createDecision(
+      projectFolder,
+      decisionText: decisionText,
+      date: DateTime.now(),
+      why: why,
+      area: area,
+      objectives: objectives,
+      files: link == null ? const [] : [link.label],
+      writeLogPath: widget.writeLogPath,
+    );
+    if (!result.isSuccess) _say('Could not save: ${result.error}');
+  }
 
   Widget _detailsTab(ProjectReadResult read) {
     if (!read.isSuccess) {

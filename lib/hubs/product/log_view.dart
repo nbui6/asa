@@ -21,6 +21,7 @@ import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/round_call_screen.dart';
 import 'package:asa/hubs/product/ui/area_chip.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
@@ -31,6 +32,7 @@ enum LogSubView { whatHappened, decisionsInForce }
 class LogView extends StatefulWidget {
   const LogView({
     required this.projectFolder,
+    required this.homeSourceFile,
     required this.entries,
     required this.decisions,
     required this.roadmap,
@@ -42,10 +44,19 @@ class LogView extends StatefulWidget {
     this.onOpenArea,
     this.onDataChanged,
     this.lastVisitPath,
+    this.onWriteResult,
+    this.onCreateDecision,
     super.key,
   });
 
   final String projectFolder;
+
+  /// The project's own home note — round-43.md §C's own "＋ Result"
+  /// writes here whenever "Not in an area" stays selected. Passed in
+  /// rather than re-derived from [projectFolder]: `findHomeNote`'s own
+  /// "first note with frontmatter" fallback is a real disk read this
+  /// widget has no way to redo, and the caller already has the answer.
+  final String homeSourceFile;
   final List<LogEntry> entries;
   final List<DecisionReadResult> decisions;
   final List<Milestone> roadmap;
@@ -87,6 +98,28 @@ class LogView extends StatefulWidget {
   /// never sets this.
   final String? lastVisitPath;
 
+  /// Round 43 §C — the Log's own "＋ Result" button. Null area is "Not in
+  /// an area" (the project's own home note); no task, since nothing was
+  /// ticked to get here.
+  final Future<void> Function({
+    required String path,
+    required String text,
+    String? taskText,
+    ResultLink? link,
+  })?
+  onWriteResult;
+
+  /// Same button's own "＋ Decision" sibling.
+  final Future<void> Function({
+    required String projectFolder,
+    required String decisionText,
+    String? why,
+    String? area,
+    List<String> objectives,
+    ResultLink? link,
+  })?
+  onCreateDecision;
+
   @override
   State<LogView> createState() => _LogViewState();
 }
@@ -103,6 +136,30 @@ class _LogViewState extends State<LogView> {
   int _needsYouIndex = 0;
   final Set<String> _expanded = {};
   bool _showReplaced = false;
+
+  /// Round 43 §C — null when neither "＋ Result" nor "＋ Decision" is
+  /// open; at most one at a time, same as the Tasks view's own tick
+  /// prompt.
+  bool _addingResult = false;
+  bool _addingDecision = false;
+  final _addTextController = TextEditingController();
+  final _addWhyController = TextEditingController();
+  bool _addLinkFieldOpen = false;
+  final _addLinkController = TextEditingController();
+
+  /// Null is "Not in an area" — the project's own home note. Round-43.md
+  /// §C's own default ("the one the user came from") has no meaning on
+  /// this screen (nothing was ticked to arrive from); "Not in an area"
+  /// is the same fallback the round names for that same case elsewhere.
+  Area? _addSelectedArea;
+
+  @override
+  void dispose() {
+    _addTextController.dispose();
+    _addWhyController.dispose();
+    _addLinkController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -153,12 +210,250 @@ class _LogViewState extends State<LogView> {
         ],
         _viewSwitch(),
         const SizedBox(height: AsaSpace.md),
+        _addButtons(),
+        if (_addingResult || _addingDecision) _addForm(),
+        const SizedBox(height: AsaSpace.md),
         if (_view == LogSubView.whatHappened)
           _whatHappened()
         else
           _decisionsInForce(),
       ],
     );
+  }
+
+  // --- Round 43 §C — the Log's own "＋ Result"/"＋ Decision" ------------
+
+  Widget _addButtons() {
+    return Row(
+      children: [
+        _addButton('＋ Result', _addingResult, _startAddingResult),
+        const SizedBox(width: AsaSpace.sm),
+        _addButton('＋ Decision', _addingDecision, _startAddingDecision),
+      ],
+    );
+  }
+
+  Widget _addButton(String label, bool selected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsaSpace.sm,
+          vertical: AsaSpace.xs,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(color: AsaColors.line),
+          borderRadius: BorderRadius.circular(4),
+          color: selected ? AsaColors.soft : null,
+        ),
+        child: Text(
+          label,
+          style: AsaText.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  void _startAddingResult() {
+    setState(() {
+      _addingResult = true;
+      _addingDecision = false;
+      _addTextController.clear();
+      _addWhyController.clear();
+      _addLinkFieldOpen = false;
+      _addLinkController.clear();
+    });
+  }
+
+  void _startAddingDecision() {
+    setState(() {
+      _addingDecision = true;
+      _addingResult = false;
+      _addTextController.clear();
+      _addWhyController.clear();
+      _addLinkFieldOpen = false;
+      _addLinkController.clear();
+    });
+  }
+
+  void _cancelAdd() => setState(() {
+    _addingResult = false;
+    _addingDecision = false;
+  });
+
+  Widget _addForm() {
+    final isDecision = _addingDecision;
+    return Padding(
+      padding: const EdgeInsets.only(top: AsaSpace.sm),
+      child: EscapeToCancel(
+        onEscape: _cancelAdd,
+        child: Container(
+          padding: const EdgeInsets.all(AsaSpace.sm),
+          decoration: BoxDecoration(
+            border: Border.all(color: AsaColors.line),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    isDecision ? 'Decision' : 'Result',
+                    style: AsaText.meta.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: AsaSpace.sm),
+                  Expanded(
+                    child: TextField(
+                      controller: _addTextController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: isDecision
+                            ? 'What was decided'
+                            : 'What came out of it',
+                      ),
+                      onSubmitted: (_) => _submitAdd(),
+                    ),
+                  ),
+                  const SizedBox(width: AsaSpace.xs),
+                  Tooltip(
+                    message: 'Link a file, folder or web page',
+                    child: InkWell(
+                      onTap: () => setState(() => _addLinkFieldOpen = true),
+                      child: const Text('📎'),
+                    ),
+                  ),
+                  const SizedBox(width: AsaSpace.xs),
+                  _areaPicker(),
+                ],
+              ),
+              if (isDecision) ...[
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Text('Why', style: AsaText.meta),
+                    const SizedBox(width: AsaSpace.sm),
+                    Expanded(
+                      child: TextField(
+                        controller: _addWhyController,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          hintText: '(optional)',
+                        ),
+                        onSubmitted: (_) => _submitAdd(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (_addLinkFieldOpen)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: TextField(
+                    controller: _addLinkController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: 'Paste a path or a link',
+                    ),
+                    onSubmitted: (_) => _submitAdd(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// "The area is the one the user came from (else Not in an area); tap
+  /// to pick another; its objective follows the area." Nothing was
+  /// ticked to arrive from on this screen, so it always starts at "Not
+  /// in an area" — the picker is how the round's own "tap to pick
+  /// another" is reached.
+  Widget _areaPicker() {
+    return PopupMenuButton<Area?>(
+      tooltip: 'Change the area',
+      onSelected: (area) => setState(() => _addSelectedArea = area),
+      itemBuilder: (context) => [
+        const PopupMenuItem<Area?>(child: Text('Not in an area')),
+        for (final area in widget.areas)
+          PopupMenuItem<Area?>(value: area, child: Text(area.name)),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsaSpace.sm,
+          vertical: 2,
+        ),
+        decoration: BoxDecoration(
+          color: AsaColors.violetBg,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          _addSelectedArea?.name ?? 'Not in an area',
+          style: AsaText.meta.copyWith(color: AsaColors.violet),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitAdd() async {
+    final text = _addTextController.text.trim();
+    if (text.isEmpty) return;
+    final isDecision = _addingDecision;
+    final area = _addSelectedArea;
+    final link = _deriveLink(_addLinkController.text.trim());
+    setState(() {
+      _addingResult = false;
+      _addingDecision = false;
+    });
+
+    if (isDecision) {
+      await widget.onCreateDecision?.call(
+        projectFolder: widget.projectFolder,
+        decisionText: text,
+        why: _addWhyController.text.trim().isEmpty
+            ? null
+            : _addWhyController.text.trim(),
+        area: area?.name,
+        objectives: area?.objectiveNumbers ?? const [],
+        link: link,
+      );
+    } else {
+      await widget.onWriteResult?.call(
+        path: area?.sourceFile ?? widget.homeSourceFile,
+        text: text,
+        link: link,
+      );
+    }
+    widget.onDataChanged?.call();
+  }
+
+  /// Same derivation as the Tasks view's own tick prompt — kept as its
+  /// own copy rather than a shared helper: the two screens' own 📎 fields
+  /// happen to want the same rule today, but nothing here depends on
+  /// that staying true, and a screen-crossing import for four lines of
+  /// pure string logic is the wrong price for avoiding one duplicate.
+  ResultLink? _deriveLink(String typed) {
+    if (typed.isEmpty) return null;
+    final isUrl = RegExp('^https?://', caseSensitive: false).hasMatch(typed);
+    if (isUrl) {
+      final shortened = typed.replaceFirst(
+        RegExp('^https?://', caseSensitive: false),
+        '',
+      );
+      final label = shortened.length > 40
+          ? '${shortened.substring(0, 40)}…'
+          : shortened;
+      return ResultLink(label: label, target: typed);
+    }
+    final segments = typed
+        .split(RegExp(r'[\\/]'))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final label = segments.isEmpty ? typed : segments.last;
+    return ResultLink(label: label, target: typed);
   }
 
   Widget _viewSwitch() {

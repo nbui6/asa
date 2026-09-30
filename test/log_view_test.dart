@@ -13,6 +13,7 @@ import 'package:asa/core/log_entries.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/hubs/product/log_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 DecisionReadResult _decision({
@@ -60,12 +61,29 @@ void main() {
     onApproveRound,
     Future<void> Function(String, {required String what})?
     onRequestRoundChanges,
+    Future<void> Function({
+      required String path,
+      required String text,
+      String? taskText,
+      ResultLink? link,
+    })?
+    onWriteResult,
+    Future<void> Function({
+      required String projectFolder,
+      required String decisionText,
+      String? why,
+      String? area,
+      List<String> objectives,
+      ResultLink? link,
+    })?
+    onCreateDecision,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: LogView(
             projectFolder: 'demo',
+            homeSourceFile: 'demo/demo.md',
             entries: entries,
             decisions: decisions,
             roadmap: const [],
@@ -77,6 +95,8 @@ void main() {
             onRequestRoundChanges:
                 onRequestRoundChanges ?? (_, {required what}) async {},
             lastVisitPath: lastVisitPath,
+            onWriteResult: onWriteResult,
+            onCreateDecision: onCreateDecision,
           ),
         ),
       ),
@@ -193,5 +213,101 @@ void main() {
     // SectionLabel renders its own text uppercased.
     expect(find.text('SALES'), findsOneWidget);
     expect(find.text('A settled call'), findsOneWidget);
+  });
+
+  group('Round 43 §C — the Log\'s own "＋ Result"/"＋ Decision"', () {
+    testWidgets('＋ Result opens a line; Enter writes via onWriteResult, '
+        'defaulting to "Not in an area" — the home note', (tester) async {
+      String? writtenPath;
+      String? writtenText;
+      await pump(
+        tester,
+        onWriteResult: ({required path, required text, taskText, link}) async {
+          writtenPath = path;
+          writtenText = text;
+        },
+      );
+
+      await tester.tap(find.text('＋ Result'));
+      await tester.pump();
+
+      expect(find.text('Result'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'A plain result');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(writtenPath, 'demo/demo.md');
+      expect(writtenText, 'A plain result');
+      expect(find.text('Result'), findsNothing);
+    });
+
+    testWidgets('picking an area writes there instead, and its own '
+        'objective follows it', (tester) async {
+      const sales = Area(
+        name: 'Sales',
+        sourceFile: 'demo/plan/sales.md',
+        tasks: [],
+        results: [],
+        decisionNumbers: [],
+        objectiveNumbers: ['2'],
+      );
+      String? writtenProjectFolder;
+      String? writtenDecisionText;
+      String? writtenArea;
+      List<String>? writtenObjectives;
+      await pump(
+        tester,
+        areas: const [sales],
+        onCreateDecision:
+            ({
+              required projectFolder,
+              required decisionText,
+              why,
+              area,
+              objectives = const [],
+              link,
+            }) async {
+              writtenProjectFolder = projectFolder;
+              writtenDecisionText = decisionText;
+              writtenArea = area;
+              writtenObjectives = objectives;
+            },
+      );
+
+      await tester.tap(find.text('＋ Decision'));
+      await tester.pump();
+      await tester.tap(find.text('Not in an area'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sales').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Flat fee it is');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(writtenProjectFolder, 'demo');
+      expect(writtenDecisionText, 'Flat fee it is');
+      expect(writtenArea, 'Sales');
+      expect(writtenObjectives, ['2']);
+    });
+
+    testWidgets('Esc closes the form without writing', (tester) async {
+      var written = false;
+      await pump(
+        tester,
+        onWriteResult: ({required path, required text, taskText, link}) async {
+          written = true;
+        },
+      );
+
+      await tester.tap(find.text('＋ Result'));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField).first, 'Ignored');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(find.text('Result'), findsNothing);
+      expect(written, isFalse);
+    });
   });
 }

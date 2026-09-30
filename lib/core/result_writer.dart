@@ -10,17 +10,18 @@ import 'package:asa/core/area.dart' show ResultLink;
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/write_log.dart';
 
-/// Ticking a task writes one new line, newest first, naming the task it
-/// came from and — Round 43 §B — an optional link to the file, folder or
-/// web page it produced. Never edits an old line (7.4 of the manual: "a
-/// correction is a new line"), so there is nothing to refuse on drift —
-/// this only ever adds, the same shape as `task_writer.dart`'s own
-/// `captureTask`.
+/// Writes one new line, newest first — ticking a task (naming it via
+/// [taskText]), or the Log's own "＋ Result" button (round-43.md §C,
+/// [taskText] left null: nothing was ticked, so there is no task to
+/// name). Round 43 §B — an optional link to the file, folder or web page
+/// it produced. Never edits an old line (7.4 of the manual: "a correction
+/// is a new line"), so there is nothing to refuse on drift — this only
+/// ever adds, the same shape as `task_writer.dart`'s own `captureTask`.
 Future<void> writeResult(
   String path, {
   required String text,
-  required String taskText,
   required DateTime date,
+  String? taskText,
   ResultLink? link,
   String? writeLogPath,
 }) async {
@@ -42,13 +43,13 @@ Future<void> writeResult(
 
 String _buildLine({
   required String text,
-  required String taskText,
+  required String? taskText,
   required ResultLink? link,
   required DateTime date,
 }) {
   final segments = [
     text.trim(),
-    'task: $taskText',
+    if (taskText != null) 'task: $taskText',
     if (link != null) '[${link.label}](${link.target})',
   ];
   return '- ${_isoDate(date)} — ${segments.join(' · ')}';

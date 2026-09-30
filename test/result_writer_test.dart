@@ -47,6 +47,24 @@ void main() {
 ''');
     });
 
+    test('no task at all — round-43.md §C, the Log\'s own "＋ Result" '
+        'button, nothing was ticked', () async {
+      File(path).writeAsStringSync('# Sales\n\n## Results\n');
+
+      await writeResult(
+        path,
+        text: 'A plain result, no task behind it',
+        date: DateTime(2026, 9, 28),
+        writeLogPath: logPath,
+      );
+
+      expect(
+        File(path).readAsStringSync(),
+        '# Sales\n\n## Results\n'
+        '- 2026-09-28 — A plain result, no task behind it\n',
+      );
+    });
+
     test("carries a link, task first then the link, matching the manual's "
         'own worked example', () async {
       File(path).writeAsStringSync('# Sales\n\n## Results\n');
