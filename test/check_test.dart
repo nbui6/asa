@@ -7,6 +7,15 @@ import 'package:asa/core/change_history.dart';
 import 'package:asa/core/check.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// `checkProject`'s own "note behind the work" finding compares a real
+/// file's real mtime — always today, whenever the suite actually runs —
+/// against a fixture's own `updated:` field. A frozen calendar-date
+/// literal there rots the moment real time moves past it; every fixture
+/// and `now:` override below is built from this instead, so the suite
+/// stays green on whatever day it runs, not just the day it was written.
+final DateTime _now = DateTime.now();
+String get _today => _now.toIso8601String().split('T').first;
+
 void main() {
   late Directory tempDir;
   late String root;
@@ -46,11 +55,12 @@ void main() {
     return dir;
   }
 
-  const wellShapedNote = '''
+  final wellShapedNote =
+      '''
 ---
 project: Demo
 status: in-progress
-updated: 2026-09-28
+updated: $_today
 ---
 # Demo
 
@@ -208,7 +218,7 @@ Some prose.
       writeFilledBoss();
       final stale = wellShapedNote
           .replaceFirst('status: in-progress', 'status: on-hold')
-          .replaceFirst('updated: 2026-09-28', 'updated: 2020-01-01');
+          .replaceFirst('updated: $_today', 'updated: 2020-01-01');
       final dir = makeProject('demo', stale);
       final findings = await checkProject(dir.path, now: DateTime(2026, 9, 28));
       expect(findings, isEmpty);
@@ -263,11 +273,12 @@ Last done: something
     test('a wait over 14 days is a finding', () async {
       writeSetup();
       writeFilledBoss();
-      const waiting = '''
+      final waiting =
+          '''
 ---
 project: Demo
 status: idea
-updated: 2026-09-28
+updated: $_today
 ---
 # Demo
 
@@ -285,11 +296,12 @@ updated: 2026-09-28
     test('a wait under 14 days is not a finding yet', () async {
       writeSetup();
       writeFilledBoss();
-      const waiting = '''
+      final waiting =
+          '''
 ---
 project: Demo
 status: idea
-updated: 2026-09-28
+updated: $_today
 ---
 # Demo
 

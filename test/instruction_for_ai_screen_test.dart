@@ -9,6 +9,12 @@ import 'package:asa/hubs/product/instruction_for_ai_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// `asa-check`'s own "note behind the work" finding compares a real
+/// file's real mtime against this fixture's own `updated:` field — a
+/// frozen calendar-date literal there rots the moment real time moves
+/// past it, same reasoning as `check_test.dart`'s own `_today`.
+String get _today => DateTime.now().toIso8601String().split('T').first;
+
 void main() {
   late Directory workspace;
   late String settingsPath;
@@ -64,7 +70,7 @@ void main() {
 ---
 project: Demo
 status: idea
-updated: 2026-09-28
+updated: $_today
 ---
 # Demo
 
