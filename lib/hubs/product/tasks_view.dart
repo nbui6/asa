@@ -18,6 +18,7 @@
 /// real `Draggable`/`DragTarget` here, unchanged from the sketch.
 library;
 
+import 'package:asa/core/area.dart' show ResultLink;
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/task.dart';
@@ -41,6 +42,24 @@ class _DraggedTask {
   final Task task;
 }
 
+/// Round 43 §A — everything a tick's own Result/Decision prompt needs to
+/// know about *where* it was ticked, resolved once by the caller
+/// (`_projectBody`, which already has the snapshot and area in hand)
+/// rather than re-derived from a bare file path. Null [area] means a
+/// home task — "Not in an area" — same as everywhere else this app
+/// already treats that case.
+class _ResultPromptContext {
+  const _ResultPromptContext({
+    required this.projectFolder,
+    this.area,
+    this.objectives = const [],
+  });
+
+  final String projectFolder;
+  final String? area;
+  final List<String> objectives;
+}
+
 class TasksView extends StatefulWidget {
   const TasksView({
     required this.snapshots,
@@ -58,6 +77,8 @@ class TasksView extends StatefulWidget {
     required this.onMove,
     required this.onMoveToTop,
     required this.onCaptureInbox,
+    required this.onWriteResult,
+    required this.onCreateDecision,
     required this.onDataChanged,
     this.initialSelectedFolder,
     super.key,
@@ -119,6 +140,32 @@ class TasksView extends StatefulWidget {
   onMoveToTop;
   final Future<void> Function(String text) onCaptureInbox;
 
+  /// Round 43 §A/§B, ADR 0042 — ticking a task (not un-ticking) opens one
+  /// inline line underneath it: this writes it. `path` is the file the
+  /// task itself lives in — the same one the result is written into.
+  final Future<void> Function({
+    required String path,
+    required String taskText,
+    required String text,
+    ResultLink? link,
+  })
+  onWriteResult;
+
+  /// Same moment, for a task starting with *Decide*/*Entscheiden* — round
+  /// 43 §A names this "(C)": the write itself is the Log's own "＋
+  /// Decision" writer, reused here. `area`/`objectives` are the section
+  /// this task was ticked in, already resolved — this widget never picks
+  /// one itself; "where you are fills the links."
+  final Future<void> Function({
+    required String projectFolder,
+    required String decisionText,
+    String? area,
+    List<String> objectives,
+    String? taskText,
+    ResultLink? link,
+  })
+  onCreateDecision;
+
   /// Called after every write here lands — the parent (`ProjectsScreen`)
   /// re-reads everything fresh, the same discipline the overview and
   /// every project screen already follow.
@@ -158,6 +205,18 @@ class _TasksViewState extends State<TasksView> {
   /// a small filter menu; shown by default, same as before.
   bool _showCode = true;
 
+  /// Round 43 §A — the one inline Result/Decision line a tick can open,
+  /// keyed by `'$path\u0000${task.text}'` (the task's own text, not its
+  /// raw checkbox line — the line changes the instant the tick itself
+  /// writes, but the key naming which task this prompt belongs to must
+  /// not). Null when nothing is open; only ever one key at a time.
+  String? _resultPromptKey;
+  bool _resultPromptIsDecision = false;
+  _ResultPromptContext? _resultPromptContext;
+  final _resultTextController = TextEditingController();
+  bool _resultLinkFieldOpen = false;
+  final _resultLinkController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -179,6 +238,8 @@ class _TasksViewState extends State<TasksView> {
   void dispose() {
     _editController.dispose();
     _inboxCaptureController.dispose();
+    _resultTextController.dispose();
+    _resultLinkController.dispose();
     for (final controller in _addControllers.values) {
       controller.dispose();
     }
@@ -555,6 +616,9 @@ class _TasksViewState extends State<TasksView> {
                   tasks: snapshot.homeTasks,
                   showDone: expanded,
                   addPosition: _AddPosition.top,
+                  promptContext: _ResultPromptContext(
+                    projectFolder: snapshot.folder,
+                  ),
                 )
               else ...[
                 const SectionLabel('Not in an area'),
@@ -564,6 +628,9 @@ class _TasksViewState extends State<TasksView> {
                   tasks: snapshot.homeTasks,
                   showDone: expanded,
                   addPosition: _AddPosition.top,
+                  promptContext: _ResultPromptContext(
+                    projectFolder: snapshot.folder,
+                  ),
                 ),
                 for (final area in snapshot.areas) ...[
                   const SizedBox(height: AsaSpace.sm),
@@ -588,6 +655,11 @@ class _TasksViewState extends State<TasksView> {
                     tasks: area.tasks,
                     showDone: expanded,
                     addPosition: _AddPosition.bottom,
+                    promptContext: _ResultPromptContext(
+                      projectFolder: snapshot.folder,
+                      area: area.name,
+                      objectives: area.objectiveNumbers,
+                    ),
                   ),
                 ],
               ],
@@ -622,6 +694,7 @@ class _TasksViewState extends State<TasksView> {
     required List<Task> tasks,
     required bool showDone,
     required _AddPosition addPosition,
+    _ResultPromptContext? promptContext,
   }) {
     final visible = (showDone ? tasks : tasks.where((t) => !t.done))
         .where(_codeVisible)
@@ -645,8 +718,16 @@ class _TasksViewState extends State<TasksView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final task in visible)
-                _draggableTaskRow(path: path, task: task, sectionTasks: tasks),
+              for (final task in visible) ...[
+                _draggableTaskRow(
+                  path: path,
+                  task: task,
+                  sectionTasks: tasks,
+                  promptContext: promptContext,
+                ),
+                if (_resultPromptKey == _resultKey(path, task))
+                  _resultPromptRow(path: path, task: task),
+              ],
             ],
           ),
         ),
@@ -661,8 +742,9 @@ class _TasksViewState extends State<TasksView> {
     required String path,
     required Task task,
     required List<Task> sectionTasks,
+    _ResultPromptContext? promptContext,
   }) {
-    final row = _taskRow(path: path, task: task);
+    final row = _taskRow(path: path, task: task, promptContext: promptContext);
 
     return DragTarget<_DraggedTask>(
       onWillAcceptWithDetails: (details) =>
@@ -707,7 +789,11 @@ class _TasksViewState extends State<TasksView> {
     );
   }
 
-  Widget _taskRow({required String path, required Task task}) {
+  Widget _taskRow({
+    required String path,
+    required Task task,
+    _ResultPromptContext? promptContext,
+  }) {
     final editKey = _editKey(path, task.rawLine);
     final editing = _editingKey == editKey;
     final waiting = waitingOn(task, DateTime.now());
@@ -717,7 +803,7 @@ class _TasksViewState extends State<TasksView> {
         text: stripCodeSpanMarkers(stripEmphasisMarkers(task.text)),
         done: task.done,
         indent: task.indent * AsaSpace.lg,
-        onToggle: (_) => _toggle(path, task),
+        onToggle: (_) => _toggle(path, task, promptContext: promptContext),
         leading: Opacity(
           opacity: hovering ? 1 : 0,
           child: const Icon(
@@ -824,6 +910,133 @@ class _TasksViewState extends State<TasksView> {
     widget.onDataChanged();
   }
 
+  // --- Round 43 §A — the Result/Decision line a tick opens ------------
+
+  /// The inline line under a just-ticked task: *Result* (or *Decision*
+  /// for a task starting with *Decide*/*Entscheiden*), a focused text
+  /// field, and 📎. Enter writes; Esc, tapping outside, or ticking a
+  /// different task (handled in `_toggle`, which simply moves this key)
+  /// closes it without writing — "ignoring it costs nothing."
+  Widget _resultPromptRow({required String path, required Task task}) {
+    final isDecision = _resultPromptIsDecision;
+    return Padding(
+      padding: const EdgeInsets.only(left: AsaSpace.xl, top: 2, bottom: 2),
+      child: _SubmitOnEscape(
+        onEscape: _cancelResultPrompt,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  isDecision ? 'Decision' : 'Result',
+                  style: AsaText.meta.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(width: AsaSpace.sm),
+                Expanded(
+                  child: TextField(
+                    controller: _resultTextController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: isDecision
+                          ? 'What was decided'
+                          : 'What came out of it',
+                    ),
+                    onSubmitted: (_) => _submitResultPrompt(path, task),
+                    onTapOutside: (_) => _cancelResultPrompt(),
+                  ),
+                ),
+                const SizedBox(width: AsaSpace.xs),
+                Tooltip(
+                  message: 'Link a file, folder or web page',
+                  child: InkWell(
+                    onTap: () => setState(() => _resultLinkFieldOpen = true),
+                    child: const Text('📎'),
+                  ),
+                ),
+              ],
+            ),
+            if (_resultLinkFieldOpen)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: TextField(
+                  controller: _resultLinkController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: 'Paste a path or a link',
+                  ),
+                  onSubmitted: (_) => _submitResultPrompt(path, task),
+                  onTapOutside: (_) => _cancelResultPrompt(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _cancelResultPrompt() => setState(() => _resultPromptKey = null);
+
+  Future<void> _submitResultPrompt(String path, Task task) async {
+    final text = _resultTextController.text.trim();
+    // Unlike "+ Add a task" elsewhere, round-43.md §A never lists an
+    // empty Enter as one of this line's own dismiss triggers (Esc, a
+    // click elsewhere, ticking another task) — the 📎 field's own Enter
+    // reaches here too, and must not close a line the user is still
+    // filling in with nothing typed in the main field yet.
+    if (text.isEmpty) return;
+    final context = _resultPromptContext;
+    final isDecision = _resultPromptIsDecision;
+    setState(() => _resultPromptKey = null);
+
+    final link = _deriveLink(_resultLinkController.text.trim());
+    if (isDecision && context != null) {
+      await widget.onCreateDecision(
+        projectFolder: context.projectFolder,
+        decisionText: text,
+        area: context.area,
+        objectives: context.objectives,
+        taskText: task.text,
+        link: link,
+      );
+    } else {
+      await widget.onWriteResult(
+        path: path,
+        taskText: task.text,
+        text: text,
+        link: link,
+      );
+    }
+    widget.onDataChanged();
+  }
+
+  /// The typed path or address becomes a [ResultLink] — the label is the
+  /// last path segment for a file/folder, or the address with its scheme
+  /// stripped and cut to a readable length for a web page. Null on an
+  /// empty field — 📎 is optional every time.
+  ResultLink? _deriveLink(String typed) {
+    if (typed.isEmpty) return null;
+    final isUrl = RegExp('^https?://', caseSensitive: false).hasMatch(typed);
+    if (isUrl) {
+      final shortened = typed.replaceFirst(
+        RegExp('^https?://', caseSensitive: false),
+        '',
+      );
+      final label = shortened.length > 40
+          ? '${shortened.substring(0, 40)}…'
+          : shortened;
+      return ResultLink(label: label, target: typed);
+    }
+    final segments = typed
+        .split(RegExp(r'[\\/]'))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final label = segments.isEmpty ? typed : segments.last;
+    return ResultLink(label: label, target: typed);
+  }
+
   // --- "＋ Add a task" --------------------------------------------------
 
   Widget _addField({required String path, required _AddPosition position}) {
@@ -891,10 +1104,45 @@ class _TasksViewState extends State<TasksView> {
 
   // --- Writers, wired to real callbacks --------------------------------
 
-  Future<void> _toggle(String path, Task task) async {
-    await widget.onToggleTask(path, rawLine: task.rawLine, done: !task.done);
+  Future<void> _toggle(
+    String path,
+    Task task, {
+    _ResultPromptContext? promptContext,
+  }) async {
+    final wasDone = task.done;
+    await widget.onToggleTask(path, rawLine: task.rawLine, done: !wasDone);
+
+    final key = _resultKey(path, task);
+    if (!wasDone && promptContext != null) {
+      // A real tick, somewhere a result/decision can actually be written
+      // (never the Inbox or a Next-up row — neither has a real area of
+      // its own to write into). Ticking a *different* task while one
+      // prompt is already open replaces it outright — "at most one open".
+      setState(() {
+        _resultPromptKey = key;
+        _resultPromptIsDecision = _isDecideTask(task.text);
+        _resultPromptContext = promptContext;
+        _resultTextController.clear();
+        _resultLinkFieldOpen = false;
+        _resultLinkController.clear();
+      });
+    } else if (_resultPromptKey == key) {
+      // An un-tick (or a tick with nowhere to write) closes its own
+      // still-open prompt rather than leaving it pointed at a task that
+      // no longer matches the state that opened it.
+      setState(() => _resultPromptKey = null);
+    }
     widget.onDataChanged();
   }
+
+  String _resultKey(String path, Task task) => '$path\u0000${task.text}';
+
+  static final RegExp _decideWord = RegExp(
+    r'^(decide|entscheiden)\b',
+    caseSensitive: false,
+  );
+
+  bool _isDecideTask(String text) => _decideWord.hasMatch(text.trimLeft());
 
   Future<void> _setIndent(String path, Task task, int indent) async {
     await widget.onSetIndent(path, rawLine: task.rawLine, indent: indent);

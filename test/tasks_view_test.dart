@@ -10,6 +10,7 @@ import 'package:asa/core/tasks_board.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Project _project({
@@ -118,6 +119,22 @@ void main() {
     })?
     onMoveToTop,
     Future<void> Function(String)? onCaptureInbox,
+    Future<void> Function({
+      required String path,
+      required String taskText,
+      required String text,
+      ResultLink? link,
+    })?
+    onWriteResult,
+    Future<void> Function({
+      required String projectFolder,
+      required String decisionText,
+      String? area,
+      List<String> objectives,
+      String? taskText,
+      ResultLink? link,
+    })?
+    onCreateDecision,
     VoidCallback? onDataChanged,
     String? initialSelectedFolder,
   }) {
@@ -139,6 +156,24 @@ void main() {
           onMove: onMove ?? noopMove(),
           onMoveToTop: onMoveToTop ?? noopMove(),
           onCaptureInbox: onCaptureInbox ?? (_) async {},
+          onWriteResult:
+              onWriteResult ??
+              ({
+                required path,
+                required taskText,
+                required text,
+                link,
+              }) async {},
+          onCreateDecision:
+              onCreateDecision ??
+              ({
+                required projectFolder,
+                required decisionText,
+                area,
+                objectives = const [],
+                taskText,
+                link,
+              }) async {},
           onDataChanged: onDataChanged ?? () {},
           initialSelectedFolder: initialSelectedFolder,
         ),
@@ -536,6 +571,277 @@ void main() {
 
       expect(toggledPath, 'demo/demo.md');
       expect(toggledLine, '- [ ] Tick me');
+    });
+  });
+
+  group('Round 43 §A — ticking a task opens a Result/Decision line', () {
+    testWidgets('ticking a home task opens a Result line; Enter writes '
+        'via onWriteResult, naming the task', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(
+            rawLine: '- [ ] Ask legal a question',
+            text: 'Ask legal a question',
+            done: false,
+          ),
+        ],
+        areas: const [],
+      );
+      String? writtenPath;
+      String? writtenTask;
+      String? writtenText;
+      await tester.pumpWidget(
+        pump(
+          snapshots: [snapshot],
+          onWriteResult:
+              ({required path, required taskText, required text, link}) async {
+                writtenPath = path;
+                writtenTask = taskText;
+                writtenText = text;
+              },
+        ),
+      );
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
+      expect(find.text('Result'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, 'It works now');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(writtenPath, 'demo/demo.md');
+      expect(writtenTask, 'Ask legal a question');
+      expect(writtenText, 'It works now');
+      expect(find.text('Result'), findsNothing); // closed after writing
+    });
+
+    testWidgets("ticking a task in an area writes into that area's own "
+        'file, with its area name and objectives, when it starts with '
+        '"Decide"', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [],
+        areas: [
+          const Area(
+            name: 'Sales',
+            sourceFile: 'demo/plan/sales.md',
+            tasks: [
+              Task(
+                rawLine: '- [ ] Decide the pricing model',
+                text: 'Decide the pricing model',
+                done: false,
+              ),
+            ],
+            results: [],
+            decisionNumbers: [],
+            objectiveNumbers: ['2'],
+          ),
+        ],
+      );
+      String? writtenProjectFolder;
+      String? writtenDecisionText;
+      String? writtenArea;
+      List<String>? writtenObjectives;
+      String? writtenTaskText;
+      await tester.pumpWidget(
+        pump(
+          snapshots: [snapshot],
+          onCreateDecision:
+              ({
+                required projectFolder,
+                required decisionText,
+                area,
+                objectives = const [],
+                taskText,
+                link,
+              }) async {
+                writtenProjectFolder = projectFolder;
+                writtenDecisionText = decisionText;
+                writtenArea = area;
+                writtenObjectives = objectives;
+                writtenTaskText = taskText;
+              },
+        ),
+      );
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
+      expect(find.text('Decision'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, 'Flat fee it is');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(writtenProjectFolder, 'demo');
+      expect(writtenDecisionText, 'Flat fee it is');
+      expect(writtenArea, 'Sales');
+      expect(writtenObjectives, ['2']);
+      expect(writtenTaskText, 'Decide the pricing model');
+    });
+
+    testWidgets('Esc closes the line without writing', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] A task', text: 'A task', done: false),
+        ],
+        areas: const [],
+      );
+      var written = false;
+      await tester.pumpWidget(
+        pump(
+          snapshots: [snapshot],
+          onWriteResult:
+              ({required path, required taskText, required text, link}) async {
+                written = true;
+              },
+        ),
+      );
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
+      expect(find.text('Result'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, 'Ignored');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(find.text('Result'), findsNothing);
+      expect(written, isFalse);
+    });
+
+    testWidgets('ticking a different task closes the first prompt, '
+        'without writing — at most one open', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] First', text: 'First', done: false),
+          Task(rawLine: '- [ ] Second', text: 'Second', done: false),
+        ],
+        areas: const [],
+      );
+      var writeCount = 0;
+      await tester.pumpWidget(
+        pump(
+          snapshots: [snapshot],
+          onWriteResult:
+              ({required path, required taskText, required text, link}) async {
+                writeCount++;
+              },
+        ),
+      );
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+      expect(find.text('Result'), findsOneWidget);
+
+      await tester.tap(find.byType(Checkbox).last);
+      await tester.pump();
+
+      expect(find.text('Result'), findsOneWidget); // still exactly one
+      expect(writeCount, 0);
+    });
+
+    testWidgets('un-ticking closes its own open prompt without writing', (
+      tester,
+    ) async {
+      final notDone = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] A task', text: 'A task', done: false),
+        ],
+        areas: const [],
+      );
+      await tester.pumpWidget(pump(snapshots: [notDone]));
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(find.text('Result'), findsOneWidget);
+
+      // A real tick's own write would land on disk and reload with the
+      // task now done — simulated here by re-pumping with that same
+      // task, done, since this widget only ever renders what it's given.
+      final nowDone = ProjectTasksSnapshot(
+        project: notDone.project,
+        folder: notDone.folder,
+        homeTasks: const [
+          Task(rawLine: '- [x] A task', text: 'A task', done: true),
+        ],
+        areas: const [],
+      );
+      await tester.pumpWidget(pump(snapshots: [nowDone]));
+      await tester.pump();
+      // Now the only task in the list, done and folded — expand to reach
+      // its checkbox again.
+      await tester.tap(find.textContaining('done'));
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
+      expect(find.text('Result'), findsNothing);
+    });
+
+    testWidgets('📎 reveals a link field; a plain path becomes a label '
+        'from its own last segment', (tester) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] A task', text: 'A task', done: false),
+        ],
+        areas: const [],
+      );
+      ResultLink? capturedLink;
+      await tester.pumpWidget(
+        pump(
+          snapshots: [snapshot],
+          onWriteResult:
+              ({required path, required taskText, required text, link}) async {
+                capturedLink = link;
+              },
+        ),
+      );
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+
+      await tester.tap(find.text('📎'));
+      await tester.pump();
+      await tester.enterText(
+        find.byType(TextField).last,
+        r'C:\path\to\rc16-answer.pdf',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      // The link field alone doesn't submit the whole prompt — the main
+      // Result text still needs a value, per "ignoring it costs nothing"
+      // never applying to a half-filled line the user is still typing.
+      expect(find.text('Result'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, 'Done');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(capturedLink?.label, 'rc16-answer.pdf');
+      expect(capturedLink?.target, r'C:\path\to\rc16-answer.pdf');
     });
   });
 

@@ -12,7 +12,9 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:asa/core/area.dart' show ResultLink;
 import 'package:asa/core/decision.dart';
+import 'package:asa/core/decision_create_writer.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/inbox.dart';
 import 'package:asa/core/log_visit.dart';
@@ -20,6 +22,7 @@ import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
+import 'package:asa/core/result_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/settings.dart';
@@ -559,6 +562,45 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     }
   }
 
+  Future<void> _writeTaskResult({
+    required String path,
+    required String taskText,
+    required String text,
+    ResultLink? link,
+  }) async {
+    try {
+      await writeResult(
+        path,
+        text: text,
+        taskText: taskText,
+        link: link,
+        date: DateTime.now(),
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
+  Future<void> _writeTaskDecision({
+    required String projectFolder,
+    required String decisionText,
+    String? area,
+    List<String> objectives = const [],
+    String? taskText,
+    ResultLink? link,
+  }) async {
+    final result = await createDecision(
+      projectFolder,
+      decisionText: decisionText,
+      date: DateTime.now(),
+      area: area,
+      objectives: objectives,
+      tasks: taskText == null ? const [] : [taskText],
+      files: link == null ? const [] : [link.label],
+    );
+    if (!result.isSuccess) _say('Could not save: ${result.error}');
+  }
+
   @override
   Widget build(BuildContext context) {
     final scan = _scan;
@@ -685,6 +727,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 onMove: _writeMoveTask,
                 onMoveToTop: _writeMoveTaskToTop,
                 onCaptureInbox: _writeCaptureInbox,
+                onWriteResult: _writeTaskResult,
+                onCreateDecision: _writeTaskDecision,
                 onDataChanged: () => unawaited(_load()),
                 initialSelectedFolder: _pinnedProjectFolder,
               ),
