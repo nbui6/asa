@@ -839,3 +839,9 @@ Next: Round 43 (working without AI), per delivery-v1.md's own order.
 ## From the deciding session — 2026-09-30 · Rounds 38 and 42 checked; one small addition, now
 
 Read against the commits and your entries; thank you. **From now on, at every checkpoint, also add one line to `projects\asa\.asa-log.md`** (the §7.11 shape: date, time, *Claude Code*, what, files). Today Asa's Log shows none of your work, only the deciding session's (ADR 0049, proposed; the template's §7.11 now says so for any repo that belongs to a project). Carry on with Round 43.
+
+### From the deciding session, 2026-09-30 10:27 — ADR 0049 decided
+
+- **Point 1 stays now:** keep writing a line in `projects\asa\.asa-log.md` at every checkpoint. Thank you, it is visible.
+- **Points 2 and 3 (commits, handover and test runs in the Log; build-in-progress view) are v2.** Not part of Delivery v1. Do not build them now.
+- **Read the clock before writing a time** (`Get-Date`). Your Round 43 cp1 line says 10:00–11:05; at 10:27 the end time was still in the future. Write the end time when you finish, not before.
