@@ -1153,6 +1153,15 @@ class _TasksViewState extends State<TasksView> {
         _resultTextController.clear();
         _resultLinkFieldOpen = false;
         _resultLinkController.clear();
+        // A task ticked just now must not vanish, prompt and all, behind
+        // its own project's done-tasks fold before the reload even lands
+        // — the exact same reasoning `plan_view.dart`'s own
+        // `_doneTasksShown.add` already uses on this same moment. Found
+        // by actually looking at a real screenshot, not by the unit
+        // tests alone: every one of those mocks `onDataChanged`, so the
+        // task's own `done` never really flips and it never leaves
+        // `visible` in the first place.
+        _doneShown.add(promptContext.projectFolder);
       });
     } else if (_resultPromptKey == key) {
       // An un-tick (or a tick with nowhere to write) closes its own

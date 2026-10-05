@@ -667,6 +667,51 @@ void main() {
       expect(find.text('Result'), findsNothing); // closed after writing
     });
 
+    testWidgets(
+      'a tick that also marks the task done still shows its own Result '
+      'line, not hidden behind the done-tasks fold — the real bug a '
+      'mocked onDataChanged cannot catch, since the task never really '
+      'flips there',
+      (tester) async {
+        // A second, already-open task alongside it: proves the fold is
+        // force-revealed, not that there was nothing left to fold.
+        final notDone = ProjectTasksSnapshot(
+          project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+          folder: 'demo',
+          homeTasks: const [
+            Task(rawLine: '- [ ] Tick me', text: 'Tick me', done: false),
+            Task(rawLine: '- [ ] Leave me', text: 'Leave me', done: false),
+          ],
+          areas: const [],
+        );
+        await tester.pumpWidget(pump(snapshots: [notDone]));
+        await tester.tap(find.text('Demo'));
+        await tester.pump();
+
+        await tester.tap(find.byType(Checkbox).first);
+        await tester.pump();
+
+        // The real write landed and the screen reloaded — simulated the
+        // same way the sibling "un-ticking" test already does: a fresh
+        // snapshot where the ticked task is now done, re-pumped without
+        // any manual fold-expanding step in between.
+        final nowDone = ProjectTasksSnapshot(
+          project: notDone.project,
+          folder: notDone.folder,
+          homeTasks: const [
+            Task(rawLine: '- [x] Tick me', text: 'Tick me', done: true),
+            Task(rawLine: '- [ ] Leave me', text: 'Leave me', done: false),
+          ],
+          areas: const [],
+        );
+        await tester.pumpWidget(pump(snapshots: [nowDone]));
+        await tester.pump();
+
+        expect(find.text('Result'), findsOneWidget);
+        expect(find.text('Tick me'), findsOneWidget);
+      },
+    );
+
     testWidgets("ticking a task in an area writes into that area's own "
         'file, with its area name and objectives, when it starts with '
         '"Decide"', (tester) async {
@@ -834,10 +879,9 @@ void main() {
       );
       await tester.pumpWidget(pump(snapshots: [nowDone]));
       await tester.pump();
-      // Now the only task in the list, done and folded — expand to reach
-      // its checkbox again.
-      await tester.tap(find.textContaining('done'));
-      await tester.pump();
+      // The tick itself already force-revealed the done-tasks fold (the
+      // real bug a sibling test now guards), so the checkbox is already
+      // reachable here — no separate expand step.
 
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
