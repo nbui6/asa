@@ -105,6 +105,51 @@ Future<void> editResultText(
   );
 }
 
+/// Round 43 §D — 🗑 in a result's own edit mode: removes that one line
+/// outright. Same drift refusal as [editResultText]; the write log's
+/// `from` carries the whole removed line, so a before-and-after still
+/// shows in the Log the same way an edit does (ADR 0042 — "no Undo toast,
+/// every removal goes through history").
+Future<void> removeResult(
+  String path, {
+  required String rawLine,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+
+  final range = sectionRange(content, 'Results');
+  if (range == null) {
+    throw StateError('No ## Results section in $path — nothing to remove.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final index = section.indexOf(rawLine);
+  if (index == -1) {
+    throw StateError(
+      'That result line was not found in $path — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  var lineEnd = index + rawLine.length;
+  if (lineEnd < section.length && section[lineEnd] == '\n') lineEnd += 1;
+  final newSection = section.substring(0, index) + section.substring(lineEnd);
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'result-removed',
+    from: rawLine,
+    to: '',
+    logPath: writeLogPath,
+  );
+}
+
 String _buildLine({
   required String text,
   required String? taskText,

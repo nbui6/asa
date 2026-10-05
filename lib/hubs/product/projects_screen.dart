@@ -506,6 +506,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     }
   }
 
+  /// Round 43 §D — 🗑 in a task's own edit mode.
+  Future<void> _writeRemoveTask(String path, {required String rawLine}) async {
+    try {
+      await removeTask(path, rawLine: rawLine);
+    } on Object catch (e) {
+      _say('Could not save: $e');
+    }
+  }
+
   Future<void> _writeSetTaskIndent(
     String path, {
     required String rawLine,
@@ -736,6 +745,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 onAddTaskAtTop: _writeAddTaskAtTop,
                 onAddTaskAtBottom: _writeAddTaskAtBottom,
                 onEditText: _writeEditTaskText,
+                onRemoveTask: _writeRemoveTask,
                 onSetIndent: _writeSetTaskIndent,
                 onReorder: _writeReorderTasks,
                 onMove: _writeMoveTask,

@@ -207,4 +207,56 @@ void main() {
       expect(entry.to, '- 2026-09-28 — New.');
     });
   });
+
+  group('removeResult — Round 43 §D, 🗑 in edit mode', () {
+    test('removes the one line, leaves every other line untouched', () async {
+      File(path).writeAsStringSync(
+        '# Sales\n\n## Results\n'
+        '- 2026-09-28 — Newer.\n'
+        '- 2026-09-20 — Older.\n',
+      );
+
+      await removeResult(
+        path,
+        rawLine: '- 2026-09-28 — Newer.',
+        writeLogPath: logPath,
+      );
+
+      expect(
+        File(path).readAsStringSync(),
+        '# Sales\n\n## Results\n- 2026-09-20 — Older.\n',
+      );
+    });
+
+    test('refuses, unchanged, when the line changed on disk since it was '
+        'shown', () {
+      const original = '# Sales\n\n## Results\n- 2026-09-28 — Original.\n';
+      File(path).writeAsStringSync(original);
+
+      expect(
+        () => removeResult(
+          path,
+          rawLine: '- 2026-09-28 — A different line entirely',
+        ),
+        throwsStateError,
+      );
+      expect(File(path).readAsStringSync(), original);
+    });
+
+    test('logs the removed line, to empty', () async {
+      File(path)
+          .writeAsStringSync('# Sales\n\n## Results\n- 2026-09-28 — Gone.\n');
+
+      await removeResult(
+        path,
+        rawLine: '- 2026-09-28 — Gone.',
+        writeLogPath: logPath,
+      );
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'result-removed');
+      expect(entry.from, '- 2026-09-28 — Gone.');
+      expect(entry.to, '');
+    });
+  });
 }

@@ -59,7 +59,9 @@ class PlanView extends StatefulWidget {
     this.onSelectAreaTab,
     this.onCreateArea,
     this.onSetAreaSection,
+    this.onClearAreaSection,
     this.onEditResultText,
+    this.onRemoveResultText,
     this.openHomeOnStart = false,
     this.highlightTaskRawLine,
     super.key,
@@ -141,10 +143,25 @@ class PlanView extends StatefulWidget {
   final Future<AreaCreateResult> Function(String name)? onCreateArea;
 
   /// Round 43 §D — fills an area's empty `## Goal`/`## Plan` with what the
-  /// user typed (＋). Null keeps the old "No goal yet" line, for a caller
-  /// (or test) not wired for it.
-  final Future<void> Function(String sourceFile, String heading, String text)?
+  /// user typed (＋), or rewrites it from ✎ on existing text. `oldValue` is
+  /// what this screen was showing before the edit — `''` for the ＋ path,
+  /// the previous text for ✎ — so the real writer's own drift check has
+  /// something to compare against; passing the wrong "what it was" would
+  /// make every ✎ edit of non-empty text fail that check. Null keeps the
+  /// old "No goal yet" line, for a caller (or test) not wired for it.
+  final Future<void> Function(
+    String sourceFile,
+    String heading,
+    String oldValue,
+    String newText,
+  )?
   onSetAreaSection;
+
+  /// Round 43 §D — 🗑 in a filled Goal/Plan's own edit mode: clears it back
+  /// to empty (the heading and ＋ show again). Null keeps 🗑 off the edit
+  /// row entirely, for a caller (or test) not wired for it.
+  final Future<void> Function(String sourceFile, String heading)?
+  onClearAreaSection;
 
   /// Round 43 §D — the human's own ✎ on an existing result's own text.
   /// Null keeps every result read-only, for a caller (or test) not wired
@@ -157,6 +174,13 @@ class PlanView extends StatefulWidget {
     String newText,
   )?
   onEditResultText;
+
+  /// Round 43 §D — 🗑 in a result's own edit mode: removes that one line
+  /// outright. Null keeps 🗑 off the result edit row, same gating as
+  /// [onEditResultText] — a result with no [onEditResultText] never reaches
+  /// edit mode in the first place, so this is never called for one.
+  final Future<void> Function(String sourceFile, AreaResult result)?
+  onRemoveResultText;
 
   /// Round-36 §3, L3 — a caller that wants "Not in an area" open the next
   /// time this tab is shown. False in a test that does not need it.
@@ -738,11 +762,12 @@ class _PlanViewState extends State<PlanView> {
         final text = _sectionController.text.trim();
         setState(() => _addingSectionKey = null);
         if (text.isEmpty || text == rawValue) return;
-        await write(area.sourceFile, heading, text);
+        await write(area.sourceFile, heading, rawValue ?? '', text);
         widget.onDataChanged?.call();
       }
 
-      return EscapeToCancel(
+      final clear = widget.onClearAreaSection;
+      final field = EscapeToCancel(
         onEscape: () => setState(() => _addingSectionKey = null),
         child: TextField(
           controller: _sectionController,
@@ -750,6 +775,29 @@ class _PlanViewState extends State<PlanView> {
           decoration: const InputDecoration(isDense: true),
           onSubmitted: (_) => submit(),
         ),
+      );
+      // Round 43 §D — 🗑 only once there is something to remove: the ＋
+      // path opens this same editing branch from empty, and clearing
+      // something that was never there would write nothing meaningful.
+      if (!hasValue || clear == null) return field;
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: field),
+          Tooltip(
+            message: 'remove',
+            child: IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18),
+              visualDensity: VisualDensity.compact,
+              onPressed: () async {
+                setState(() => _addingSectionKey = null);
+                await clear(area.sourceFile, heading);
+                widget.onDataChanged?.call();
+              },
+            ),
+          ),
+        ],
       );
     }
 
@@ -1041,6 +1089,7 @@ class _PlanViewState extends State<PlanView> {
         widget.onDataChanged?.call();
       }
 
+      final remove = widget.onRemoveResultText;
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
@@ -1058,6 +1107,19 @@ class _PlanViewState extends State<PlanView> {
                 ),
               ),
             ),
+            if (remove != null)
+              Tooltip(
+                message: 'remove',
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () async {
+                    setState(() => _addingSectionKey = null);
+                    await remove(sourceFile, result);
+                    widget.onDataChanged?.call();
+                  },
+                ),
+              ),
           ],
         ),
       );

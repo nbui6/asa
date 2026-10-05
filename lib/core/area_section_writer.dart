@@ -72,5 +72,54 @@ Future<void> setAreaSection(
   );
 }
 
+/// Round 43 §D — 🗑 in a filled section's own edit mode: clears the body
+/// back to empty, the same state [setAreaSection] itself refuses to write
+/// (a section needs some words to be *set*, but this is the one place
+/// "no words" is exactly the point). The `## [heading]` line itself stays
+/// — `sectionText` already reads an empty body the same as no section at
+/// all, so the Plan tab shows its own heading-and-＋ again, same as a
+/// section that was never filled. Same drift refusal as [setAreaSection].
+Future<void> clearAreaSection(
+  String path, {
+  required String heading,
+  required String expectedCurrent,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+  final range = sectionRange(content, heading);
+  if (range == null) {
+    throw StateError('No $heading section in $path — nothing to clear.');
+  }
+
+  final current = _nullIfEmpty(
+    content.substring(range.$1, range.$2).trim(),
+  );
+  final expected = _nullIfEmpty(expectedCurrent.trim());
+  if (current != expected) {
+    throw StateError(
+      'The $heading section changed on disk since it was shown — '
+      'reload before clearing it.',
+    );
+  }
+
+  final (start, end) = range;
+  final hasNextSection = end < content.length;
+  final newContent =
+      '${content.substring(0, start).trimRight()}\n'
+      '${hasNextSection ? '\n' : ''}${content.substring(end)}';
+
+  final tempFile = File('$path.tmp');
+  await tempFile.writeAsString(newContent);
+  await tempFile.rename(path);
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'area-${heading.toLowerCase()}-removed',
+    from: current ?? '',
+    to: '',
+    logPath: writeLogPath,
+  );
+}
+
 String? _nullIfEmpty(String? value) =>
     value == null || value.isEmpty ? null : value;

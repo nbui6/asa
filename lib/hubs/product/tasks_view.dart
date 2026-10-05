@@ -72,6 +72,7 @@ class TasksView extends StatefulWidget {
     required this.onAddTaskAtTop,
     required this.onAddTaskAtBottom,
     required this.onEditText,
+    required this.onRemoveTask,
     required this.onSetIndent,
     required this.onReorder,
     required this.onMove,
@@ -114,6 +115,11 @@ class TasksView extends StatefulWidget {
     required String newText,
   })
   onEditText;
+
+  /// Round 43 §D — 🗑 in a task's own edit mode: removes that one line
+  /// outright.
+  final Future<void> Function(String path, {required String rawLine})
+  onRemoveTask;
   final Future<void> Function(
     String path, {
     required String rawLine,
@@ -816,12 +822,29 @@ class _TasksViewState extends State<TasksView> {
         crossProjectChip: task.crossProjectRef != null
             ? _crossProjectChip(task)
             : null,
-        trailing: !hovering && waiting == null
+        trailing: !hovering && waiting == null && !editing
             ? null
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (waiting != null) _waitingChip(waiting),
+                  // Round 43 §D — 🗑 only in edit mode, same discipline as
+                  // the Goal/Plan and result edit rows: nowhere else does
+                  // a task row offer to remove itself outright.
+                  if (editing) ...[
+                    if (waiting != null) const SizedBox(width: AsaSpace.xs),
+                    Tooltip(
+                      message: 'remove',
+                      child: InkWell(
+                        onTap: () => _removeTask(path, task),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: AsaColors.ink3,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (hovering && !editing) ...[
                     if (waiting != null) const SizedBox(width: AsaSpace.xs),
                     Tooltip(
@@ -895,6 +918,12 @@ class _TasksViewState extends State<TasksView> {
   }
 
   void _cancelEdit() => setState(() => _editingKey = null);
+
+  Future<void> _removeTask(String path, Task task) async {
+    setState(() => _editingKey = null);
+    await widget.onRemoveTask(path, rawLine: task.rawLine);
+    widget.onDataChanged();
+  }
 
   Future<void> _submitEdit(String path, Task task) async {
     final newText = _editController.text.trim();

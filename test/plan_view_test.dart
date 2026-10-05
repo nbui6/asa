@@ -295,14 +295,23 @@ void main() {
       Strategy? strategy,
       VoidCallback? onOpenStrategy,
       Future<void> Function(String, Task)? onToggleTask,
-      Future<void> Function(String sourceFile, String heading, String text)?
+      Future<void> Function(
+        String sourceFile,
+        String heading,
+        String oldValue,
+        String newText,
+      )?
       onSetAreaSection,
+      Future<void> Function(String sourceFile, String heading)?
+      onClearAreaSection,
       Future<void> Function(
         String sourceFile,
         AreaResult result,
         String newText,
       )?
       onEditResultText,
+      Future<void> Function(String sourceFile, AreaResult result)?
+      onRemoveResultText,
     }) async {
       String? selected;
       await tester.pumpWidget(
@@ -319,7 +328,9 @@ void main() {
                   onOpenStrategy: onOpenStrategy,
                   onToggleTask: onToggleTask,
                   onSetAreaSection: onSetAreaSection,
+                  onClearAreaSection: onClearAreaSection,
                   onEditResultText: onEditResultText,
+                  onRemoveResultText: onRemoveResultText,
                   projectSourceFile: 'demo.md',
                   selectedAreaTab: selected,
                   onSelectAreaTab: (sourceFile) =>
@@ -447,7 +458,7 @@ void main() {
             tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
           ),
         ],
-        onSetAreaSection: (sourceFile, heading, text) async {
+        onSetAreaSection: (sourceFile, heading, oldValue, text) async {
           writtenFile = sourceFile;
           writtenHeading = heading;
           writtenText = text;
@@ -484,7 +495,7 @@ void main() {
             tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
           ),
         ],
-        onSetAreaSection: (sourceFile, heading, text) async {
+        onSetAreaSection: (sourceFile, heading, oldValue, text) async {
           written = true;
         },
       );
@@ -507,12 +518,14 @@ void main() {
     testWidgets('Round 43 §D — ✎ on hover of a filled Goal edits it in place, '
         'pre-filled, Enter writes the new text', (tester) async {
       String? writtenHeading;
+      String? writtenOldValue;
       String? writtenText;
       await pumpAreas(
         tester,
         areas: [area()],
-        onSetAreaSection: (sourceFile, heading, text) async {
+        onSetAreaSection: (sourceFile, heading, oldValue, text) async {
           writtenHeading = heading;
+          writtenOldValue = oldValue;
           writtenText = text;
         },
       );
@@ -542,8 +555,81 @@ void main() {
       await tester.pump();
 
       expect(writtenHeading, 'Goal');
+      // The real bug this guards: a missing `oldValue` makes the real
+      // `setAreaSection` writer's own drift check refuse every edit of
+      // non-empty text (it only ever matched the empty-place case before
+      // this was threaded through) — found while wiring 🗑 onto this same
+      // submit path, fixed the same session.
+      expect(writtenOldValue, 'Serves Objective 1.');
       expect(writtenText, 'Serves Objective 2.');
     });
+
+    testWidgets(
+      "Round 43 §D — 🗑 in a filled Goal's own edit mode clears it, closes "
+      'back to ＋',
+      (tester) async {
+        String? clearedSourceFile;
+        String? clearedHeading;
+        await pumpAreas(
+          tester,
+          areas: [area()],
+          onSetAreaSection: (sourceFile, heading, oldValue, text) async {},
+          onClearAreaSection: (sourceFile, heading) async {
+            clearedSourceFile = sourceFile;
+            clearedHeading = heading;
+          },
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await tester.pump();
+        await gesture.moveTo(
+          tester.getCenter(find.text('Serves Objective 1.')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.edit));
+        await tester.pump();
+
+        expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.delete_outline));
+        await tester.pump();
+
+        expect(clearedSourceFile, isNotNull);
+        expect(clearedHeading, 'Goal');
+      },
+    );
+
+    testWidgets(
+      'Round 43 §D — the ＋ path never shows 🗑 — nothing to remove yet',
+      (tester) async {
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              summary: null,
+              goal: null,
+              planText: null,
+              tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
+            ),
+          ],
+          onSetAreaSection: (sourceFile, heading, oldValue, text) async {},
+          onClearAreaSection: (sourceFile, heading) async {},
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+
+        await tester.tap(find.text('＋').first);
+        await tester.pump();
+
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.byIcon(Icons.delete_outline), findsNothing);
+      },
+    );
 
     testWidgets(
       'Round 43 §D — ✎ on hover of a result edits its own text, keeping '
@@ -604,6 +690,53 @@ void main() {
         expect(writtenSourceFile, isNotNull);
         expect(writtenResult?.text, 'A real result');
         expect(writtenText, 'An edited result');
+      },
+    );
+
+    testWidgets(
+      "Round 43 §D — 🗑 in a result's own edit mode removes it",
+      (tester) async {
+        String? removedSourceFile;
+        AreaResult? removedResult;
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              results: [
+                AreaResult(
+                  date: DateTime(2026, 9, 20),
+                  text: 'A real result',
+                  rawLine: '- 2026-09-20 — A real result',
+                ),
+              ],
+            ),
+          ],
+          onEditResultText: (sourceFile, result, newText) async {},
+          onRemoveResultText: (sourceFile, result) async {
+            removedSourceFile = sourceFile;
+            removedResult = result;
+          },
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await tester.pump();
+        await gesture.moveTo(tester.getCenter(find.text('A real result')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.edit));
+        await tester.pump();
+
+        expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.delete_outline));
+        await tester.pump();
+
+        expect(removedSourceFile, isNotNull);
+        expect(removedResult?.text, 'A real result');
       },
     );
 

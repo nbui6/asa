@@ -739,4 +739,65 @@ void main() {
       expect(await readWriteLog(logPath: logPath), isEmpty);
     });
   });
+
+  group('removeTask — Round 43 §D, 🗑 in edit mode', () {
+    test('removes the one line, leaves every other line untouched', () async {
+      File(path).writeAsStringSync(
+        '## Tasks\n\n'
+        '- [ ] Keep me\n'
+        '- [ ] Remove me\n'
+        '- [ ] Keep me too\n',
+      );
+
+      await removeTask(
+        path,
+        rawLine: '- [ ] Remove me',
+        writeLogPath: logPath,
+      );
+
+      expect(
+        File(path).readAsStringSync(),
+        '## Tasks\n\n- [ ] Keep me\n- [ ] Keep me too\n',
+      );
+    });
+
+    test('a subtask directly below is untouched — not re-parented or '
+        're-indented', () async {
+      File(path).writeAsStringSync(
+        '## Tasks\n\n'
+        '- [ ] Remove me\n'
+        '  - [ ] My own subtask\n',
+      );
+
+      await removeTask(path, rawLine: '- [ ] Remove me');
+
+      expect(
+        File(path).readAsStringSync(),
+        '## Tasks\n\n  - [ ] My own subtask\n',
+      );
+    });
+
+    test('refuses, unchanged, when the line changed on disk since it was '
+        'shown', () {
+      const original = '## Tasks\n\n- [ ] Original\n';
+      File(path).writeAsStringSync(original);
+
+      expect(
+        () => removeTask(path, rawLine: '- [ ] A different line entirely'),
+        throwsStateError,
+      );
+      expect(File(path).readAsStringSync(), original);
+    });
+
+    test('logs the removed line, to empty', () async {
+      File(path).writeAsStringSync('## Tasks\n\n- [ ] Gone\n');
+
+      await removeTask(path, rawLine: '- [ ] Gone', writeLogPath: logPath);
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'task-removed');
+      expect(entry.from, '- [ ] Gone');
+      expect(entry.to, '');
+    });
+  });
 }

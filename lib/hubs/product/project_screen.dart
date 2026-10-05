@@ -659,7 +659,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
             writeLogPath: widget.writeLogPath,
           ),
           onSetAreaSection: _writeAreaSection,
+          onClearAreaSection: _clearAreaSection,
           onEditResultText: _writeEditResultText,
+          onRemoveResultText: _removeResultText,
           openHomeOnStart: widget.initialOpenHome || _openHomeNow,
           highlightTaskRawLine:
               _highlightRawLine ?? widget.initialHighlightRawLine,
@@ -735,12 +737,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _selectedAreaTab = area.sourceFile;
   });
 
-  /// Round 43 §D — fills an area's empty `## Goal`/`## Plan`. No
-  /// `expectedCurrent`: this only ever reaches an empty place (the ＋,
-  /// never ✎ on existing text yet), so there is nothing to have drifted.
+  /// Round 43 §D — fills an area's empty `## Goal`/`## Plan` (the ＋,
+  /// [oldValue] is `''`) or rewrites it from ✎ on existing text (`oldValue`
+  /// is what this screen was showing) — [PlanView]'s own `onSetAreaSection`
+  /// doc comment has the reasoning for threading it through.
   Future<void> _writeAreaSection(
     String sourceFile,
     String heading,
+    String oldValue,
     String text,
   ) async {
     try {
@@ -748,6 +752,27 @@ class _ProjectScreenState extends State<ProjectScreen> {
         sourceFile,
         heading: heading,
         text: text,
+        expectedCurrent: oldValue,
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// Round 43 §D — 🗑 in a filled Goal/Plan's own edit mode.
+  Future<void> _clearAreaSection(String sourceFile, String heading) async {
+    final area = _areas
+        .where((a) => a.sourceFile == sourceFile)
+        .firstOrNull;
+    final oldValue = heading == 'Goal' ? area?.goal : area?.planText;
+    try {
+      await clearAreaSection(
+        sourceFile,
+        heading: heading,
+        expectedCurrent: oldValue ?? '',
         writeLogPath: widget.writeLogPath,
       );
     } on Object catch (e) {
@@ -775,6 +800,23 @@ class _ProjectScreenState extends State<ProjectScreen> {
         date: result.date ?? DateTime.now(),
         taskText: result.task,
         link: result.link,
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// Round 43 §D — 🗑 in a result's own edit mode.
+  Future<void> _removeResultText(String sourceFile, AreaResult result) async {
+    final rawLine = result.rawLine;
+    if (rawLine == null) return; // not a real parse — nothing to find
+    try {
+      await removeResult(
+        sourceFile,
+        rawLine: rawLine,
         writeLogPath: widget.writeLogPath,
       );
     } on Object catch (e) {

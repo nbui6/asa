@@ -269,6 +269,52 @@ Future<void> editTaskText(
   );
 }
 
+/// Round 43 §D — 🗑 in a task's own edit mode: removes that one line
+/// outright, same trailing-newline handling as [_moveTaskInternal]'s own
+/// "take it out of `fromPath`" half. A subtask directly below an indented
+/// parent is untouched — only the one line named by [rawLine] goes; it is
+/// never re-parented or re-indented as a side effect of its own parent
+/// going.
+Future<void> removeTask(
+  String path, {
+  required String rawLine,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+
+  final range = sectionRange(content, 'Tasks');
+  if (range == null) {
+    throw StateError('No ## Tasks section in $path — nothing to remove.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final index = section.indexOf(rawLine);
+  if (index == -1) {
+    throw StateError(
+      'That task line was not found in $path — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  var lineEnd = index + rawLine.length;
+  if (lineEnd < section.length && section[lineEnd] == '\n') lineEnd += 1;
+  final newSection = section.substring(0, index) + section.substring(lineEnd);
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'task-removed',
+    from: rawLine.trim(),
+    to: '',
+    logPath: writeLogPath,
+  );
+}
+
 /// Round 42 §B, ADR 0039 — one subtask level, set by dragging a task to
 /// the right (indent 1) or left again (indent 0, undoing it). Rewrites
 /// only [rawLine]'s own leading whitespace — the checkbox, its text and
