@@ -50,6 +50,7 @@ library;
 
 import 'package:asa/core/area.dart';
 import 'package:asa/core/open_url.dart';
+import 'package:asa/core/project_create_writer.dart';
 import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
@@ -60,6 +61,7 @@ import 'package:asa/core/status_words.dart' show canonicalStatus, statusLabel;
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/phase_bar.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
@@ -72,6 +74,7 @@ class ProjectsView extends StatefulWidget {
     required this.forest,
     required this.onOpenProject,
     required this.onAssignTask,
+    required this.onCreateProject,
     this.news = const {},
     this.hidden = const [],
     super.key,
@@ -102,6 +105,13 @@ class ProjectsView extends StatefulWidget {
   /// only reports which task landed on which node.
   final Future<void> Function(Task task, ProjectNode node) onAssignTask;
 
+  /// Round 43 §E — the ＋ row at the bottom of the project list. The write
+  /// itself (`createProject`) lives in `ProjectsScreen`, same split as
+  /// every other writer this screen owns; this view only shows the field,
+  /// its refusal on the line, and — on success — opens the new project via
+  /// [onOpenProject].
+  final Future<ProjectCreateResult> Function(String name) onCreateProject;
+
   @override
   State<ProjectsView> createState() => _ProjectsViewState();
 }
@@ -114,12 +124,32 @@ class _ProjectsViewState extends State<ProjectsView> {
   /// the three statuses in: on-hold, then done, then canceled.
   static const _hiddenOrder = ['on-hold', 'done', 'canceled'];
 
+  // --- Round 43 §E — "＋ New project" ------------------------------------
+
+  bool _addingProject = false;
+  TextEditingController? _newProjectController;
+  String? _newProjectError;
+  bool _savingProject = false;
+
+  @override
+  void dispose() {
+    _newProjectController?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final split = splitByBucket(widget.forest);
 
     if (split.work.isEmpty && split.other == null) {
-      return const EmptyLine('No projects here yet.');
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const EmptyLine('No projects here yet.'),
+          const SizedBox(height: AsaSpace.md),
+          _rowPanel([_newProjectRow()]),
+        ],
+      );
     }
 
     final workCount = split.work.fold(
@@ -139,8 +169,10 @@ class _ProjectsViewState extends State<ProjectsView> {
             style: AsaText.meta,
           ),
         ),
-        if (split.work.isNotEmpty)
-          _rowPanel([for (final node in split.work) _row(node, depth: 0)]),
+        _rowPanel([
+          for (final node in split.work) _row(node, depth: 0),
+          _newProjectRow(),
+        ]),
         if (split.other != null) ...[
           const SizedBox(height: AsaSpace.lg),
           _otherGroup(split.other!),
@@ -640,6 +672,112 @@ class _ProjectsViewState extends State<ProjectsView> {
       ),
     );
     return overdue ? Tooltip(message: 'Past its deadline', child: text) : text;
+  }
+
+  // --- Round 43 §E — "＋ New project" ------------------------------------
+
+  /// The sketch's own §6 line, same row shape as every other project row
+  /// in this panel (hairline, name padding) so it reads as one more row,
+  /// not a separate control bolted on below the list.
+  Widget _newProjectRow() {
+    if (!_addingProject) {
+      return InkWell(
+        onTap: () => setState(() {
+          _addingProject = true;
+          _newProjectController = TextEditingController();
+          _newProjectError = null;
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AsaSpace.md,
+            vertical: AsaSpace.sm,
+          ),
+          child: Text(
+            '＋ New project',
+            style: AsaText.body.copyWith(color: AsaColors.blue),
+          ),
+        ),
+      );
+    }
+
+    final controller = _newProjectController!;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AsaSpace.md,
+        vertical: AsaSpace.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          EscapeToCancel(
+            onEscape: _closeNewProjectField,
+            child: SizedBox(
+              height: 26,
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                enabled: !_savingProject,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  isCollapsed: true,
+                  hintText: 'Project name',
+                ),
+                onSubmitted: (_) => _submitNewProject(controller),
+              ),
+            ),
+          ),
+          if (_newProjectError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AsaSpace.xs),
+              child: Text(
+                _newProjectError!,
+                style: AsaText.meta.copyWith(color: AsaMeaning.needsYou.fg),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _closeNewProjectField() {
+    setState(() {
+      _newProjectController?.dispose();
+      _newProjectController = null;
+      _addingProject = false;
+      _newProjectError = null;
+    });
+  }
+
+  Future<void> _submitNewProject(TextEditingController controller) async {
+    if (_savingProject) return;
+    final name = controller.text.trim();
+    if (name.isEmpty) {
+      _closeNewProjectField();
+      return;
+    }
+
+    setState(() {
+      _savingProject = true;
+      _newProjectError = null;
+    });
+    final result = await widget.onCreateProject(name);
+    if (!mounted) return;
+    if (!result.isSuccess) {
+      setState(() {
+        _savingProject = false;
+        _newProjectError = result.error;
+      });
+      return;
+    }
+
+    _newProjectController?.dispose();
+    _newProjectController = null;
+    setState(() {
+      _addingProject = false;
+      _savingProject = false;
+      _newProjectError = null;
+    });
+    widget.onOpenProject(openTarget(result.folder!, openStrategy: true));
   }
 }
 

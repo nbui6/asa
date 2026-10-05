@@ -11,6 +11,7 @@
 // here rather than silently dropped.
 
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_create_writer.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/projects_view.dart';
@@ -26,6 +27,7 @@ void main() {
             forest: [_nodeFor(project)],
             onOpenProject: (_) {},
             onAssignTask: (_, _) async {},
+            onCreateProject: (_) async => const ProjectCreateResult(),
           ),
         ),
       );

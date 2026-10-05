@@ -18,6 +18,7 @@ import 'package:asa/core/decision_create_writer.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/inbox.dart';
 import 'package:asa/core/log_visit.dart';
+import 'package:asa/core/project_create_writer.dart';
 import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_tree.dart';
@@ -432,6 +433,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           initialOpenHome: target.openHome,
           initialHighlightRawLine: target.highlightRawLine,
           initialOpenLog: target.openLog,
+          initialOpenStrategy: target.openStrategy,
           onOpenTasks: (projectName, projectFolder) {
             Navigator.of(context).pop();
             setState(() {
@@ -601,6 +603,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     if (!result.isSuccess) _say('Could not save: ${result.error}');
   }
 
+  /// Round 43 §E — the "＋ New project" row. [ProjectsView] shows the
+  /// typed name's own refusal on the line ([ProjectCreateResult.error]);
+  /// on success the scan is reloaded (so the overview already knows about
+  /// the new folder once the person comes back to it) before `ProjectsView`
+  /// itself navigates to it.
+  Future<ProjectCreateResult> _createProject(String name) async {
+    final result = await createProject(_rootField.text.trim(), name);
+    if (result.isSuccess) await _load();
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scan = _scan;
@@ -701,6 +714,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 ),
                 onOpenProject: _openProject,
                 onAssignTask: _assignInboxTask,
+                onCreateProject: _createProject,
                 news: _news,
                 hidden: _hiddenProjects,
               ),

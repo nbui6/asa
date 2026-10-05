@@ -3,6 +3,7 @@
 // the colour logic, not any real project's actual deadline.
 
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_create_writer.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
@@ -17,6 +18,7 @@ void main() {
           forest: [ProjectNode(project: project, folder: project.sourceFile)],
           onOpenProject: (_) {},
           onAssignTask: (_, _) async {},
+          onCreateProject: (_) async => const ProjectCreateResult(),
         ),
       ),
     );

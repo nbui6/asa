@@ -3,6 +3,7 @@
 
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_create_writer.dart';
 import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/roadmap.dart';
@@ -118,6 +119,7 @@ void main() {
             forest: buildProjectForest(projects),
             onOpenProject: (_) {},
             onAssignTask: (_, _) async {},
+            onCreateProject: (_) async => const ProjectCreateResult(),
           ),
         ),
       );

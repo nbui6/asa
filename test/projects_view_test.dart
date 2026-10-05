@@ -5,6 +5,7 @@
 import 'package:asa/core/area.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/project.dart';
+import 'package:asa/core/project_create_writer.dart';
 import 'package:asa/core/project_news.dart';
 import 'package:asa/core/project_open_target.dart';
 import 'package:asa/core/project_row.dart';
@@ -13,6 +14,7 @@ import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/projects_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Project _project({required String status}) {
@@ -35,6 +37,7 @@ Future<void> _pump(
   void Function(ProjectOpenTarget target)? onOpenProject,
   Map<String, ProjectNews> news = const {},
   List<ProjectSummary> hidden = const [],
+  Future<ProjectCreateResult> Function(String name)? onCreateProject,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -43,6 +46,8 @@ Future<void> _pump(
           forest: forest,
           onOpenProject: onOpenProject ?? (_) {},
           onAssignTask: (_, _) async {},
+          onCreateProject:
+              onCreateProject ?? (_) async => const ProjectCreateResult(),
           news: news,
           hidden: hidden,
         ),
@@ -192,6 +197,7 @@ void main() {
             forest: forest,
             onOpenProject: (_) {},
             onAssignTask: (_, _) async {},
+            onCreateProject: (_) async => const ProjectCreateResult(),
           ),
         ),
       ),
@@ -593,5 +599,137 @@ void main() {
       await tester.tap(find.text('Finished'));
       expect(opened?.folder, 'finished');
     });
+  });
+
+  group('Round 43 §E — "＋ New project"', () {
+    final node = ProjectNode(project: _project(status: 'idea'), folder: 'd');
+
+    testWidgets('shows "＋ New project" closed, no field yet', (tester) async {
+      await _pump(tester, [node]);
+
+      expect(find.text('＋ New project'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+    });
+
+    testWidgets(
+      'typing a name and pressing Enter creates it, then opens it on '
+      'Strategy',
+      (tester) async {
+        String? askedName;
+        ProjectOpenTarget? opened;
+        await _pump(
+          tester,
+          [node],
+          onOpenProject: (target) => opened = target,
+          onCreateProject: (name) async {
+            askedName = name;
+            return const ProjectCreateResult(
+              folder: 'projects/onboarding-checklist',
+              sourceFile: 'projects/onboarding-checklist/'
+                  'onboarding-checklist.md',
+            );
+          },
+        );
+
+        await tester.tap(find.text('＋ New project'));
+        await tester.pump();
+        await tester.enterText(
+          find.byType(TextField),
+          'Onboarding checklist',
+        );
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+
+        expect(askedName, 'Onboarding checklist');
+        expect(opened?.folder, 'projects/onboarding-checklist');
+        expect(opened?.openStrategy, isTrue);
+        // Back to its closed, empty-field state — ready for the next one.
+        expect(find.text('＋ New project'), findsOneWidget);
+        expect(find.byType(TextField), findsNothing);
+      },
+    );
+
+    testWidgets('an empty Enter closes the field, creates nothing', (
+      tester,
+    ) async {
+      var called = false;
+      await _pump(
+        tester,
+        [node],
+        onCreateProject: (name) async {
+          called = true;
+          return const ProjectCreateResult();
+        },
+      );
+
+      await tester.tap(find.text('＋ New project'));
+      await tester.pump();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(called, isFalse);
+      expect(find.text('＋ New project'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+    });
+
+    testWidgets('Esc closes the field, creates nothing', (tester) async {
+      var called = false;
+      await _pump(
+        tester,
+        [node],
+        onCreateProject: (name) async {
+          called = true;
+          return const ProjectCreateResult();
+        },
+      );
+
+      await tester.tap(find.text('＋ New project'));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Something');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      expect(called, isFalse);
+      expect(find.text('＋ New project'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+    });
+
+    for (final failing in [
+      (
+        name: 'exists',
+        error: 'A project named "onboarding-checklist" already exists.',
+      ),
+      (
+        name: 'bad-char',
+        error: 'That name has a character Windows itself refuses in a '
+            'path: /',
+      ),
+      (name: 'reserved', error: '"con" is a name Windows itself reserves.'),
+    ]) {
+      testWidgets(
+        'refusal case (${failing.name}) says so on the line, field stays '
+        'open with the typed text',
+        (tester) async {
+          var opened = false;
+          await _pump(
+            tester,
+            [node],
+            onOpenProject: (_) => opened = true,
+            onCreateProject: (name) async =>
+                ProjectCreateResult(error: failing.error),
+          );
+
+          await tester.tap(find.text('＋ New project'));
+          await tester.pump();
+          await tester.enterText(find.byType(TextField), 'Typed name');
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+          await tester.pump();
+
+          expect(find.text(failing.error), findsOneWidget);
+          expect(find.text('Typed name'), findsOneWidget);
+          expect(opened, isFalse);
+        },
+      );
+    }
   });
 }
