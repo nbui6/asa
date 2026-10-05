@@ -5,7 +5,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File kit\backup-projects.ps1 -Schedule
 #
 # Spec: HANDOVER-ARCHIVE.md, 2026-09-14, "kit\backup-projects.ps1 - automatic,
-# local, everything" - skipped that day (Nico: "skip the backup project"),
+# local, everything" - skipped that day ("skip the backup project"),
 # then REOPENED and accepted 2026-09-28 (ADR 0037) after a real loss: the
 # deciding session changed 111 files in `projects\` by mistake, and there was
 # no copy to go back to. Built here, unchanged from the original spec, as
@@ -31,7 +31,7 @@
 # Pruning removes whole old snapshot folders, never a file inside a kept one.
 #
 # No company-network path, no UNC path, anywhere in this script - that copy
-# is Nico's own manual step (ADR 0013's amendment), never automated.
+# is the user's own manual step (ADR 0013's amendment), never automated.
 
 param(
     [switch]$SelfTest,
@@ -234,8 +234,7 @@ if ($Schedule) {
 
     if (-not $created) {
         Write-Host 'Could not register a daily scheduled task (this often needs admin on a locked-down'
-        Write-Host 'machine - workshop\MACHINE.md: "Nico often lacks admin rights here"). Falling back'
-        Write-Host 'to run-at-logon instead:'
+        Write-Host 'machine - you may lack admin rights here). Falling back to run-at-logon instead:'
         try {
             schtasks /create /tn $taskName /tr $cmd /sc ONLOGON /f 2>&1 | Out-Null
             if ($LASTEXITCODE -eq 0) {

@@ -87,8 +87,13 @@ try {
     foreach ($f in $neverShip) {
         Remove-Item -LiteralPath (Join-Path $payload $f) -Force -ErrorAction SilentlyContinue
     }
-    if (Test-Path (Join-Path $repoRoot 'setup.ps1')) {
-        Copy-Item -Path (Join-Path $repoRoot 'setup.ps1') -Destination $payload -Force
+    # Repo-root scripts setup.ps1 itself needs once unpacked - onboard-
+    # projects.ps1 looks for kit\sync-manual.ps1 as its own sibling, so both
+    # have to land at the zip's top level together, same shape as the repo
+    # root itself.
+    foreach ($rootScript in @('setup.ps1', 'onboard-projects.ps1')) {
+        $src = Join-Path $repoRoot $rootScript
+        if (Test-Path $src) { Copy-Item -Path $src -Destination $payload -Force }
     }
 
     if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
