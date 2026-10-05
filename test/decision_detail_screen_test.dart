@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:asa/core/area.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -98,6 +99,56 @@ void main() {
     final contents = File(path).readAsStringSync();
     expect(RegExp('## Your call').allMatches(contents).length, 1);
   });
+
+  testWidgets(
+    'Round 43 §D — ✎ on hover edits the Decision text in place, re-reads '
+    'what was actually written',
+    (tester) async {
+      const original =
+          '# ADR 0001 - Example\n\n'
+          '**Date:** 2026-09-07 · **Status:** accepted\n\n'
+          '## Decision\n\nOriginal text.\n';
+      File(path).writeAsStringSync(original);
+      final result = parseDecision(original, path);
+
+      await tester.pumpWidget(
+        MaterialApp(home: DecisionDetailScreen(decision: result.decision!)),
+      );
+      await tester.pumpAndSettle();
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.text('Original text.')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.edit));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Edited text.');
+
+      await tester.runAsync(() async {
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (DateTime.now().isBefore(deadline)) {
+          String? contents;
+          try {
+            contents = File(path).readAsStringSync();
+          } on PathAccessException {
+            // Not yet — try again next tick.
+          }
+          if (contents != null && contents.contains('Edited text.')) break;
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+        }
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edited text.'), findsOneWidget);
+      expect(File(path).readAsStringSync(), contains('Edited text.'));
+      expect(File(path).readAsStringSync(), isNot(contains('Original')));
+    },
+  );
 
   group("round-36 §3, L17 — an area chip on the decision's own detail "
       'screen', () {

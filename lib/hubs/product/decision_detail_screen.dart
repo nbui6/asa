@@ -17,6 +17,8 @@ import 'package:asa/core/decision_writer.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/hubs/product/ui/area_chip.dart';
 import 'package:asa/hubs/product/ui/asa_page.dart';
+import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
+import 'package:asa/hubs/product/ui/hover_pencil.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
 import 'package:asa/hubs/product/ui/source_line.dart';
@@ -64,6 +66,12 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   /// changed, not on every visit.
   bool _verdictJustRecorded = false;
 
+  /// Round 43 §D — the human's own ✎ on this decision's own `## Decision`
+  /// or `## Why` text. Null when neither is open; at most one at a time,
+  /// same discipline as every other inline field in this round.
+  String? _editingHeading;
+  final _editController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +81,7 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   @override
   void dispose() {
     _reasonController.dispose();
+    _editController.dispose();
     super.dispose();
   }
 
@@ -128,6 +137,38 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
         _saving = false;
         _error = 'Could not save: $e';
       });
+    }
+  }
+
+  /// Round 43 §D — same re-read-after-write discipline as
+  /// [_recordVerdict]: the screen shows what was actually written and
+  /// re-read, never what this session assumes it wrote.
+  Future<void> _submitEdit(String heading, String expectedCurrent) async {
+    final newText = _editController.text.trim();
+    setState(() => _editingHeading = null);
+    if (newText.isEmpty || newText == expectedCurrent) return;
+
+    try {
+      await editDecisionText(
+        _decision.sourceFile,
+        heading: heading,
+        newText: newText,
+        expectedCurrent: expectedCurrent,
+      );
+      final reread = await rereadDecision(_decision.sourceFile);
+      if (!mounted) return;
+      if (!reread.isSuccess) {
+        setState(
+          () => _error =
+              'Wrote the edit, but could not re-read it back: '
+              '${reread.error}',
+        );
+        return;
+      }
+      setState(() => _decision = reread.decision!);
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not save: $e');
     }
   }
 
@@ -316,17 +357,58 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
   }
 
   Widget _block(String label, String body) {
+    // Round 43 §D — editing a decision's own text through this screen's
+    // own ✎ is scoped to the ADR-folder shape (one decision, one file);
+    // `editDecisionText` already refuses a `decisions.md` log outright,
+    // so there is no point revealing a pencil that would only throw.
+    final editable = canAppendVerdict(_decision.sourceFile);
+    final editing = editable && _editingHeading == label;
+
+    if (editing) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionLabel(label),
+          const SizedBox(height: AsaSpace.sm),
+          EscapeToCancel(
+            onEscape: () => setState(() => _editingHeading = null),
+            child: TextField(
+              controller: _editController,
+              autofocus: true,
+              maxLines: null,
+              decoration: const InputDecoration(isDense: true),
+              onSubmitted: (_) => _submitEdit(label, body),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // stripEmphasisMarkers: found on ADR 0012's real content — this
+    // screen shows prose as plain text, so a literal `**` on screen
+    // is a defect, not raw data worth preserving. The parsed
+    // Decision fields themselves stay verbatim; only the display
+    // strips markers.
+    final text = SelectableText(
+      stripEmphasisMarkers(body),
+      style: AsaText.body,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionLabel(label),
         const SizedBox(height: AsaSpace.sm),
-        // stripEmphasisMarkers: found on ADR 0012's real content — this
-        // screen shows prose as plain text, so a literal `**` on screen
-        // is a defect, not raw data worth preserving. The parsed
-        // Decision fields themselves stay verbatim; only the display
-        // strips markers.
-        SelectableText(stripEmphasisMarkers(body), style: AsaText.body),
+        if (editable)
+          HoverPencil(
+            onEdit: () => setState(() {
+              _editingHeading = label;
+              _editController.text = body;
+            }),
+            child: text,
+          )
+        else
+          text,
       ],
     );
   }

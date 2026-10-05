@@ -6,6 +6,7 @@
 import 'dart:io';
 
 import 'package:asa/core/decision_writer.dart';
+import 'package:asa/core/write_log.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -114,6 +115,113 @@ void main() {
     test('false for a shared decisions.md log, case-insensitively', () {
       expect(canAppendVerdict(r'C:\proj\decisions.md'), isFalse);
       expect(canAppendVerdict(r'C:\proj\DECISIONS.MD'), isFalse);
+    });
+  });
+
+  group("editDecisionText — Round 43 §D, the human's own ✎", () {
+    late String logPath;
+
+    setUp(() {
+      logPath = '${tempDir.path}${Platform.pathSeparator}write-log.jsonl';
+    });
+
+    test('rewrites the ## Decision body, heading and everything after '
+        'untouched', () async {
+      File(path).writeAsStringSync(
+        '# ADR 0001 - Example\n\n'
+        '**Date:** 2026-09-01 · **Status:** accepted\n\n'
+        '## Decision\n\nOld text.\n\n'
+        '## Why\n\nBecause.\n',
+      );
+
+      await editDecisionText(
+        path,
+        heading: 'Decision',
+        newText: 'New text.',
+        expectedCurrent: 'Old text.',
+        writeLogPath: logPath,
+      );
+
+      expect(
+        File(path).readAsStringSync(),
+        '# ADR 0001 - Example\n\n'
+        '**Date:** 2026-09-01 · **Status:** accepted\n\n'
+        '## Decision\n\nNew text.\n\n'
+        '## Why\n\nBecause.\n',
+      );
+    });
+
+    test('rewrites ## Why, exact heading only', () async {
+      File(path).writeAsStringSync(
+        '# ADR 0001 - Example\n\n## Decision\n\nText.\n\n'
+        '## Why\n\nOld reason.\n',
+      );
+
+      await editDecisionText(
+        path,
+        heading: 'Why',
+        newText: 'New reason.',
+        expectedCurrent: 'Old reason.',
+        writeLogPath: logPath,
+      );
+
+      expect(
+        File(path).readAsStringSync(),
+        '# ADR 0001 - Example\n\n## Decision\n\nText.\n\n'
+        '## Why\n\nNew reason.\n',
+      );
+    });
+
+    test('refuses a decisions.md log outright, writes nothing', () {
+      final logFile = '${tempDir.path}${Platform.pathSeparator}decisions.md';
+      const original = '# Decisions\n\n## 0001 - x\n\n## Decision\n\nText.\n';
+      File(logFile).writeAsStringSync(original);
+
+      expect(
+        () => editDecisionText(
+          logFile,
+          heading: 'Decision',
+          newText: 'New',
+          expectedCurrent: 'Text.',
+        ),
+        throwsStateError,
+      );
+      expect(File(logFile).readAsStringSync(), original);
+    });
+
+    test('refuses, unchanged, when the section changed on disk since it '
+        'was shown', () {
+      const original = '# ADR 0001 - Example\n\n## Decision\n\nReal text.\n';
+      File(path).writeAsStringSync(original);
+
+      expect(
+        () => editDecisionText(
+          path,
+          heading: 'Decision',
+          newText: 'New',
+          expectedCurrent: 'Something else entirely',
+        ),
+        throwsStateError,
+      );
+      expect(File(path).readAsStringSync(), original);
+    });
+
+    test('logs the before and after', () async {
+      File(path)
+          .writeAsStringSync('# ADR 0001 - Example\n\n## Decision\n\nOld.\n');
+
+      await editDecisionText(
+        path,
+        heading: 'Decision',
+        newText: 'New.',
+        expectedCurrent: 'Old.',
+        writeLogPath: logPath,
+      );
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'decision-decision-edited');
+      expect(entry.from, 'Old.');
+      expect(entry.to, 'New.');
     });
   });
 }

@@ -7,6 +7,8 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/decision.dart';
+import 'package:asa/core/markdown.dart';
+import 'package:asa/core/write_log.dart';
 
 /// Whether [sourceFile] is safe to append a verdict to.
 ///
@@ -71,6 +73,77 @@ Future<void> appendVerdict(
 Future<DecisionReadResult> rereadDecision(String sourceFile) async {
   final contents = await File(sourceFile).readAsString();
   return parseDecision(contents, sourceFile);
+}
+
+/// Round 43 §D — the human's own ✎ on a decision's own `## Decision` or
+/// `## Why` text. [heading] is `'Decision'` (tolerant of a trailing
+/// qualifier, same as `Decision.decision`'s own parse) or `'Why'` (exact
+/// match only — `decision.dart`'s own header explains why the two need
+/// opposite tolerances).
+///
+/// **Refuses outright on a decisions log** (`decisions.md`) — same reason
+/// [canAppendVerdict] already refuses a verdict there: more than one
+/// decision shares the file, each its own `## NNNN - Title` section, and
+/// rewriting "the first `## Decision`/`## Why` found" would not reliably
+/// mean "this one's."  Editing a decision's own text through the app's ✎
+/// is scoped to the ADR-folder shape (one decision, one file) until a
+/// real need asks for the other.
+///
+/// [expectedCurrent] (trimmed) must still match what is on disk, same
+/// drift discipline as `area_section_writer.dart`'s `setAreaSection` —
+/// null/empty is never valid here, since both `## Decision` and `## Why`
+/// are only ever reached already holding real text.
+Future<void> editDecisionText(
+  String path, {
+  required String heading,
+  required String newText,
+  required String expectedCurrent,
+  String? writeLogPath,
+}) async {
+  if (!canAppendVerdict(path)) {
+    throw StateError(
+      'Refusing to edit a decisions log ($path) — more than one decision '
+      'shares the file; see canAppendVerdict.',
+    );
+  }
+
+  final trimmedNew = newText.trim();
+  if (trimmedNew.isEmpty) {
+    throw StateError('Nothing to write — a decision needs some words.');
+  }
+
+  final content = await File(path).readAsString();
+  final range = heading.toLowerCase() == 'decision'
+      ? sectionRangeByPrefix(content, heading)
+      : sectionRange(content, heading);
+  if (range == null) {
+    throw StateError('No ## $heading section in $path — nothing to edit.');
+  }
+  final (start, end) = range;
+  final current = content.substring(start, end).trim();
+  if (current != expectedCurrent.trim()) {
+    throw StateError(
+      'The $heading section changed on disk since it was shown — reload '
+      'before editing it.',
+    );
+  }
+
+  final hasNextSection = end < content.length;
+  final newContent =
+      '${content.substring(0, start).trimRight()}\n\n$trimmedNew\n'
+      '${hasNextSection ? '\n' : ''}${content.substring(end)}';
+
+  final tempFile = File('$path.tmp');
+  await tempFile.writeAsString(newContent);
+  await tempFile.rename(path);
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'decision-$heading-edited'.toLowerCase(),
+    from: current,
+    to: trimmedNew,
+    logPath: writeLogPath,
+  );
 }
 
 String _isoDate(DateTime date) {

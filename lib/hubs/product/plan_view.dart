@@ -33,6 +33,7 @@ import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
 import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
+import 'package:asa/hubs/product/ui/hover_pencil.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/progress_bar.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
@@ -770,7 +771,7 @@ class _PlanViewState extends State<PlanView> {
     final content = renderFilled(displayText);
     if (area == null || write == null) return content;
 
-    return _HoverPencil(
+    return HoverPencil(
       onEdit: () => setState(() {
         _addingSectionKey = key;
         _sectionController.text = rawValue;
@@ -1072,7 +1073,7 @@ class _PlanViewState extends State<PlanView> {
           Expanded(
             child: (write == null || key == null)
                 ? content
-                : _HoverPencil(
+                : HoverPencil(
                     onEdit: () => setState(() {
                       _addingSectionKey = key;
                       _sectionController.text = result.text;
@@ -1703,45 +1704,4 @@ String _humanDate(DateTime date) {
     'Dec',
   ];
   return '${date.day} ${months[date.month - 1]}';
-}
-
-/// Round 43 §D — "✎ on hover of any line the user can write." Reveals a
-/// pencil beside [child] only while the pointer is over the row; a
-/// `MouseRegion` on a desktop pointer is enough — there is no touch
-/// target on this platform to also cover.
-class _HoverPencil extends StatefulWidget {
-  const _HoverPencil({required this.child, required this.onEdit});
-  final Widget child;
-  final VoidCallback onEdit;
-
-  @override
-  State<_HoverPencil> createState() => _HoverPencilState();
-}
-
-class _HoverPencilState extends State<_HoverPencil> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(child: widget.child),
-          if (_hovering) ...[
-            const SizedBox(width: AsaSpace.xs),
-            Tooltip(
-              message: 'edit',
-              child: InkWell(
-                onTap: widget.onEdit,
-                child: const Icon(Icons.edit, size: 14, color: AsaColors.ink3),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
