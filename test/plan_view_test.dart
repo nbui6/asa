@@ -297,6 +297,12 @@ void main() {
       Future<void> Function(String, Task)? onToggleTask,
       Future<void> Function(String sourceFile, String heading, String text)?
       onSetAreaSection,
+      Future<void> Function(
+        String sourceFile,
+        AreaResult result,
+        String newText,
+      )?
+      onEditResultText,
     }) async {
       String? selected;
       await tester.pumpWidget(
@@ -313,6 +319,7 @@ void main() {
                   onOpenStrategy: onOpenStrategy,
                   onToggleTask: onToggleTask,
                   onSetAreaSection: onSetAreaSection,
+                  onEditResultText: onEditResultText,
                   projectSourceFile: 'demo.md',
                   selectedAreaTab: selected,
                   onSelectAreaTab: (sourceFile) =>
@@ -537,6 +544,68 @@ void main() {
       expect(writtenHeading, 'Goal');
       expect(writtenText, 'Serves Objective 2.');
     });
+
+    testWidgets(
+      'Round 43 §D — ✎ on hover of a result edits its own text, keeping '
+      'its date; an undated result stays read-only',
+      (tester) async {
+        String? writtenSourceFile;
+        AreaResult? writtenResult;
+        String? writtenText;
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              results: [
+                const AreaResult(
+                  date: null,
+                  text: 'Undated',
+                  rawLine: '- Undated',
+                ),
+                AreaResult(
+                  date: DateTime(2026, 9, 20),
+                  text: 'A real result',
+                  rawLine: '- 2026-09-20 — A real result',
+                ),
+              ],
+            ),
+          ],
+          onEditResultText: (sourceFile, result, newText) async {
+            writtenSourceFile = sourceFile;
+            writtenResult = result;
+            writtenText = newText;
+          },
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+
+        final gesture = await tester.createGesture(
+          kind: PointerDeviceKind.mouse,
+        );
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+        await tester.pump();
+
+        // The undated result never shows a pencil at all.
+        await gesture.moveTo(tester.getCenter(find.text('Undated')));
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.edit), findsNothing);
+
+        await gesture.moveTo(tester.getCenter(find.text('A real result')));
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.edit), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.edit));
+        await tester.pump();
+        await tester.enterText(find.byType(TextField), 'An edited result');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+
+        expect(writtenSourceFile, isNotNull);
+        expect(writtenResult?.text, 'A real result');
+        expect(writtenText, 'An edited result');
+      },
+    );
 
     testWidgets(
       'Round 38 §F — done tasks fold into "✓ N done · show ›", tapping it '

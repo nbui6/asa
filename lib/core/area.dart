@@ -46,12 +46,19 @@ class AreaResult {
     required this.text,
     this.task,
     this.link,
+    this.rawLine,
   });
 
   final DateTime? date;
   final String text;
   final String? task;
   final ResultLink? link;
+
+  /// The exact original line this was parsed from, trimmed of its own
+  /// leading/trailing whitespace — Round 43 §D's own ✎, matching a real
+  /// line to edit the same way `Task.rawLine` already does. Null only for
+  /// a result built in a test without it; every real parse sets it.
+  final String? rawLine;
 }
 
 /// One area, read from its own `plan\<area>.md` page. Every field but
@@ -237,6 +244,7 @@ List<AreaResult> parseResultsSection(String? sectionBody) {
           text: split.text,
           task: split.task,
           link: split.link,
+          rawLine: line,
         ),
       );
     } else {
@@ -250,6 +258,7 @@ List<AreaResult> parseResultsSection(String? sectionBody) {
           text: split.text,
           task: split.task,
           link: split.link,
+          rawLine: line,
         ),
       );
     }

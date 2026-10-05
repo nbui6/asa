@@ -189,6 +189,12 @@ void main() {
       expect(result.task, 'Ask legal the RC-16 question');
       expect(result.link?.label, 'rc16-answer.pdf');
       expect(result.link?.target, r'C:\path\to\rc16-answer.pdf');
+      expect(
+        result.rawLine,
+        '- 2026-09-28 — a copy keeps its own period, 24 months · '
+        'task: Ask legal the RC-16 question · '
+        r'[rc16-answer.pdf](C:\path\to\rc16-answer.pdf)',
+      );
     });
 
     test('the link alone, no task', () {

@@ -1,7 +1,11 @@
-/// Round 43 §A/§B, ADR 0042 — writes one new dated line into an area's
+/// Round 43 §A/§B/§D, ADR 0042 — writes one new dated line into an area's
 /// own `## Results` section, or the home note's own (a task with no
-/// area). Same atomic-write and write-log discipline as `task_writer.dart`
-/// and `area_writer.dart`; pure Dart, no Flutter import.
+/// area), and — §D, the human's own ✎ — edits an existing one's text in
+/// place. ADR 0042 amends 7.4 of the manual ("never edit an old line")
+/// for exactly this: that rule is the **AI's** own discipline; the human,
+/// through this screen's ✎, may. Same atomic-write and write-log
+/// discipline as `task_writer.dart` and `area_writer.dart`; pure Dart, no
+/// Flutter import.
 library;
 
 import 'dart:io';
@@ -37,6 +41,66 @@ Future<void> writeResult(
     field: 'result-added',
     from: '',
     to: line,
+    logPath: writeLogPath,
+  );
+}
+
+/// Round 43 §D — the human's own ✎, editing a result's own text in place.
+/// [rawLine] must still be found verbatim in the file — the file changed
+/// on disk since it was shown otherwise, and a [StateError] refuses
+/// rather than guessing which line was meant. [date]/[taskText]/[link]
+/// are the line's own existing values (an `AreaResult`'s own fields,
+/// unless the caller is also changing one of them) — passed back in
+/// rather than re-parsed from [rawLine], so this function never needs its
+/// own copy of the line's own shape.
+Future<void> editResultText(
+  String path, {
+  required String rawLine,
+  required String newText,
+  required DateTime date,
+  String? taskText,
+  ResultLink? link,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+
+  final range = sectionRange(content, 'Results');
+  if (range == null) {
+    throw StateError('No ## Results section in $path — nothing to edit.');
+  }
+  final (start, end) = range;
+  final section = content.substring(start, end);
+
+  final index = section.indexOf(rawLine);
+  if (index == -1) {
+    throw StateError(
+      'That result line was not found in $path — it may have changed on '
+      'disk since it was read.',
+    );
+  }
+
+  final newLine = _buildLine(
+    text: newText,
+    taskText: taskText,
+    link: link,
+    date: date,
+  );
+  final newSection = section.replaceRange(
+    index,
+    index + rawLine.length,
+    newLine,
+  );
+
+  await _writeAtomically(
+    path,
+    content.substring(0, start) + newSection + content.substring(end),
+  );
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'result-edited',
+    from: rawLine,
+    to: newLine,
     logPath: writeLogPath,
   );
 }

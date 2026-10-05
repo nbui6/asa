@@ -245,9 +245,10 @@ who owes what, and for how long. Remove the mark when it moves.
 
 ### 7.4 A result
 
-`- YYYY-MM-DD — what came out` under the area's `## Results`, newest first. **Never edit an old line.**
-A correction is a new line. Round 43 — a result may name the task it came from and link to a file, a
-folder or a web page it produced:
+`- YYYY-MM-DD — what came out` under the area's `## Results`, newest first. **You never edit an old
+line — a correction is a new line.** (The user can, through the app's own ✎; that is their channel,
+not yours.) Round 43 — a result may name the task it came from and link to a file, a folder or a web
+page it produced:
 
 ```
 - 2026-09-28 — a copy keeps its own period, 24 months · task: Ask legal the RC-16 question · [rc16-answer.pdf](C:\path\to\rc16-answer.pdf)

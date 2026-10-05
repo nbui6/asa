@@ -58,6 +58,7 @@ class PlanView extends StatefulWidget {
     this.onSelectAreaTab,
     this.onCreateArea,
     this.onSetAreaSection,
+    this.onEditResultText,
     this.openHomeOnStart = false,
     this.highlightTaskRawLine,
     super.key,
@@ -143,6 +144,18 @@ class PlanView extends StatefulWidget {
   /// (or test) not wired for it.
   final Future<void> Function(String sourceFile, String heading, String text)?
   onSetAreaSection;
+
+  /// Round 43 §D — the human's own ✎ on an existing result's own text.
+  /// Null keeps every result read-only, for a caller (or test) not wired
+  /// for it. The whole `AreaResult` is passed, not just its text — the
+  /// writer needs its own `rawLine` (to find it) and its date/task/link
+  /// (to rebuild the line unchanged apart from the text).
+  final Future<void> Function(
+    String sourceFile,
+    AreaResult result,
+    String newText,
+  )?
+  onEditResultText;
 
   /// Round-36 §3, L3 — a caller that wants "Not in an area" open the next
   /// time this tab is shown. False in a test that does not need it.
@@ -971,7 +984,8 @@ class _PlanViewState extends State<PlanView> {
           if (results.isEmpty)
             const EmptyLine('Nothing yet')
           else ...[
-            for (final result in visible) _resultRow(result),
+            for (final result in visible)
+              _resultRow(result, sourceFile: sourceFile),
             if (olderCount > 0)
               _foldLink(
                 expanded: expanded,
@@ -990,14 +1004,22 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _resultRow(AreaResult result) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (result.date != null) ...[
-            SizedBox(
+  Widget _resultRow(AreaResult result, {required String sourceFile}) {
+    final write = widget.onEditResultText;
+    // Undated (a verbatim pre-this-app line) has no key: editResultText
+    // always writes a dated line, and there is no way to ask it to leave
+    // a result undated — editing one would silently stamp today's date
+    // onto a line that never had one. Left read-only rather than that.
+    final key = (result.rawLine == null || result.date == null)
+        ? null
+        : '$sourceFile\u0000result\u0000${result.rawLine}';
+    final editing = key != null && _addingSectionKey == key;
+
+    Widget dateLabel() => result.date == null
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.only(right: AsaSpace.xs),
+            child: SizedBox(
               width: 60,
               child: Text(
                 _humanDate(result.date!),
@@ -1007,9 +1029,57 @@ class _PlanViewState extends State<PlanView> {
                 ),
               ),
             ),
-            const SizedBox(width: AsaSpace.xs),
+          );
+
+    if (editing) {
+      Future<void> submit() async {
+        final text = _sectionController.text.trim();
+        setState(() => _addingSectionKey = null);
+        if (text.isEmpty || text == result.text) return;
+        await write!(sourceFile, result, text);
+        widget.onDataChanged?.call();
+      }
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            dateLabel(),
+            Expanded(
+              child: EscapeToCancel(
+                onEscape: () => setState(() => _addingSectionKey = null),
+                child: TextField(
+                  controller: _sectionController,
+                  autofocus: true,
+                  decoration: const InputDecoration(isDense: true),
+                  onSubmitted: (_) => submit(),
+                ),
+              ),
+            ),
           ],
-          Expanded(child: Text(result.text, style: AsaText.body)),
+        ),
+      );
+    }
+
+    final content = Text(result.text, style: AsaText.body);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          dateLabel(),
+          Expanded(
+            child: (write == null || key == null)
+                ? content
+                : _HoverPencil(
+                    onEdit: () => setState(() {
+                      _addingSectionKey = key;
+                      _sectionController.text = result.text;
+                    }),
+                    child: content,
+                  ),
+          ),
         ],
       ),
     );

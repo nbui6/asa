@@ -652,6 +652,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             writeLogPath: widget.writeLogPath,
           ),
           onSetAreaSection: _writeAreaSection,
+          onEditResultText: _writeEditResultText,
           openHomeOnStart: widget.initialOpenHome || _openHomeNow,
           highlightTaskRawLine:
               _highlightRawLine ?? widget.initialHighlightRawLine,
@@ -740,6 +741,33 @@ class _ProjectScreenState extends State<ProjectScreen> {
         sourceFile,
         heading: heading,
         text: text,
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// Round 43 §D — the human's own ✎ on an existing result's own text.
+  /// [result]'s own `date`/`task`/`link` travel back in unchanged; only
+  /// its text does.
+  Future<void> _writeEditResultText(
+    String sourceFile,
+    AreaResult result,
+    String newText,
+  ) async {
+    final rawLine = result.rawLine;
+    if (rawLine == null) return; // not a real parse — nothing to find
+    try {
+      await editResultText(
+        sourceFile,
+        rawLine: rawLine,
+        newText: newText,
+        date: result.date ?? DateTime.now(),
+        taskText: result.task,
+        link: result.link,
         writeLogPath: widget.writeLogPath,
       );
     } on Object catch (e) {
