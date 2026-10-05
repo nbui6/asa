@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:asa/core/check.dart';
 import 'package:asa/core/manual_status.dart';
 import 'package:asa/core/projects_scan.dart';
+import 'package:asa/core/repo_remote.dart';
 import 'package:asa/core/round_file.dart' show sectionTextContaining;
 import 'package:asa/core/settings.dart';
 import 'package:asa/core/skills_catalog.dart';
@@ -42,6 +43,12 @@ class _InstructionForAiScreenState extends State<InstructionForAiScreen> {
   DateTime? _manualDate;
   String? _manualMessage;
   String? _manualSource;
+
+  /// Round 41 §C — the asa repo's own `origin` remote, read fresh each
+  /// load (never hard-coded, never a machine path) so the setup
+  /// sentence's own "clone" address can never go stale the way a typed
+  /// one would the moment the remote changes.
+  String? _asaRemoteUrl;
 
   List<SkillInfo> _skills = const [];
   List<AgentInfo> _agents = const [];
@@ -84,6 +91,7 @@ class _InstructionForAiScreenState extends State<InstructionForAiScreen> {
           : null;
       _skills = await readSkillsCatalog(asaRepo);
       _agents = await readAgentsCatalog(asaRepo);
+      _asaRemoteUrl = repoRemoteUrl(asaRepo);
     }
 
     final bossFile = File('$root${Platform.pathSeparator}BOSS.md');
@@ -174,15 +182,15 @@ class _InstructionForAiScreenState extends State<InstructionForAiScreen> {
   }
 
   Widget _howItWorks() {
-    return const AsaPanel(
+    return AsaPanel(
       child: Padding(
-        padding: EdgeInsets.all(AsaSpace.lg),
+        padding: const EdgeInsets.all(AsaSpace.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionLabel('The loop, every session'),
-            SizedBox(height: AsaSpace.sm),
-            Text(
+            const SectionLabel('The loop, every session'),
+            const SizedBox(height: AsaSpace.sm),
+            const Text(
               '1. Catch up: run asa-brief; the whole picture first, then '
               "the job's slice.\n"
               '2. Say where things stand, in three lines or fewer.\n'
@@ -194,10 +202,10 @@ class _InstructionForAiScreenState extends State<InstructionForAiScreen> {
               '7. Hand over: the first open task is the next step.',
               style: AsaText.body,
             ),
-            SizedBox(height: AsaSpace.lg),
-            SectionLabel('Catching up — what to read for which job'),
-            SizedBox(height: AsaSpace.sm),
-            Text(
+            const SizedBox(height: AsaSpace.lg),
+            const SectionLabel('Catching up — what to read for which job'),
+            const SizedBox(height: AsaSpace.sm),
+            const Text(
               'asa-brief --all — every project, freshness, what waits.\n'
               'asa-brief --since <date> — everything recorded since then.\n'
               'asa-brief "<project>" — the next step for that project.\n'
@@ -205,9 +213,46 @@ class _InstructionForAiScreenState extends State<InstructionForAiScreen> {
               '... --round <N> — that round alone.',
               style: AsaText.body,
             ),
+            const SizedBox(height: AsaSpace.lg),
+            _setupSentenceRow(),
           ],
         ),
       ),
+    );
+  }
+
+  /// Round 41 §C — "Set up another laptop or another Claude" · Copy.
+  /// Neutral text, no name, same rule 16 any shipped text already follows;
+  /// the clone address itself is read fresh from this repo's own `origin`
+  /// remote (`repo_remote.dart`), never typed by hand, so it can't go
+  /// stale the moment the remote changes.
+  String? _setupSentence() {
+    final url = _asaRemoteUrl;
+    if (url == null) return null;
+    return 'Set up Asa on this laptop: clone $url into '
+        r'%USERPROFILE%\workspace\asa, run asa\setup.ps1, then open '
+        r'projects\AGENTS.md and start at "Before anything else".';
+  }
+
+  Widget _setupSentenceRow() {
+    final sentence = _setupSentence();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Expanded(
+          child: Text(
+            'Set up another laptop or another Claude',
+            style: AsaText.body,
+          ),
+        ),
+        const SizedBox(width: AsaSpace.sm),
+        OutlinedButton(
+          onPressed: sentence == null
+              ? null
+              : () => Clipboard.setData(ClipboardData(text: sentence)),
+          child: const Text('Copy'),
+        ),
+      ],
     );
   }
 

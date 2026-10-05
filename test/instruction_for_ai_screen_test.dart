@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:asa/hubs/product/instruction_for_ai_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// `asa-check`'s own "note behind the work" finding compares a real
@@ -99,7 +100,12 @@ updated: $_today
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: InstructionForAiScreen(settingsPath: settingsPath),
+            // The real host, AsaPage, wraps this screen's body in a
+            // SingleChildScrollView — matched here rather than fixing a
+            // RenderFlex overflow that a real, taller window never hits.
+            body: SingleChildScrollView(
+              child: InstructionForAiScreen(settingsPath: settingsPath),
+            ),
           ),
         ),
       );
@@ -117,6 +123,60 @@ updated: $_today
     expect(find.textContaining('Checks ('), findsOneWidget);
     // SectionLabel renders its own text upper-cased.
     expect(find.textContaining('THE LOOP, EVERY SESSION'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Round 41 §C — no .git/config at all disables Copy, never crashes',
+    (tester) async {
+      await pump(tester);
+      expect(
+        find.text('Set up another laptop or another Claude'),
+        findsOneWidget,
+      );
+      final button = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Copy'),
+      );
+      expect(button.onPressed, isNull);
+    },
+  );
+
+  testWidgets('Round 41 §C — a real origin remote fills in the setup sentence, '
+      'Copy puts it on the clipboard', (tester) async {
+    final asaRepo = join([workspace.path, 'asa']);
+    Directory(join([asaRepo, '.git'])).createSync(recursive: true);
+    File(join([asaRepo, '.git', 'config'])).writeAsStringSync(
+      '[remote "origin"]\n\turl = https://github.com/someone/asa.git\n',
+    );
+
+    String? copied;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          ..setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copied = (call.arguments as Map)['text'] as String?;
+            }
+            return null;
+          });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await pump(tester);
+    final button = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Copy'),
+    );
+    expect(button.onPressed, isNotNull);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Copy'));
+    await tester.pump();
+
+    expect(copied, isNotNull);
+    expect(copied, contains('https://github.com/someone/asa.git'));
+    expect(copied, contains(r'asa\setup.ps1'));
+    expect(copied, contains(r'projects\AGENTS.md'));
+    // Neutrality itself (rule 16) is guarded once, for real, by
+    // no_personal_name_test.dart — not re-asserted here against a
+    // string that structurally can never contain the user's own name.
   });
 
   testWidgets('Instructions shows the installed copy matches ✓', (

@@ -11,6 +11,9 @@
 // `check-shareable.ps1`'s own waiver already uses:**
 // - `kit\package-for-tester.ps1` is the tool that scrubs the name out of a
 //   packaged copy — its own source has to contain the word to search for.
+// - `kit\package-app.ps1` has the same shape, one level down: its own
+//   "must not appear in the shipped zip" check needs the literal word in
+//   its own regex pattern, same reasoning as the file above.
 // - Four lines quote something verbatim: a rule exactly as it was written
 //   at the time (`kit\PLAYBOOK.md`, `kit\CHANGELOG.md`, `kit\KIT-LOG.md`),
 //   and a historical bug capture showing exactly what a file really said
@@ -50,6 +53,10 @@ const _lineExceptions = {
   '> *"Nico runs every `git` and `flutter` command himself, in Windows PowerShell. Never through an',
   'first implementation - it captured `"accepted - **Decided by:** Nico"` as the status), the inline',
   "Any. And the project's own `CLAUDE.md` already carried the finding — *\"Nico often lacks admin",
+  // The regex pattern itself, kit\package-app.ps1's own "must not appear
+  // in the shipped zip" check — has to contain the literal word to look
+  // for it, same reasoning the whole-file exceptions above already give.
+  r"@{ Why = 'the name'; Pattern = '(^|[^A-Za-z])Nico([^A-Za-z]|$)' }",
 };
 
 void main() {

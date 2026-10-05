@@ -9,11 +9,11 @@
 #
 # **Read the zip back, same discipline as package-for-tester.ps1** (hard
 # rule 16's own reasoning: a security property that nothing verifies is a
-# hope). This zip's audience is narrower - Nico's own second laptop, not a
-# stranger - but round-41.md §A asks for the same guard anyway, and
-# "Nico uploads it as a GitHub Release asset, by hand" is a wider exposure
-# than the private repo itself, so the same three checks apply: a machine
-# path, an email address, or the name, baked into any shipped text file.
+# hope). This zip's audience is narrower - the user's own second laptop, not
+# a stranger - but round-41.md §A asks for the same guard anyway, and
+# "uploaded as a GitHub Release asset, by hand" is a wider exposure than the
+# private repo itself, so the same three checks apply: a machine path, an
+# email address, or the name, baked into any shipped text file.
 #
 # **The Visual C++ runtime is deliberately NOT bundled as raw DLLs.** Flutter's
 # own Windows deployment docs list msvcp140.dll/vcruntime140.dll/
@@ -75,9 +75,9 @@ try {
     # artefacts, package-for-tester.ps1 (a different distribution, a
     # different audience), or the kit's own development narrative - the
     # running history of how the kit itself was built, not anything a
-    # working install needs, and the one place Nico's own name legitimately
-    # appears throughout (`$neverShip` in package-for-tester.ps1 excludes
-    # the same two files for the same reason, for its own audience).
+    # working install needs, and the one place the user's own name
+    # legitimately appears throughout (`$neverShip` in package-for-tester.ps1
+    # excludes the same two files for the same reason, for its own audience).
     $neverShip = @(
         'kit\package-app.ps1', 'kit\package-for-tester.ps1',
         'kit\CHANGELOG.md', 'kit\KIT-LOG.md', 'kit\PLAYBOOK.md',
