@@ -2376,3 +2376,33 @@ machine-path and email checks in another language to get them moved would put an
 the only thing standing between a project folder and a shared repository into the path it guards** —
 the exact trade `check-shareable.ps1`'s own history says not to make. Whoever fixes item 9 decides
 how the collector gets a runner; this entry only says that scheduling it was not it.
+
+
+## 2026-10-01 — the clock rule was two days old and had been broken once per actor
+
+**A rule written after two sightings was broken a third time within 48 hours, by the one session
+type it had not yet been broken by.** On 2026-09-28 the deciding session stamped nine log entries
+with guessed clock times; the Instruction for AI §12 gained *a time is written only after reading
+the clock*, and a fourth slip the same afternoon was caught before sending. On 2026-09-30 Code
+wrote a Round 43 cp1 log line whose end time was **in the future**. It was corrected, and the only
+record of it is half a sentence inside a check-in entry in `PLAN.md`.
+
+**Routed here rather than to the operating layer's log because a change to the build process
+prevents it.** The information needed to get this right was on the machine the whole time; what is
+missing is anything that looks. Every other timestamp discipline in this kit is enforced by a hook
+that refuses — `gate-commit.ps1`, `record-test` — and this one is enforced by a sentence addressed
+to whoever is reading. **A rule aimed at a session's attention is broken once per session type**,
+which is what the three sightings now are: deciding session, deciding session, Code.
+
+**Fifth entry in the row this log keeps** — after `install-skills.ps1`'s `$coreSkills` gap, the
+doorman, `check-notes.ps1` and the collector's own Windows-only runner — but a different shape from
+the other four. Those were correct artefacts that nothing fired. This one has no artefact at all:
+the fix was *writing the rule down*, which is the cheapest possible response and the one with no
+instrument behind it. **A timestamp in the future is also the one defect in this family that
+misleads a reader rather than merely losing something** — a log is read to find out when work
+happened.
+
+**Recorded, not fixed.** The check itself is item 9d in `ROADMAP.md`, sitting with the other four
+rule-with-no-check items rather than above them, because none of this is urgent and the family
+should be decided together — including whether a `.ps1` is the right place for any of it, which
+2026-09-29's entry already asks.
