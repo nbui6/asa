@@ -31,15 +31,16 @@ under [For testers](#for-testers) apply to it just as well as to the app.
 
 ## On a new machine
 
-1. `git clone` this repository.
-2. **Moved or cloned this folder to a new location? Run `flutter clean` first** — see
-   [FOR-YOUR-FORK.md](FOR-YOUR-FORK.md) for why.
-3. `flutter build windows --release`, or `flutter run -d windows` — see
-   [Running it](#running-it) below for what your machine needs first.
-4. First run asks for your projects folder — paste a path. Asa remembers it from then on.
-5. Run `onboard-projects.ps1` once against that folder. It never overwrites anything, and it
-   never writes a project's home note for you — see the script's own header for exactly what it
-   does and why.
+1. Get the app zip — a GitHub Release asset on this repository (`asa-windows-<commit>.zip`).
+2. Run `setup.ps1` from the folder you unzipped it into. One question — your projects folder —
+   and it is safe to run again.
+3. Upload `asa.zip` (from the `dist\skills\` it points you to) to your Claude account: Settings →
+   Skills.
+4. Start Claude in your projects folder and say **"start"**.
+
+No Flutter, no Visual Studio, no admin rights required beyond what `setup.ps1` itself asks for
+once, if git or the Visual C++ runtime are missing. Building from source instead — see
+[For developers](#for-developers) below.
 
 ---
 
@@ -88,7 +89,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File check-shareable.ps1
 Checks every file that would be published for machine paths, email addresses, and a private term
 list that is **not** in this repository. See the script's header for why.
 
-## Running it
+## For developers
+
+Building from source, rather than the app zip in [On a new machine](#on-a-new-machine) above:
+
+1. `git clone` this repository.
+2. **Moved or cloned this folder to a new location? Run `flutter clean` first** — see
+   [FOR-YOUR-FORK.md](FOR-YOUR-FORK.md) for why.
+3. `flutter build windows --release`, or `flutter run -d windows` — see below for what your
+   machine needs first.
+4. First run asks for your projects folder — paste a path. Asa remembers it from then on.
+5. Run `onboard-projects.ps1` once against that folder (or `setup.ps1`, which runs it for you).
+   It never overwrites anything, and it never writes a project's home note for you — see the
+   script's own header for exactly what it does and why.
 
 Requires the Flutter SDK with Windows desktop support (`flutter doctor` green for Windows) and
 Visual Studio Build Tools.
