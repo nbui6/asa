@@ -30,6 +30,7 @@ import 'package:asa/core/markdown.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/plan.dart';
 import 'package:asa/core/task.dart';
+import 'package:asa/core/task_links.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
 import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
@@ -705,8 +706,16 @@ class _PlanViewState extends State<PlanView> {
       children: [
         _goalField(area),
         _textField('Plan', area.planText, empty: 'No plan yet', area: area),
-        _tasksField(area.tasks, sourceFile: area.sourceFile),
-        _resultsField(area.results, sourceFile: area.sourceFile),
+        _tasksField(
+          area.tasks,
+          sourceFile: area.sourceFile,
+          results: area.results,
+        ),
+        _resultsField(
+          area.results,
+          sourceFile: area.sourceFile,
+          tasks: area.tasks,
+        ),
         _decisionsField(area.decisionNumbers),
         const SizedBox(height: AsaSpace.xs),
         LinkChip('open the page ↗', onTap: () => openUrl(area.sourceFile)),
@@ -901,7 +910,11 @@ class _PlanViewState extends State<PlanView> {
     return Text.rich(TextSpan(style: AsaText.body, children: spans));
   }
 
-  Widget _tasksField(List<Task> tasks, {required String sourceFile}) {
+  Widget _tasksField(
+    List<Task> tasks, {
+    required String sourceFile,
+    List<AreaResult> results = const [],
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
@@ -909,7 +922,7 @@ class _PlanViewState extends State<PlanView> {
         children: [
           const SectionLabel('Tasks'),
           const SizedBox(height: 2),
-          _taskListBody(tasks, sourceFile: sourceFile),
+          _taskListBody(tasks, sourceFile: sourceFile, results: results),
         ],
       ),
     );
@@ -920,7 +933,11 @@ class _PlanViewState extends State<PlanView> {
   /// a second, redundant "Tasks" label. Round 38 §F — done tasks fold into
   /// "✓ N done · show ›", same shape `tasks_view.dart`'s own "Show
   /// completed" already uses on the front page.
-  Widget _taskListBody(List<Task> tasks, {required String sourceFile}) {
+  Widget _taskListBody(
+    List<Task> tasks, {
+    required String sourceFile,
+    List<AreaResult> results = const [],
+  }) {
     if (tasks.isEmpty) return const EmptyLine('Nothing yet');
 
     // Round 37 cp6, §D6 item 5 — the same first-open-unparked-task rule
@@ -946,6 +963,7 @@ class _PlanViewState extends State<PlanView> {
             task,
             sourceFile: sourceFile,
             isNext: task.rawLine == nextTask,
+            results: results,
           ),
         if (doneCount > 0)
           _foldLink(
@@ -963,10 +981,21 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
+  /// Round 43 §B — every decision already loaded for this screen,
+  /// unwrapped from [DecisionReadResult]; a file that failed to parse
+  /// names nothing, so it is simply not a candidate for
+  /// [decisionsForTask]/[_adrChip] — same honest-absence rule as
+  /// everywhere else, not a crash.
+  List<Decision> get _loadedDecisions => [
+    for (final result in widget.decisions)
+      if (result.decision != null) result.decision!,
+  ];
+
   Widget _taskRow(
     Task task, {
     required String sourceFile,
     bool isNext = false,
+    List<AreaResult> results = const [],
   }) {
     final canToggle = widget.onToggleTask != null;
     return TaskRow(
@@ -974,6 +1003,7 @@ class _PlanViewState extends State<PlanView> {
       done: task.done,
       isNext: isNext,
       highlighted: _highlightedRawLine == task.rawLine,
+      trailing: _taskLinkChip(task, sourceFile: sourceFile, results: results),
       onToggle: canToggle
           ? (_) {
               // Round 38 §F — a task ticked just now must not vanish out
@@ -985,6 +1015,55 @@ class _PlanViewState extends State<PlanView> {
             }
           : null,
     );
+  }
+
+  /// Round 43 §B, L32 — "a task shows → result 28.09. / → decision,"
+  /// derived from what's already parsed (`task_links.dart`), nothing
+  /// stored twice. A result is preferred when both exist — the same
+  /// "first match" precedent [resultForTask] itself already documents.
+  /// Tapping a result briefly highlights it, same mechanism round-36 §3,
+  /// L3/L9 already uses for a task; tapping a decision opens its real
+  /// detail screen via the existing ADR-chip path.
+  Widget? _taskLinkChip(
+    Task task, {
+    required String sourceFile,
+    required List<AreaResult> results,
+  }) {
+    final result = resultForTask(task, results);
+    if (result != null) {
+      final label = result.date == null
+          ? '→ result'
+          : '→ result ${_humanDate(result.date!)}';
+      return LinkChip(
+        label,
+        onTap: result.rawLine == null
+            ? null
+            : () => _highlightLine(sourceFile, result.rawLine!),
+      );
+    }
+
+    final decisions = decisionsForTask(task, _loadedDecisions);
+    if (decisions.isEmpty) return null;
+    final number = decisions.first.number;
+    return LinkChip(
+      '→ decision',
+      onTap: number == null ? null : () => _openDecision(number),
+    );
+  }
+
+  /// Shared by [_taskLinkChip] (a task pointing at its own result) and a
+  /// result's own task chip (the reverse, L33) — both just need the
+  /// already-built highlight mechanism, aimed at a different rawLine.
+  void _highlightLine(String sourceFile, String rawLine) {
+    setState(() {
+      // Reveal both folds unconditionally — simpler than working out which
+      // one the target could be hiding behind, and showing a little more
+      // than strictly needed costs nothing here.
+      _doneTasksShown.add(sourceFile);
+      _olderResultsShown.add(sourceFile);
+      _highlightedRawLine = rawLine;
+    });
+    _armHighlightTimer();
   }
 
   /// Round 38 §F — "show ›" once folded, "Hide" once expanded, same wording
@@ -1018,7 +1097,11 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _resultsField(List<AreaResult> results, {required String sourceFile}) {
+  Widget _resultsField(
+    List<AreaResult> results, {
+    required String sourceFile,
+    List<Task> tasks = const [],
+  }) {
     final expanded = _olderResultsShown.contains(sourceFile);
     final visible = expanded ? results : results.take(2).toList();
     final olderCount = results.length - 2;
@@ -1034,7 +1117,7 @@ class _PlanViewState extends State<PlanView> {
             const EmptyLine('Nothing yet')
           else ...[
             for (final result in visible)
-              _resultRow(result, sourceFile: sourceFile),
+              _resultRow(result, sourceFile: sourceFile, tasks: tasks),
             if (olderCount > 0)
               _foldLink(
                 expanded: expanded,
@@ -1053,8 +1136,14 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _resultRow(AreaResult result, {required String sourceFile}) {
+  Widget _resultRow(
+    AreaResult result, {
+    required String sourceFile,
+    List<Task> tasks = const [],
+  }) {
     final write = widget.onEditResultText;
+    final highlighted =
+        result.rawLine != null && _highlightedRawLine == result.rawLine;
     // Undated (a verbatim pre-this-app line) has no key: editResultText
     // always writes a dated line, and there is no way to ask it to leave
     // a result undated — editing one would silently stamp today's date
@@ -1090,7 +1179,8 @@ class _PlanViewState extends State<PlanView> {
       }
 
       final remove = widget.onRemoveResultText;
-      return Padding(
+      return Container(
+        color: highlighted ? AsaColors.highlight : null,
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1125,8 +1215,15 @@ class _PlanViewState extends State<PlanView> {
       );
     }
 
-    final content = Text(result.text, style: AsaText.body);
-    return Padding(
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(result.text, style: AsaText.body),
+        ..._resultLinkChips(result, sourceFile: sourceFile, tasks: tasks),
+      ],
+    );
+    return Container(
+      color: highlighted ? AsaColors.highlight : null,
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1146,6 +1243,43 @@ class _PlanViewState extends State<PlanView> {
         ],
       ),
     );
+  }
+
+  /// Round 43 §B, L33/L34 — a result shows its own task (or *task (gone)*
+  /// once it names one that no longer exists, round-43.md §B's own last
+  /// bullet) and its own file/folder/web-page link, both derived from
+  /// what `area.dart` already parsed. Empty when the result has neither —
+  /// most results, in practice, have no `· task:`/link segment at all.
+  List<Widget> _resultLinkChips(
+    AreaResult result, {
+    required String sourceFile,
+    required List<Task> tasks,
+  }) {
+    final chips = <Widget>[];
+    final taskText = result.task;
+    if (taskText != null) {
+      final task = tasks.where((t) => t.text == taskText).firstOrNull;
+      chips.add(
+        task == null
+            ? Text(
+                'task (gone)',
+                style: AsaText.meta.copyWith(color: AsaColors.ink3),
+              )
+            : LinkChip(
+                'task',
+                onTap: () => _highlightLine(sourceFile, task.rawLine),
+              ),
+      );
+    }
+    final link = result.link;
+    if (link != null) {
+      chips.add(LinkChip(link.label, onTap: () => openUrl(link.target)));
+    }
+    if (chips.isEmpty) return const [];
+    return [
+      const SizedBox(height: 2),
+      Wrap(spacing: AsaSpace.sm, children: chips),
+    ];
   }
 
   Widget _decisionsField(List<String> decisionNumbers) {

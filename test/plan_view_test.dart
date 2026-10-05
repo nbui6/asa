@@ -10,6 +10,8 @@ import 'package:asa/core/plan.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
+import 'package:asa/hubs/product/ui/task_row.dart';
+import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -291,6 +293,7 @@ void main() {
     Future<void> pumpAreas(
       WidgetTester tester, {
       required List<Area> areas,
+      List<DecisionReadResult> decisions = const [],
       List<Task> homeTasks = const [],
       Strategy? strategy,
       VoidCallback? onOpenStrategy,
@@ -322,7 +325,7 @@ void main() {
                 return PlanView(
                   plan: const Plan(pages: []),
                   areas: areas,
-                  decisions: const [],
+                  decisions: decisions,
                   homeTasks: homeTasks,
                   strategy: strategy,
                   onOpenStrategy: onOpenStrategy,
@@ -739,6 +742,233 @@ void main() {
         expect(removedResult?.text, 'A real result');
       },
     );
+
+    group('Round 43 §B — derived both ways (L32/L33/L34)', () {
+      testWidgets(
+        "L32 — a task whose text matches a result's own task: shows "
+        '"→ result DD.MM.", tapping highlights that result',
+        (tester) async {
+          await pumpAreas(
+            tester,
+            areas: [
+              area(
+                tasks: [
+                  const Task(
+                    rawLine: '- [x] Ask legal the RC-16 question',
+                    text: 'Ask legal the RC-16 question',
+                    done: true,
+                  ),
+                ],
+                results: [
+                  AreaResult(
+                    date: DateTime(2026, 9, 28),
+                    text: 'A copy keeps its own period',
+                    task: 'Ask legal the RC-16 question',
+                    rawLine:
+                        '- 2026-09-28 — A copy keeps its own period · '
+                        'task: Ask legal the RC-16 question',
+                  ),
+                ],
+              ),
+            ],
+          );
+          await tester.tap(find.text('Sales').first);
+          await tester.pump();
+          // The task is done — reveal the done-tasks fold first.
+          await tester.tap(find.textContaining('✓ 1 done'));
+          await tester.pump();
+
+          // `_humanDate`'s own convention ("today"/"yesterday"/"14 Sep"),
+          // the same format the result's own date label already uses —
+          // not a literal "DD.MM." despite round-43.md §B's own prose
+          // example.
+          expect(find.text('→ result 28 Sep'), findsOneWidget);
+          await tester.tap(find.text('→ result 28 Sep'));
+          await tester.pump();
+
+          expect(
+            tester
+                .widget<Container>(
+                  find
+                      .ancestor(
+                        of: find.text('A copy keeps its own period'),
+                        matching: find.byType(Container),
+                      )
+                      .first,
+                )
+                .color,
+            AsaColors.highlight,
+          );
+          // Flush the 2 s auto-clear timer before the test ends — a real
+          // timer still pending when the tree is disposed is a framework
+          // error, not a pass.
+          await tester.pump(const Duration(seconds: 3));
+        },
+      );
+
+      testWidgets(
+        'L32 — a task with no result but a decision naming it shows '
+        '"→ decision", tapping opens it',
+        (tester) async {
+          const decision = Decision(
+            title: 'A real decision',
+            why: 'w',
+            decision: 'd',
+            whatWouldChangeThis: 'c',
+            sourceFile: 'decisions/0009.md',
+            number: '0009',
+            links: DecisionLinks(tasks: ['Decide the pricing model']),
+          );
+          await pumpAreas(
+            tester,
+            areas: [
+              area(
+                tasks: [
+                  const Task(
+                    rawLine: '- [ ] Decide the pricing model',
+                    text: 'Decide the pricing model',
+                    done: false,
+                  ),
+                ],
+              ),
+            ],
+            decisions: const [
+              DecisionReadResult(
+                sourceFile: 'decisions/0009.md',
+                decision: decision,
+              ),
+            ],
+          );
+          await tester.tap(find.text('Sales').first);
+          await tester.pump();
+
+          expect(find.text('→ decision'), findsOneWidget);
+          await tester.tap(find.text('→ decision'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(DecisionDetailScreen), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'L33 — a result\'s own task: shows a "task" chip when the task '
+        'still exists, tapping highlights it',
+        (tester) async {
+          await pumpAreas(
+            tester,
+            areas: [
+              area(
+                tasks: [
+                  const Task(
+                    rawLine: '- [x] Ask legal the RC-16 question',
+                    text: 'Ask legal the RC-16 question',
+                    done: true,
+                  ),
+                ],
+                results: [
+                  AreaResult(
+                    date: DateTime(2026, 9, 28),
+                    text: 'A copy keeps its own period',
+                    task: 'Ask legal the RC-16 question',
+                    rawLine:
+                        '- 2026-09-28 — A copy keeps its own period · '
+                        'task: Ask legal the RC-16 question',
+                  ),
+                ],
+              ),
+            ],
+          );
+          await tester.tap(find.text('Sales').first);
+          await tester.pump();
+
+          expect(find.text('task'), findsOneWidget);
+          expect(find.text('task (gone)'), findsNothing);
+          await tester.tap(find.text('task'));
+          await tester.pump();
+
+          expect(
+            tester
+                .widget<TaskRow>(
+                  find.ancestor(
+                    of: find.text('Ask legal the RC-16 question'),
+                    matching: find.byType(TaskRow),
+                  ),
+                )
+                .highlighted,
+            isTrue,
+          );
+          await tester.pump(const Duration(seconds: 3));
+        },
+      );
+
+      testWidgets(
+        'L33 — a result naming a task that no longer exists shows '
+        '"task (gone)", never a tappable chip',
+        (tester) async {
+          await pumpAreas(
+            tester,
+            areas: [
+              area(
+                results: [
+                  const AreaResult(
+                    date: null,
+                    text: 'A copy keeps its own period',
+                    task: 'A task that was since removed',
+                    rawLine:
+                        '- 2026-09-28 — A copy keeps its own period · '
+                        'task: A task that was since removed',
+                  ),
+                ],
+              ),
+            ],
+          );
+          await tester.tap(find.text('Sales').first);
+          await tester.pump();
+
+          expect(find.text('task (gone)'), findsOneWidget);
+          expect(find.text('task'), findsNothing);
+        },
+      );
+
+      testWidgets(
+        "L34 — a result's own file/folder/web-page link shows as its own "
+        'label, tapping opens it',
+        (tester) async {
+          await pumpAreas(
+            tester,
+            areas: [
+              area(
+                results: [
+                  AreaResult(
+                    date: DateTime(2026, 9, 28),
+                    text: 'A copy keeps its own period',
+                    link: const ResultLink(
+                      label: 'rc16-answer.pdf',
+                      target: r'C:\path\to\rc16-answer.pdf',
+                    ),
+                    rawLine:
+                        '- 2026-09-28 — A copy keeps its own period · '
+                        r'[rc16-answer.pdf](C:\path\to\rc16-answer.pdf)',
+                  ),
+                ],
+              ),
+            ],
+          );
+          await tester.tap(find.text('Sales').first);
+          await tester.pump();
+
+          // Tapping would shell out to the real file via open_url.dart's
+          // platform channel — not exercised here (Gate 2/real-I/O, same
+          // reasoning links_test.dart's own header already gives for not
+          // actually tapping an equivalent "open the page ↗" link).
+          // Showing the right label, tappable, is what this test proves.
+          final chip = find.text('rc16-answer.pdf');
+          expect(chip, findsOneWidget);
+          expect(find.ancestor(of: chip, matching: find.byType(InkWell)),
+              findsOneWidget);
+        },
+      );
+    });
 
     testWidgets(
       'Round 38 §F — done tasks fold into "✓ N done · show ›", tapping it '
