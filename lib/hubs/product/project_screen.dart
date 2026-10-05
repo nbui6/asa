@@ -764,9 +764,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   /// Round 43 §D — 🗑 in a filled Goal/Plan's own edit mode.
   Future<void> _clearAreaSection(String sourceFile, String heading) async {
-    final area = _areas
-        .where((a) => a.sourceFile == sourceFile)
-        .firstOrNull;
+    final area = _areas.where((a) => a.sourceFile == sourceFile).firstOrNull;
     final oldValue = heading == 'Goal' ? area?.goal : area?.planText;
     try {
       await clearAreaSection(

@@ -56,8 +56,8 @@ void main() {
   })
   noopEdit() =>
       (_, {required rawLine, required oldText, required newText}) async {};
-  Future<void> Function(String, {required String rawLine})
-  noopRemove() => (_, {required rawLine}) async {};
+  Future<void> Function(String, {required String rawLine}) noopRemove() =>
+      (_, {required rawLine}) async {};
   Future<void> Function(String, {required String rawLine, required int indent})
   noopIndent() => (_, {required rawLine, required indent}) async {};
   Future<void> Function(
@@ -546,49 +546,48 @@ void main() {
       expect(editedNew, 'New text');
     });
 
-    testWidgets(
-      'Round 43 §D — 🗑 shows only in edit mode, removes the task',
-      (tester) async {
-        final snapshot = ProjectTasksSnapshot(
-          project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
-          folder: 'demo',
-          homeTasks: const [
-            Task(rawLine: '- [ ] Remove me', text: 'Remove me', done: false),
-          ],
-          areas: const [],
-        );
-        String? removedPath;
-        String? removedLine;
-        await tester.pumpWidget(
-          pump(
-            snapshots: [snapshot],
-            onRemoveTask: (path, {required rawLine}) async {
-              removedPath = path;
-              removedLine = rawLine;
-            },
-          ),
-        );
-        await tester.tap(find.text('Demo'));
-        await tester.pump();
+    testWidgets('Round 43 §D — 🗑 shows only in edit mode, removes the task', (
+      tester,
+    ) async {
+      final snapshot = ProjectTasksSnapshot(
+        project: _project(name: 'Demo', sourceFile: 'demo/demo.md'),
+        folder: 'demo',
+        homeTasks: const [
+          Task(rawLine: '- [ ] Remove me', text: 'Remove me', done: false),
+        ],
+        areas: const [],
+      );
+      String? removedPath;
+      String? removedLine;
+      await tester.pumpWidget(
+        pump(
+          snapshots: [snapshot],
+          onRemoveTask: (path, {required rawLine}) async {
+            removedPath = path;
+            removedLine = rawLine;
+          },
+        ),
+      );
+      await tester.tap(find.text('Demo'));
+      await tester.pump();
 
-        // Not in edit mode yet — no 🗑 on the row at all.
-        expect(find.byIcon(Icons.delete_outline), findsNothing);
+      // Not in edit mode yet — no 🗑 on the row at all.
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
 
-        await tester.tap(find.text('Remove me'));
-        await tester.pump();
+      await tester.tap(find.text('Remove me'));
+      await tester.pump();
 
-        expect(find.byIcon(Icons.delete_outline), findsOneWidget);
-        await tester.tap(find.byIcon(Icons.delete_outline));
-        await tester.pump();
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pump();
 
-        expect(removedPath, 'demo/demo.md');
-        expect(removedLine, '- [ ] Remove me');
-        // Edit mode closed — the line is gone from the model in the real
-        // app (a reload follows onDataChanged); here just confirm no
-        // TextField is left open.
-        expect(find.byType(TextField), findsNothing);
-      },
-    );
+      expect(removedPath, 'demo/demo.md');
+      expect(removedLine, '- [ ] Remove me');
+      // Edit mode closed — the line is gone from the model in the real
+      // app (a reload follows onDataChanged); here just confirm no
+      // TextField is left open.
+      expect(find.byType(TextField), findsNothing);
+    });
 
     testWidgets('ticking a checkbox calls onToggleTask with the real '
         'path and rawLine', (tester) async {

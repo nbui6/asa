@@ -91,9 +91,7 @@ Future<void> clearAreaSection(
     throw StateError('No $heading section in $path — nothing to clear.');
   }
 
-  final current = _nullIfEmpty(
-    content.substring(range.$1, range.$2).trim(),
-  );
+  final current = _nullIfEmpty(content.substring(range.$1, range.$2).trim());
   final expected = _nullIfEmpty(expectedCurrent.trim());
   if (current != expected) {
     throw StateError(

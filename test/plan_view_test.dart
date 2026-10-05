@@ -696,159 +696,150 @@ void main() {
       },
     );
 
-    testWidgets(
-      "Round 43 §D — 🗑 in a result's own edit mode removes it",
-      (tester) async {
-        String? removedSourceFile;
-        AreaResult? removedResult;
+    testWidgets("Round 43 §D — 🗑 in a result's own edit mode removes it", (
+      tester,
+    ) async {
+      String? removedSourceFile;
+      AreaResult? removedResult;
+      await pumpAreas(
+        tester,
+        areas: [
+          area(
+            results: [
+              AreaResult(
+                date: DateTime(2026, 9, 20),
+                text: 'A real result',
+                rawLine: '- 2026-09-20 — A real result',
+              ),
+            ],
+          ),
+        ],
+        onEditResultText: (sourceFile, result, newText) async {},
+        onRemoveResultText: (sourceFile, result) async {
+          removedSourceFile = sourceFile;
+          removedResult = result;
+        },
+      );
+      await tester.tap(find.text('Sales').first);
+      await tester.pump();
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.text('A real result')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.edit));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pump();
+
+      expect(removedSourceFile, isNotNull);
+      expect(removedResult?.text, 'A real result');
+    });
+
+    group('Round 43 §B — derived both ways (L32/L33/L34)', () {
+      testWidgets("L32 — a task whose text matches a result's own task: shows "
+          '"→ result DD.MM.", tapping highlights that result', (tester) async {
         await pumpAreas(
           tester,
           areas: [
             area(
+              tasks: [
+                const Task(
+                  rawLine: '- [x] Ask legal the RC-16 question',
+                  text: 'Ask legal the RC-16 question',
+                  done: true,
+                ),
+              ],
               results: [
                 AreaResult(
-                  date: DateTime(2026, 9, 20),
-                  text: 'A real result',
-                  rawLine: '- 2026-09-20 — A real result',
+                  date: DateTime(2026, 9, 28),
+                  text: 'A copy keeps its own period',
+                  task: 'Ask legal the RC-16 question',
+                  rawLine:
+                      '- 2026-09-28 — A copy keeps its own period · '
+                      'task: Ask legal the RC-16 question',
                 ),
               ],
             ),
           ],
-          onEditResultText: (sourceFile, result, newText) async {},
-          onRemoveResultText: (sourceFile, result) async {
-            removedSourceFile = sourceFile;
-            removedResult = result;
-          },
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
+        // The task is done — reveal the done-tasks fold first.
+        await tester.tap(find.textContaining('✓ 1 done'));
+        await tester.pump();
+
+        // `_humanDate`'s own convention ("today"/"yesterday"/"14 Sep"),
+        // the same format the result's own date label already uses —
+        // not a literal "DD.MM." despite round-43.md §B's own prose
+        // example.
+        expect(find.text('→ result 28 Sep'), findsOneWidget);
+        await tester.tap(find.text('→ result 28 Sep'));
+        await tester.pump();
+
+        expect(
+          tester
+              .widget<Container>(
+                find
+                    .ancestor(
+                      of: find.text('A copy keeps its own period'),
+                      matching: find.byType(Container),
+                    )
+                    .first,
+              )
+              .color,
+          AsaColors.highlight,
+        );
+        // Flush the 2 s auto-clear timer before the test ends — a real
+        // timer still pending when the tree is disposed is a framework
+        // error, not a pass.
+        await tester.pump(const Duration(seconds: 3));
+      });
+
+      testWidgets('L32 — a task with no result but a decision naming it shows '
+          '"→ decision", tapping opens it', (tester) async {
+        const decision = Decision(
+          title: 'A real decision',
+          why: 'w',
+          decision: 'd',
+          whatWouldChangeThis: 'c',
+          sourceFile: 'decisions/0009.md',
+          number: '0009',
+          links: DecisionLinks(tasks: ['Decide the pricing model']),
+        );
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              tasks: [
+                const Task(
+                  rawLine: '- [ ] Decide the pricing model',
+                  text: 'Decide the pricing model',
+                  done: false,
+                ),
+              ],
+            ),
+          ],
+          decisions: const [
+            DecisionReadResult(
+              sourceFile: 'decisions/0009.md',
+              decision: decision,
+            ),
+          ],
         );
         await tester.tap(find.text('Sales').first);
         await tester.pump();
 
-        final gesture = await tester.createGesture(
-          kind: PointerDeviceKind.mouse,
-        );
-        await gesture.addPointer(location: Offset.zero);
-        addTearDown(gesture.removePointer);
-        await tester.pump();
-        await gesture.moveTo(tester.getCenter(find.text('A real result')));
+        expect(find.text('→ decision'), findsOneWidget);
+        await tester.tap(find.text('→ decision'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byIcon(Icons.edit));
-        await tester.pump();
 
-        expect(find.byIcon(Icons.delete_outline), findsOneWidget);
-        await tester.tap(find.byIcon(Icons.delete_outline));
-        await tester.pump();
-
-        expect(removedSourceFile, isNotNull);
-        expect(removedResult?.text, 'A real result');
-      },
-    );
-
-    group('Round 43 §B — derived both ways (L32/L33/L34)', () {
-      testWidgets(
-        "L32 — a task whose text matches a result's own task: shows "
-        '"→ result DD.MM.", tapping highlights that result',
-        (tester) async {
-          await pumpAreas(
-            tester,
-            areas: [
-              area(
-                tasks: [
-                  const Task(
-                    rawLine: '- [x] Ask legal the RC-16 question',
-                    text: 'Ask legal the RC-16 question',
-                    done: true,
-                  ),
-                ],
-                results: [
-                  AreaResult(
-                    date: DateTime(2026, 9, 28),
-                    text: 'A copy keeps its own period',
-                    task: 'Ask legal the RC-16 question',
-                    rawLine:
-                        '- 2026-09-28 — A copy keeps its own period · '
-                        'task: Ask legal the RC-16 question',
-                  ),
-                ],
-              ),
-            ],
-          );
-          await tester.tap(find.text('Sales').first);
-          await tester.pump();
-          // The task is done — reveal the done-tasks fold first.
-          await tester.tap(find.textContaining('✓ 1 done'));
-          await tester.pump();
-
-          // `_humanDate`'s own convention ("today"/"yesterday"/"14 Sep"),
-          // the same format the result's own date label already uses —
-          // not a literal "DD.MM." despite round-43.md §B's own prose
-          // example.
-          expect(find.text('→ result 28 Sep'), findsOneWidget);
-          await tester.tap(find.text('→ result 28 Sep'));
-          await tester.pump();
-
-          expect(
-            tester
-                .widget<Container>(
-                  find
-                      .ancestor(
-                        of: find.text('A copy keeps its own period'),
-                        matching: find.byType(Container),
-                      )
-                      .first,
-                )
-                .color,
-            AsaColors.highlight,
-          );
-          // Flush the 2 s auto-clear timer before the test ends — a real
-          // timer still pending when the tree is disposed is a framework
-          // error, not a pass.
-          await tester.pump(const Duration(seconds: 3));
-        },
-      );
-
-      testWidgets(
-        'L32 — a task with no result but a decision naming it shows '
-        '"→ decision", tapping opens it',
-        (tester) async {
-          const decision = Decision(
-            title: 'A real decision',
-            why: 'w',
-            decision: 'd',
-            whatWouldChangeThis: 'c',
-            sourceFile: 'decisions/0009.md',
-            number: '0009',
-            links: DecisionLinks(tasks: ['Decide the pricing model']),
-          );
-          await pumpAreas(
-            tester,
-            areas: [
-              area(
-                tasks: [
-                  const Task(
-                    rawLine: '- [ ] Decide the pricing model',
-                    text: 'Decide the pricing model',
-                    done: false,
-                  ),
-                ],
-              ),
-            ],
-            decisions: const [
-              DecisionReadResult(
-                sourceFile: 'decisions/0009.md',
-                decision: decision,
-              ),
-            ],
-          );
-          await tester.tap(find.text('Sales').first);
-          await tester.pump();
-
-          expect(find.text('→ decision'), findsOneWidget);
-          await tester.tap(find.text('→ decision'));
-          await tester.pumpAndSettle();
-
-          expect(find.byType(DecisionDetailScreen), findsOneWidget);
-        },
-      );
+        expect(find.byType(DecisionDetailScreen), findsOneWidget);
+      });
 
       testWidgets(
         'L33 — a result\'s own task: shows a "task" chip when the task '
@@ -901,34 +892,31 @@ void main() {
         },
       );
 
-      testWidgets(
-        'L33 — a result naming a task that no longer exists shows '
-        '"task (gone)", never a tappable chip',
-        (tester) async {
-          await pumpAreas(
-            tester,
-            areas: [
-              area(
-                results: [
-                  const AreaResult(
-                    date: null,
-                    text: 'A copy keeps its own period',
-                    task: 'A task that was since removed',
-                    rawLine:
-                        '- 2026-09-28 — A copy keeps its own period · '
-                        'task: A task that was since removed',
-                  ),
-                ],
-              ),
-            ],
-          );
-          await tester.tap(find.text('Sales').first);
-          await tester.pump();
+      testWidgets('L33 — a result naming a task that no longer exists shows '
+          '"task (gone)", never a tappable chip', (tester) async {
+        await pumpAreas(
+          tester,
+          areas: [
+            area(
+              results: [
+                const AreaResult(
+                  date: null,
+                  text: 'A copy keeps its own period',
+                  task: 'A task that was since removed',
+                  rawLine:
+                      '- 2026-09-28 — A copy keeps its own period · '
+                      'task: A task that was since removed',
+                ),
+              ],
+            ),
+          ],
+        );
+        await tester.tap(find.text('Sales').first);
+        await tester.pump();
 
-          expect(find.text('task (gone)'), findsOneWidget);
-          expect(find.text('task'), findsNothing);
-        },
-      );
+        expect(find.text('task (gone)'), findsOneWidget);
+        expect(find.text('task'), findsNothing);
+      });
 
       testWidgets(
         "L34 — a result's own file/folder/web-page link shows as its own "
@@ -964,8 +952,10 @@ void main() {
           // Showing the right label, tappable, is what this test proves.
           final chip = find.text('rc16-answer.pdf');
           expect(chip, findsOneWidget);
-          expect(find.ancestor(of: chip, matching: find.byType(InkWell)),
-              findsOneWidget);
+          expect(
+            find.ancestor(of: chip, matching: find.byType(InkWell)),
+            findsOneWidget,
+          );
         },
       );
     });

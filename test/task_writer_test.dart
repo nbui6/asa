@@ -749,11 +749,7 @@ void main() {
         '- [ ] Keep me too\n',
       );
 
-      await removeTask(
-        path,
-        rawLine: '- [ ] Remove me',
-        writeLogPath: logPath,
-      );
+      await removeTask(path, rawLine: '- [ ] Remove me', writeLogPath: logPath);
 
       expect(
         File(path).readAsStringSync(),

@@ -602,7 +602,10 @@ void main() {
   });
 
   group('Round 43 §E — "＋ New project"', () {
-    final node = ProjectNode(project: _project(status: 'idea'), folder: 'd');
+    final node = ProjectNode(
+      project: _project(status: 'idea'),
+      folder: 'd',
+    );
 
     testWidgets('shows "＋ New project" closed, no field yet', (tester) async {
       await _pump(tester, [node]);
@@ -611,43 +614,38 @@ void main() {
       expect(find.byType(TextField), findsNothing);
     });
 
-    testWidgets(
-      'typing a name and pressing Enter creates it, then opens it on '
-      'Strategy',
-      (tester) async {
-        String? askedName;
-        ProjectOpenTarget? opened;
-        await _pump(
-          tester,
-          [node],
-          onOpenProject: (target) => opened = target,
-          onCreateProject: (name) async {
-            askedName = name;
-            return const ProjectCreateResult(
-              folder: 'projects/onboarding-checklist',
-              sourceFile: 'projects/onboarding-checklist/'
-                  'onboarding-checklist.md',
-            );
-          },
-        );
+    testWidgets('typing a name and pressing Enter creates it, then opens it on '
+        'Strategy', (tester) async {
+      String? askedName;
+      ProjectOpenTarget? opened;
+      await _pump(
+        tester,
+        [node],
+        onOpenProject: (target) => opened = target,
+        onCreateProject: (name) async {
+          askedName = name;
+          return const ProjectCreateResult(
+            folder: 'projects/onboarding-checklist',
+            sourceFile:
+                'projects/onboarding-checklist/'
+                'onboarding-checklist.md',
+          );
+        },
+      );
 
-        await tester.tap(find.text('＋ New project'));
-        await tester.pump();
-        await tester.enterText(
-          find.byType(TextField),
-          'Onboarding checklist',
-        );
-        await tester.testTextInput.receiveAction(TextInputAction.done);
-        await tester.pump();
+      await tester.tap(find.text('＋ New project'));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Onboarding checklist');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
 
-        expect(askedName, 'Onboarding checklist');
-        expect(opened?.folder, 'projects/onboarding-checklist');
-        expect(opened?.openStrategy, isTrue);
-        // Back to its closed, empty-field state — ready for the next one.
-        expect(find.text('＋ New project'), findsOneWidget);
-        expect(find.byType(TextField), findsNothing);
-      },
-    );
+      expect(askedName, 'Onboarding checklist');
+      expect(opened?.folder, 'projects/onboarding-checklist');
+      expect(opened?.openStrategy, isTrue);
+      // Back to its closed, empty-field state — ready for the next one.
+      expect(find.text('＋ New project'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+    });
 
     testWidgets('an empty Enter closes the field, creates nothing', (
       tester,
@@ -701,7 +699,8 @@ void main() {
       ),
       (
         name: 'bad-char',
-        error: 'That name has a character Windows itself refuses in a '
+        error:
+            'That name has a character Windows itself refuses in a '
             'path: /',
       ),
       (name: 'reserved', error: '"con" is a name Windows itself reserves.'),
