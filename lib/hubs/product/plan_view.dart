@@ -689,27 +689,58 @@ class _PlanViewState extends State<PlanView> {
         children: [
           SectionLabel(label),
           const SizedBox(height: 2),
-          if (value == null || value.isEmpty)
-            _emptyPlace(area, label, empty)
-          else
-            Text(
-              stripCodeSpanMarkers(stripEmphasisMarkers(value)),
-              style: AsaText.body,
-            ),
+          _sectionField(
+            area,
+            label,
+            value,
+            empty,
+            (text) => Text(text, style: AsaText.body),
+          ),
         ],
       ),
     );
   }
 
-  /// Round 43 §D — an empty section shows its heading and ＋ only; ＋ opens
-  /// an inline field, Enter writes, Esc closes. Without a writer wired in
-  /// it stays the plain "nothing yet" line.
-  Widget _emptyPlace(Area? area, String heading, String emptyText) {
+  /// Round 43 §D — one area section (`## Goal`/`## Plan`), in whichever of
+  /// its three states applies: empty (heading and ＋ only), read (filled,
+  /// ✎ revealed on hover once a writer is wired in), or being typed
+  /// (either the ＋ just opened it, or ✎ did, pre-filled with the current
+  /// text). [renderFilled] draws the read state's own text — [_goalField]
+  /// passes one that turns "Objective N" into its own link, [_textField]
+  /// passes plain text.
+  Widget _sectionField(
+    Area? area,
+    String heading,
+    String? rawValue,
+    String emptyText,
+    Widget Function(String displayText) renderFilled,
+  ) {
     final write = widget.onSetAreaSection;
-    if (area == null || write == null) return EmptyLine(emptyText);
+    final key = area == null ? null : '${area.sourceFile}\u0000$heading';
+    final hasValue = rawValue != null && rawValue.isNotEmpty;
 
-    final key = '${area.sourceFile}\u0000$heading';
-    if (_addingSectionKey != key) {
+    if (area != null && write != null && _addingSectionKey == key) {
+      Future<void> submit() async {
+        final text = _sectionController.text.trim();
+        setState(() => _addingSectionKey = null);
+        if (text.isEmpty || text == rawValue) return;
+        await write(area.sourceFile, heading, text);
+        widget.onDataChanged?.call();
+      }
+
+      return EscapeToCancel(
+        onEscape: () => setState(() => _addingSectionKey = null),
+        child: TextField(
+          controller: _sectionController,
+          autofocus: true,
+          decoration: const InputDecoration(isDense: true),
+          onSubmitted: (_) => submit(),
+        ),
+      );
+    }
+
+    if (!hasValue) {
+      if (area == null || write == null) return EmptyLine(emptyText);
       return Tooltip(
         message: 'add',
         child: InkWell(
@@ -722,22 +753,16 @@ class _PlanViewState extends State<PlanView> {
       );
     }
 
-    Future<void> submit() async {
-      final text = _sectionController.text.trim();
-      setState(() => _addingSectionKey = null);
-      if (text.isEmpty) return;
-      await write(area.sourceFile, heading, text);
-      widget.onDataChanged?.call();
-    }
+    final displayText = stripCodeSpanMarkers(stripEmphasisMarkers(rawValue));
+    final content = renderFilled(displayText);
+    if (area == null || write == null) return content;
 
-    return EscapeToCancel(
-      onEscape: () => setState(() => _addingSectionKey = null),
-      child: TextField(
-        controller: _sectionController,
-        autofocus: true,
-        decoration: const InputDecoration(isDense: true),
-        onSubmitted: (_) => submit(),
-      ),
+    return _HoverPencil(
+      onEdit: () => setState(() {
+        _addingSectionKey = key;
+        _sectionController.text = rawValue;
+      }),
+      child: content,
     );
   }
 
@@ -752,10 +777,6 @@ class _PlanViewState extends State<PlanView> {
   /// as one sentence with one link; nothing is removed and nothing shows
   /// twice.
   Widget _goalField(Area area) {
-    final goal = area.goal;
-    final displayGoal = goal == null || goal.isEmpty
-        ? null
-        : stripCodeSpanMarkers(stripEmphasisMarkers(goal));
     return Padding(
       padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
@@ -763,10 +784,13 @@ class _PlanViewState extends State<PlanView> {
         children: [
           const SectionLabel('Goal'),
           const SizedBox(height: 2),
-          if (displayGoal == null || displayGoal.isEmpty)
-            _emptyPlace(area, 'Goal', 'No goal yet')
-          else
-            _goalText(displayGoal, area.objectiveNumbers),
+          _sectionField(
+            area,
+            'Goal',
+            area.goal,
+            'No goal yet',
+            (text) => _goalText(text, area.objectiveNumbers),
+          ),
         ],
       ),
     );
@@ -1609,4 +1633,45 @@ String _humanDate(DateTime date) {
     'Dec',
   ];
   return '${date.day} ${months[date.month - 1]}';
+}
+
+/// Round 43 §D — "✎ on hover of any line the user can write." Reveals a
+/// pencil beside [child] only while the pointer is over the row; a
+/// `MouseRegion` on a desktop pointer is enough — there is no touch
+/// target on this platform to also cover.
+class _HoverPencil extends StatefulWidget {
+  const _HoverPencil({required this.child, required this.onEdit});
+  final Widget child;
+  final VoidCallback onEdit;
+
+  @override
+  State<_HoverPencil> createState() => _HoverPencilState();
+}
+
+class _HoverPencilState extends State<_HoverPencil> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Flexible(child: widget.child),
+          if (_hovering) ...[
+            const SizedBox(width: AsaSpace.xs),
+            Tooltip(
+              message: 'edit',
+              child: InkWell(
+                onTap: widget.onEdit,
+                child: const Icon(Icons.edit, size: 14, color: AsaColors.ink3),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

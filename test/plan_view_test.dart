@@ -497,6 +497,47 @@ void main() {
       expect(written, isFalse);
     });
 
+    testWidgets('Round 43 §D — ✎ on hover of a filled Goal edits it in place, '
+        'pre-filled, Enter writes the new text', (tester) async {
+      String? writtenHeading;
+      String? writtenText;
+      await pumpAreas(
+        tester,
+        areas: [area()],
+        onSetAreaSection: (sourceFile, heading, text) async {
+          writtenHeading = heading;
+          writtenText = text;
+        },
+      );
+      await tester.tap(find.text('Sales').first);
+      await tester.pump();
+
+      // The pencil is invisible until hovered, same discipline
+      // TaskRow's own park icon already uses.
+      expect(find.byIcon(Icons.edit), findsNothing);
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.text('Serves Objective 1.')));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.edit), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.edit));
+      await tester.pump();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'Serves Objective 1.');
+
+      await tester.enterText(find.byType(TextField), 'Serves Objective 2.');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(writtenHeading, 'Goal');
+      expect(writtenText, 'Serves Objective 2.');
+    });
+
     testWidgets(
       'Round 38 §F — done tasks fold into "✓ N done · show ›", tapping it '
       'reveals them',

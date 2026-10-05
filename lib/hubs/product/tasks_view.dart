@@ -806,10 +806,9 @@ class _TasksViewState extends State<TasksView> {
         onToggle: (_) => _toggle(path, task, promptContext: promptContext),
         leading: Opacity(
           opacity: hovering ? 1 : 0,
-          child: const Icon(
-            Icons.drag_indicator,
-            size: 14,
-            color: AsaColors.ink3,
+          child: const Tooltip(
+            message: 'Drag to reorder, or onto another section or project',
+            child: Icon(Icons.drag_indicator, size: 14, color: AsaColors.ink3),
           ),
         ),
         textChild: editing ? _editField(path: path, task: task) : null,

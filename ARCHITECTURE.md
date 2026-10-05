@@ -91,7 +91,7 @@ local/           ← someone else's fork. EMPTY HERE, AND IT STAYS EMPTY.
 | change the Tasks view's own tick→Result/Decision line — the *Decide*/*Entscheiden* word match, the 📎 link field, "at most one open," dismiss on Esc/tap-outside/ticking another task | `lib/hubs/product/tasks_view.dart`'s `_resultPromptRow`/`_toggle`/`_ResultPromptContext` |
 | change the Log's own "＋ Result"/"＋ Decision" buttons — the area picker (defaults to "Not in an area", its own objective follows the picked area), the optional *Why* field | `lib/hubs/product/log_view.dart`'s `_addForm`/`_areaPicker`/`_submitAdd` |
 | change the shared Esc-cancels-an-inline-field widget (the Tasks view's edit/add fields, the tick prompt, the Log's own add form) | `lib/hubs/product/ui/escape_to_cancel.dart` |
-| change how an area's own empty `## Goal`/`## Plan` is filled for the first time (the ＋ affordance, Round 43 §D) | `lib/core/area_section_writer.dart`'s `setAreaSection`, `lib/hubs/product/plan_view.dart`'s `_emptyPlace` |
+| change how an area's own `## Goal`/`## Plan` is filled for the first time (the ＋) or edited after (✎ on hover) | `lib/core/area_section_writer.dart`'s `setAreaSection`, `lib/hubs/product/plan_view.dart`'s `_sectionField`/`_HoverPencil` |
 | change how a brand new decision is created — which of the two real shapes (`decisions\NNNN-slug.md` or one `decisions.md` log) it lands in, the next number, the slug | `lib/core/decision_create_writer.dart`'s `createDecision` |
 | change the shared name→filename-slug rule an area, a decision or a new project's own folder all use | `lib/core/slug.dart`'s `slugify` |
 | change how a project's own home note reads a `## Results` section for an area-less task (ADR 0042) | `lib/core/project_reader.dart`, `Project.results` |
