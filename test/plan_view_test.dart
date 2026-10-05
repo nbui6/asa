@@ -12,6 +12,7 @@ import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/plan_view.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Section _section(String heading, {int level = 2, String body = ''}) {
@@ -294,6 +295,8 @@ void main() {
       Strategy? strategy,
       VoidCallback? onOpenStrategy,
       Future<void> Function(String, Task)? onToggleTask,
+      Future<void> Function(String sourceFile, String heading, String text)?
+      onSetAreaSection,
     }) async {
       String? selected;
       await tester.pumpWidget(
@@ -309,6 +312,7 @@ void main() {
                   strategy: strategy,
                   onOpenStrategy: onOpenStrategy,
                   onToggleTask: onToggleTask,
+                  onSetAreaSection: onSetAreaSection,
                   projectSourceFile: 'demo.md',
                   selectedAreaTab: selected,
                   onSelectAreaTab: (sourceFile) =>
@@ -419,6 +423,78 @@ void main() {
       expect(find.text('a'), findsOneWidget); // the one real task
       expect(find.text('Nothing yet'), findsOneWidget); // Results only
       expect(find.text('None yet'), findsOneWidget); // Decisions
+    });
+
+    testWidgets('Round 43 §D — an empty Goal/Plan shows ＋; tapping it opens an '
+        'inline field, Enter writes via onSetAreaSection', (tester) async {
+      String? writtenFile;
+      String? writtenHeading;
+      String? writtenText;
+      await pumpAreas(
+        tester,
+        areas: [
+          area(
+            summary: null,
+            goal: null,
+            planText: null,
+            tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
+          ),
+        ],
+        onSetAreaSection: (sourceFile, heading, text) async {
+          writtenFile = sourceFile;
+          writtenHeading = heading;
+          writtenText = text;
+        },
+      );
+      await tester.tap(find.text('Sales').first);
+      await tester.pump();
+
+      expect(find.text('No goal yet'), findsNothing);
+      expect(find.text('＋'), findsNWidgets(2)); // Goal and Plan
+
+      await tester.tap(find.text('＋').first);
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Serves Objective 1.');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(writtenHeading, 'Goal');
+      expect(writtenText, 'Serves Objective 1.');
+      expect(writtenFile, isNotNull);
+    });
+
+    testWidgets('Esc closes the empty-place field without writing', (
+      tester,
+    ) async {
+      var written = false;
+      await pumpAreas(
+        tester,
+        areas: [
+          area(
+            summary: null,
+            goal: null,
+            planText: null,
+            tasks: [const Task(rawLine: '- [ ] a', text: 'a', done: false)],
+          ),
+        ],
+        onSetAreaSection: (sourceFile, heading, text) async {
+          written = true;
+        },
+      );
+      await tester.tap(find.text('Sales').first);
+      await tester.pump();
+
+      await tester.tap(find.text('＋').first);
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Ignored');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+
+      // Back to "heading and ＋ only" — once a writer is wired in, the
+      // old plain "No goal yet" line is never shown again, replaced by
+      // the ＋ affordance itself (round-43.md §D's own wording).
+      expect(find.text('＋'), findsNWidgets(2));
+      expect(written, isFalse);
     });
 
     testWidgets(

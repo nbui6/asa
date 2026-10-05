@@ -32,6 +32,7 @@ import 'package:asa/core/plan.dart';
 import 'package:asa/core/task.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/progress_bar.dart';
 import 'package:asa/hubs/product/ui/section_label.dart';
@@ -56,6 +57,7 @@ class PlanView extends StatefulWidget {
     this.selectedAreaTab,
     this.onSelectAreaTab,
     this.onCreateArea,
+    this.onSetAreaSection,
     this.openHomeOnStart = false,
     this.highlightTaskRawLine,
     super.key,
@@ -136,6 +138,12 @@ class PlanView extends StatefulWidget {
   /// that does not need it.
   final Future<AreaCreateResult> Function(String name)? onCreateArea;
 
+  /// Round 43 §D — fills an area's empty `## Goal`/`## Plan` with what the
+  /// user typed (＋). Null keeps the old "No goal yet" line, for a caller
+  /// (or test) not wired for it.
+  final Future<void> Function(String sourceFile, String heading, String text)?
+  onSetAreaSection;
+
   /// Round-36 §3, L3 — a caller that wants "Not in an area" open the next
   /// time this tab is shown. False in a test that does not need it.
   final bool openHomeOnStart;
@@ -173,6 +181,17 @@ class _PlanViewState extends State<PlanView> {
   /// Round 38 §F — results fold the same way, "newest two, then N older
   /// ›." Keyed by the area's own `sourceFile` — results are area-only.
   final Set<String> _olderResultsShown = {};
+
+  /// Round 43 §D — the one empty place currently open for typing, keyed
+  /// `'$sourceFile\u0000$heading'`; null when none is.
+  String? _addingSectionKey;
+  final _sectionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _sectionController.dispose();
+    super.dispose();
+  }
 
   /// Round-36 §3, L3/L9 — the task row currently drawn highlighted, or
   /// null for none. Cleared automatically about 2 s after it is set —
@@ -647,7 +666,7 @@ class _PlanViewState extends State<PlanView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _goalField(area),
-        _textField('Plan', area.planText, empty: 'No plan yet'),
+        _textField('Plan', area.planText, empty: 'No plan yet', area: area),
         _tasksField(area.tasks, sourceFile: area.sourceFile),
         _resultsField(area.results, sourceFile: area.sourceFile),
         _decisionsField(area.decisionNumbers),
@@ -657,7 +676,12 @@ class _PlanViewState extends State<PlanView> {
     );
   }
 
-  Widget _textField(String label, String? value, {required String empty}) {
+  Widget _textField(
+    String label,
+    String? value, {
+    required String empty,
+    Area? area,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AsaSpace.sm),
       child: Column(
@@ -666,13 +690,53 @@ class _PlanViewState extends State<PlanView> {
           SectionLabel(label),
           const SizedBox(height: 2),
           if (value == null || value.isEmpty)
-            EmptyLine(empty)
+            _emptyPlace(area, label, empty)
           else
             Text(
               stripCodeSpanMarkers(stripEmphasisMarkers(value)),
               style: AsaText.body,
             ),
         ],
+      ),
+    );
+  }
+
+  /// Round 43 §D — an empty section shows its heading and ＋ only; ＋ opens
+  /// an inline field, Enter writes, Esc closes. Without a writer wired in
+  /// it stays the plain "nothing yet" line.
+  Widget _emptyPlace(Area? area, String heading, String emptyText) {
+    final write = widget.onSetAreaSection;
+    if (area == null || write == null) return EmptyLine(emptyText);
+
+    final key = '${area.sourceFile}\u0000$heading';
+    if (_addingSectionKey != key) {
+      return Tooltip(
+        message: 'add',
+        child: InkWell(
+          onTap: () => setState(() {
+            _addingSectionKey = key;
+            _sectionController.clear();
+          }),
+          child: Text('＋', style: AsaText.body.copyWith(color: AsaColors.blue)),
+        ),
+      );
+    }
+
+    Future<void> submit() async {
+      final text = _sectionController.text.trim();
+      setState(() => _addingSectionKey = null);
+      if (text.isEmpty) return;
+      await write(area.sourceFile, heading, text);
+      widget.onDataChanged?.call();
+    }
+
+    return EscapeToCancel(
+      onEscape: () => setState(() => _addingSectionKey = null),
+      child: TextField(
+        controller: _sectionController,
+        autofocus: true,
+        decoration: const InputDecoration(isDense: true),
+        onSubmitted: (_) => submit(),
       ),
     );
   }
@@ -700,7 +764,7 @@ class _PlanViewState extends State<PlanView> {
           const SectionLabel('Goal'),
           const SizedBox(height: 2),
           if (displayGoal == null || displayGoal.isEmpty)
-            const EmptyLine('No goal yet')
+            _emptyPlace(area, 'Goal', 'No goal yet')
           else
             _goalText(displayGoal, area.objectiveNumbers),
         ],

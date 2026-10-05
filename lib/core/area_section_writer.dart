@@ -1,0 +1,76 @@
+/// Round 43 §D, ADR 0042 — fills (＋) or edits (✎) one free-text section of
+/// an area page, `## Goal` or `## Plan`, where the user typed it. Never
+/// touches any other section. Same atomic-write and write-log discipline
+/// as `task_writer.dart`; pure Dart, no Flutter import.
+library;
+
+import 'dart:io';
+
+import 'package:asa/core/markdown.dart';
+import 'package:asa/core/write_log.dart';
+
+/// Sets [heading]'s body to [text]. [expectedCurrent] is what the caller
+/// was showing when the user started typing — null or empty for an empty
+/// place (＋), the old text for an edit (✎). If the file no longer says
+/// that, nothing is written and a [StateError] says why: the file changed
+/// on disk since it was shown, and overwriting what is there now would be
+/// worse than refusing.
+///
+/// A missing `## [heading]` section is created at the end of the file.
+Future<void> setAreaSection(
+  String path, {
+  required String heading,
+  required String text,
+  String? expectedCurrent,
+  String? writeLogPath,
+}) async {
+  final newText = text.trim();
+  if (newText.isEmpty) {
+    throw StateError('Nothing to write — a section needs some words.');
+  }
+
+  final content = await File(path).readAsString();
+  final range = sectionRange(content, heading);
+
+  final current = range == null
+      ? null
+      : _nullIfEmpty(content.substring(range.$1, range.$2).trim());
+  final expected = _nullIfEmpty(expectedCurrent?.trim());
+  if (current != expected) {
+    throw StateError(
+      'The $heading section changed on disk since it was shown — '
+      'reload before editing it.',
+    );
+  }
+
+  final String newContent;
+  if (range == null) {
+    final prefix = content.trimRight();
+    newContent = prefix.isEmpty
+        ? '## $heading\n\n$newText\n'
+        : '$prefix\n\n## $heading\n\n$newText\n';
+  } else {
+    final (start, end) = range;
+    final hasNextSection = end < content.length;
+    // The heading pattern's own trailing `\s*` may already have swallowed
+    // blank lines, so the body always starts from the trimmed heading.
+    newContent =
+        '${content.substring(0, start).trimRight()}\n\n$newText\n'
+        '${hasNextSection ? '\n' : ''}${content.substring(end)}';
+  }
+
+  final tempFile = File('$path.tmp');
+  await tempFile.writeAsString(newContent);
+  await tempFile.rename(path);
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'area-${heading.toLowerCase()}-set',
+    from: current ?? '',
+    to: newText,
+    logPath: writeLogPath,
+  );
+}
+
+String? _nullIfEmpty(String? value) =>
+    value == null || value.isEmpty ? null : value;

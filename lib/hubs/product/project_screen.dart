@@ -33,6 +33,7 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/area.dart';
+import 'package:asa/core/area_section_writer.dart';
 import 'package:asa/core/area_writer.dart';
 import 'package:asa/core/charter.dart';
 import 'package:asa/core/decision.dart';
@@ -650,6 +651,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             name,
             writeLogPath: widget.writeLogPath,
           ),
+          onSetAreaSection: _writeAreaSection,
           openHomeOnStart: widget.initialOpenHome || _openHomeNow,
           highlightTaskRawLine:
               _highlightRawLine ?? widget.initialHighlightRawLine,
@@ -724,6 +726,28 @@ class _ProjectScreenState extends State<ProjectScreen> {
     _activeTab = _Tab.plan;
     _selectedAreaTab = area.sourceFile;
   });
+
+  /// Round 43 §D — fills an area's empty `## Goal`/`## Plan`. No
+  /// `expectedCurrent`: this only ever reaches an empty place (the ＋,
+  /// never ✎ on existing text yet), so there is nothing to have drifted.
+  Future<void> _writeAreaSection(
+    String sourceFile,
+    String heading,
+    String text,
+  ) async {
+    try {
+      await setAreaSection(
+        sourceFile,
+        heading: heading,
+        text: text,
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
 
   void _say(String message) {
     if (!mounted) return;
