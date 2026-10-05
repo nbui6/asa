@@ -916,3 +916,80 @@ Two further findings, caught before they reached a commit: a Start-menu shortcut
 **Round 41 is done.** `projects\asa\rounds\delivery-v1.md`'s own item 5 checked off.
 
 Next: delivery-v1.md's own item 6, the whole-delivery check — then the one handover.
+
+---
+
+### Delivery v1, item 6 and the one handover — Working Asa v1 is ready
+
+**Everything green:** `flutter analyze --fatal-infos`, `flutter test` (896 tests — every link test
+L1–L34 is in that count, `links_test.dart` for L1–L29, `tasks_view_test.dart` for L30/L31,
+`plan_view_test.dart` for L32–L34), `check.ps1` end to end (dart format, both integration test
+files, the click-through twice, skill sync, manual sync). The drill: Round 39's own 8 steps, 6
+passing, 2 named (one needs Nico's own hands in the desktop app, one exposed the real pre-existing
+gap ADR 0048 answers) — not re-run here, already recorded honestly when Round 39 closed. Round 41's
+own rehearsal: done, three real attempts, two real bugs found and fixed (Round 41's own entry
+above has the detail).
+
+**Compared with what Nico approved** — every row in `sketches\APPROVED.md` this delivery touches,
+a real screenshot next to it at both 1280×800 and 1920×1080, in
+`projects\asa\screenshots\v1\compare.html` (plus the two rounds' own earlier, still-current compare
+docs it points to rather than repeats: `round-42-compare.html` for Tasks, `round-43-compare.html`
+for working without AI). Every checked row is a real ✓ against a real screenshot taken this pass,
+never from memory. **A real bug was found and fixed building the screenshot test itself, not the
+app:** the Instruction for AI screen, pumped with no host `Scaffold` (it documents itself as never
+its own page), rendered every line bold with a stray yellow underline — a missing-`Material`-
+ancestor test artifact, confirmed not a real app bug once hosted correctly, same as the existing
+`instruction_for_ai_screen_test.dart` already shows. Three findings named rather than silently
+claimed — each one already has its own real coverage cited next to it in `compare.html`: an
+objective's own expanded state (the four-state bar), the Plan tab's empty-place/derived-link
+states (this fixture doesn't happen to produce either), and the overview's own priority pill (this
+fixture's own project files don't set the field — confirmed by the Details tab showing it
+correctly where it is set).
+
+**Persona-checked twice**, `projects\asa\docs\2026-10-05-persona-check-v1-nico.md` and
+`…-v1-ai.md`:
+
+- **As Nico: APPROVE WITH CONDITION.** No quit-reason was triggered by anything on screen; the
+  condition is that the handover (below) names the one still-open question honestly rather than
+  implying it's answered.
+- **As the AI: APPROVE**, with first-hand evidence from this very session — a real mid-delivery
+  interruption and resume (fail-mode #6), a real three-attempt install rehearsal (fail-mode #1), and
+  `no_personal_name_test.dart` catching this session's own real violations twice (part of what
+  keeps fail-mode #8 — "it can't see what Nico sees" — actually working, not just built).
+
+**The real folder, once** — a throwaway integration test scanned the real `projects\` folder end to
+end (`scanProjects` → `buildProjectTasksSnapshots` → `buildNextUp`) and asserted every count is a
+real, non-negative integer with no exception. No project name, task text, or other real content was
+printed, asserted against, or written anywhere — Gate 2 held. Thrown away after the one run.
+
+**Release exe rebuilt and confirmed starting outside the IDE; the zip built from this same
+commit** — both redone right after this entry's own commit, so "from the same commit" is literally
+true rather than approximately true from an earlier piece.
+
+---
+
+## Working Asa v1 is ready.
+
+**How to test it, about 30 minutes:**
+
+1. **On this laptop** (~15 min): open Asa — the overview, what needs you. Open one project's Log
+   and try "＋ Result"/"＋ Decision". Tick a real open task somewhere and write its result, with a
+   file. Open the Tasks view and work from it for a few minutes, as if it were a day without AI.
+2. **The other laptop, the other account** (~15 min): download the zip from this repo's next
+   GitHub Release (Nico uploads it, by hand — never pushed by this session), run `setup.ps1`,
+   upload `asa.zip` to the second Claude account, open Claude in `projects\` and say *"start"*.
+
+**What's different from the approved sketches, and why:** very little, and all of it named in
+`compare.html` — no row was built against an unapproved shape. The only real surface changes since
+the sketches were drawn are the ones Nico already asked for directly (ADR 0041's status words,
+ADR 0036/0042's own amendments) and three honestly-named gaps where this particular fixture simply
+doesn't produce the state a screenshot would show (an expanded Strategy objective, an empty Plan
+section, a result's own derived-link chip) — each one already covered by a real widget test built
+with data chosen to hit it, not skipped.
+
+**The two persona checks' verdicts:** as Nico, APPROVE WITH CONDITION — the condition is this
+line: **whether he opens Asa unprompted at all is still unanswered, and the already-scheduled check
+for that is three weeks after v1 ships, not before.** As the AI, APPROVE, with real evidence from
+this session rather than a hypothetical one.
+
+**Not yet pushed — that stays Nico's own step, same as every round before it.**
