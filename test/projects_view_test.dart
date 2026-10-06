@@ -37,6 +37,10 @@ Future<void> _pump(
   void Function(ProjectOpenTarget target)? onOpenProject,
   Map<String, ProjectNews> news = const {},
   List<ProjectSummary> hidden = const [],
+  List<ProjectSummary> archived = const [],
+  void Function(String folder)? onRestoreProject,
+  void Function(String folder)? onArchiveProject,
+  void Function(String folder)? onDeleteProject,
   Future<ProjectCreateResult> Function(String name)? onCreateProject,
 }) async {
   await tester.pumpWidget(
@@ -50,6 +54,10 @@ Future<void> _pump(
               onCreateProject ?? (_) async => const ProjectCreateResult(),
           news: news,
           hidden: hidden,
+          archived: archived,
+          onRestoreProject: onRestoreProject,
+          onArchiveProject: onArchiveProject,
+          onDeleteProject: onDeleteProject,
         ),
       ),
     ),
@@ -611,6 +619,146 @@ void main() {
       await tester.tap(find.text('Finished'));
       expect(opened?.folder, 'finished');
     });
+
+    testWidgets('ADR 0051 point 4 — a hidden row gets its own 🗄/🗑 too, each '
+        'keyed to that row alone', (tester) async {
+      final node = ProjectNode(
+        project: _project(status: 'in-progress'),
+        folder: 'demo',
+      );
+      String? archived;
+      String? deleted;
+      await _pump(
+        tester,
+        [node],
+        hidden: [
+          hiddenSummary(name: 'Paused', status: 'on-hold', folder: 'paused'),
+        ],
+        onArchiveProject: (folder) => archived = folder,
+        onDeleteProject: (folder) => deleted = folder,
+      );
+
+      await tester.tap(find.textContaining('show ›'));
+      await tester.pump();
+
+      await tester.tap(find.text('🗄'));
+      expect(archived, 'paused');
+
+      await tester.tap(find.text('🗑'));
+      expect(deleted, 'paused');
+    });
+
+    testWidgets(
+      'with neither callback wired, a hidden row shows neither icon',
+      (tester) async {
+        final node = ProjectNode(
+          project: _project(status: 'in-progress'),
+          folder: 'demo',
+        );
+        await _pump(
+          tester,
+          [node],
+          hidden: [
+            hiddenSummary(name: 'Paused', status: 'on-hold', folder: 'paused'),
+          ],
+        );
+
+        await tester.tap(find.textContaining('show ›'));
+        await tester.pump();
+
+        expect(find.text('🗄'), findsNothing);
+        expect(find.text('🗑'), findsNothing);
+      },
+    );
+  });
+
+  group('ADR 0051 — Archived, a fourth bucket in the same fold', () {
+    ProjectSummary archivedSummary({
+      required String name,
+      required String folder,
+      String status = 'on-hold',
+    }) {
+      return ProjectSummary(
+        project: Project(
+          name: name,
+          status: status,
+          milestone: '',
+          nextStep: '',
+          repoPath: '',
+          updated: '2026-09-01',
+          sourceFile: '$folder/$folder.md',
+        ),
+        git: _emptyGit,
+        folder: folder,
+      );
+    }
+
+    testWidgets(
+      'the fold shows even with nothing on-hold/done/canceled, as long as '
+      'something is archived',
+      (tester) async {
+        final node = ProjectNode(
+          project: _project(status: 'in-progress'),
+          folder: 'demo',
+        );
+        await _pump(
+          tester,
+          [node],
+          archived: [archivedSummary(name: 'Pet Town', folder: 'pet-town')],
+        );
+
+        expect(find.textContaining('Archived 1'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'opened, the Archived group sits beside the status groups, each '
+      'row saying its own old status and offering ↩',
+      (tester) async {
+        final node = ProjectNode(
+          project: _project(status: 'in-progress'),
+          folder: 'demo',
+        );
+        String? restored;
+        await _pump(
+          tester,
+          [node],
+          hidden: [archivedSummary(name: 'Paused', folder: 'paused')],
+          archived: [archivedSummary(name: 'Pet Town', folder: 'pet-town')],
+          onRestoreProject: (folder) => restored = folder,
+        );
+
+        await tester.tap(find.textContaining('show ›'));
+        await tester.pump();
+
+        expect(find.text('Pet Town'), findsOneWidget);
+        expect(find.textContaining('was On hold'), findsOneWidget);
+        expect(find.text('↩'), findsOneWidget);
+
+        await tester.tap(find.text('↩'));
+        expect(restored, 'pet-town');
+      },
+    );
+
+    testWidgets(
+      'with no onRestoreProject wired, an archived row shows no ↩ at all',
+      (tester) async {
+        final node = ProjectNode(
+          project: _project(status: 'in-progress'),
+          folder: 'demo',
+        );
+        await _pump(
+          tester,
+          [node],
+          archived: [archivedSummary(name: 'Pet Town', folder: 'pet-town')],
+        );
+
+        await tester.tap(find.textContaining('show ›'));
+        await tester.pump();
+
+        expect(find.text('↩'), findsNothing);
+      },
+    );
   });
 
   group('Round 43 §E — "＋ New project"', () {

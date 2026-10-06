@@ -32,6 +32,7 @@ library;
 
 import 'dart:io';
 
+import 'package:asa/core/archive_writer.dart';
 import 'package:asa/core/area.dart';
 import 'package:asa/core/area_section_writer.dart';
 import 'package:asa/core/area_writer.dart';
@@ -49,7 +50,9 @@ import 'package:asa/core/plan.dart';
 import 'package:asa/core/project.dart';
 import 'package:asa/core/project_reader.dart';
 import 'package:asa/core/project_row.dart';
+import 'package:asa/core/project_tree.dart';
 import 'package:asa/core/project_writer.dart';
+import 'package:asa/core/projects_scan.dart';
 import 'package:asa/core/result_writer.dart';
 import 'package:asa/core/roadmap.dart';
 import 'package:asa/core/round_approvals.dart';
@@ -65,6 +68,7 @@ import 'package:asa/hubs/product/start_menu.dart';
 import 'package:asa/hubs/product/strategy_view.dart';
 import 'package:asa/hubs/product/ui/area_chip.dart';
 import 'package:asa/hubs/product/ui/asa_page.dart';
+import 'package:asa/hubs/product/ui/delete_project_dialog.dart';
 import 'package:asa/hubs/product/ui/empty_line.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
@@ -1036,8 +1040,93 @@ class _ProjectScreenState extends State<ProjectScreen> {
           'Repo',
           project.repoPath.isEmpty ? '(no code yet)' : project.repoPath,
         ),
+        const SizedBox(height: AsaSpace.xl),
+        const Divider(height: 1),
+        const SizedBox(height: AsaSpace.sm),
+        _archiveAndDeleteRow(),
       ],
     );
+  }
+
+  /// ADR 0051 — "where: the bottom of Details... no other screen gets new
+  /// buttons" (the folded list's own row actions are `projects_view.dart`'s
+  /// job, not this screen's). Quiet text actions, not buttons — the same
+  /// "where you don't click by accident" placement the sketch itself
+  /// draws them at.
+  Widget _archiveAndDeleteRow() {
+    return Row(
+      children: [
+        InkWell(
+          onTap: _archiveThisProject,
+          child: const Text(
+            '🗄 Archive',
+            style: TextStyle(color: AsaColors.ink2),
+          ),
+        ),
+        const SizedBox(width: AsaSpace.lg),
+        InkWell(
+          onTap: _confirmAndDeleteThisProject,
+          child: const Text('🗑 Delete', style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    );
+  }
+
+  /// This project's own `ProjectNode`, with its whole subtree (ADR 0051
+  /// point 3) already resolved the same way the overview's own forest
+  /// is — a fresh scan, not state carried from wherever this screen was
+  /// opened from, since that forest may not even still be in memory.
+  Future<ProjectNode?> _thisProjectNode(String projectsRoot) async {
+    final scan = await scanProjects(projectsRoot);
+    final forest = buildProjectForest(scan.projects);
+    return findInForest(forest, slugOf(widget.folder));
+  }
+
+  String get _projectsRoot => Directory(widget.folder).parent.path;
+
+  Future<void> _archiveThisProject() async {
+    final node = await _thisProjectNode(_projectsRoot);
+    if (node == null) {
+      _say('Could not find this project in a fresh scan — nothing moved.');
+      return;
+    }
+    try {
+      await archiveProject(_projectsRoot, node);
+    } on Object catch (e) {
+      _say('Could not archive: $e');
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+  }
+
+  Future<void> _confirmAndDeleteThisProject() async {
+    final node = await _thisProjectNode(_projectsRoot);
+    if (node == null) {
+      _say('Could not find this project in a fresh scan — nothing deleted.');
+      return;
+    }
+    final fileCount = await countFiles(node.folder);
+    final subNames = [for (final child in node.children) child.project.name];
+
+    if (!mounted) return;
+    final confirmed = await showDeleteProjectDialog(
+      context,
+      name: node.project.name,
+      fileCount: fileCount,
+      subNames: subNames,
+      repoPath: node.project.repoPath,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await deleteProject(node);
+    } on Object catch (e) {
+      _say('Could not delete: $e');
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   /// One of the five ADR 0007-whitelisted fields — `field` is the exact

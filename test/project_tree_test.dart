@@ -93,4 +93,40 @@ void main() {
       expect(buildProjectForest([]), isEmpty);
     });
   });
+
+  group('findInForest — ADR 0051, archive/delete/restore share this', () {
+    test('finds the root itself', () {
+      final other = _summary(folder: 'projects/other', name: 'other');
+      final forest = buildProjectForest([other]);
+
+      final found = findInForest(forest, 'other');
+      expect(found?.project.name, 'other');
+    });
+
+    test('finds a descendant, any depth, with its own subtree intact', () {
+      final other = _summary(folder: 'projects/other', name: 'other');
+      final asa = _summary(
+        folder: 'projects/asa',
+        name: 'asa',
+        parent: 'other',
+      );
+      final vibe = _summary(
+        folder: 'projects/vibe-coding-kit',
+        name: 'vibe-coding-kit',
+        parent: 'asa',
+      );
+      final forest = buildProjectForest([other, asa, vibe]);
+
+      final found = findInForest(forest, 'asa');
+      expect(found?.project.name, 'asa');
+      expect(found?.children.single.project.name, 'vibe-coding-kit');
+    });
+
+    test('a slug not in the forest at all returns null', () {
+      final other = _summary(folder: 'projects/other', name: 'other');
+      final forest = buildProjectForest([other]);
+
+      expect(findInForest(forest, 'no-such-project'), isNull);
+    });
+  });
 }

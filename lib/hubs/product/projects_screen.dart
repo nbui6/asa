@@ -12,6 +12,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:asa/core/archive_writer.dart';
 import 'package:asa/core/area.dart' show ResultLink;
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decision_create_writer.dart';
@@ -38,6 +39,7 @@ import 'package:asa/hubs/product/projects_view.dart';
 import 'package:asa/hubs/product/tasks_view.dart';
 import 'package:asa/hubs/product/ui/asa_page.dart';
 import 'package:asa/hubs/product/ui/asa_panel.dart';
+import 'package:asa/hubs/product/ui/delete_project_dialog.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/tokens.dart';
 import 'package:flutter/material.dart';
@@ -109,6 +111,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   /// [ProjectsView] can fold them into its own one quiet line instead of
   /// showing them in the main list.
   List<ProjectSummary> _hiddenProjects = const [];
+
+  /// ADR 0051 — every project sitting in `projects\_archive\`, read the
+  /// same way [_hiddenProjects] is: a plain [scanProjects] call, rooted
+  /// at the archive folder instead — the same shape, since nothing about
+  /// a project's own file changes by being archived.
+  List<ProjectSummary> _archivedProjects = const [];
 
   int _needsYouIndex = 0;
 
@@ -303,6 +311,14 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final hidden = scan.error == null
         ? scan.projects.where((s) => isHiddenStatus(s.project.status)).toList()
         : const <ProjectSummary>[];
+    // ADR 0051 — the same scan, rooted at _archive\ instead; scanProjects
+    // itself already treats a missing folder as "no error, no projects,"
+    // the honest state before anything has ever been archived.
+    final archived = scan.error == null
+        ? (await scanProjects(
+            '${_rootField.text.trim()}${Platform.pathSeparator}_archive',
+          )).projects
+        : const <ProjectSummary>[];
     final taskSnapshots = scan.error == null
         ? await buildProjectTasksSnapshots(visible, const DiskFileAccess())
         : const <ProjectTasksSnapshot>[];
@@ -321,12 +337,89 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     setState(() {
       _scan = scan;
       _hiddenProjects = hidden;
+      _archivedProjects = archived;
       _taskSnapshots = taskSnapshots;
       _inboxTasks = inboxTasks;
       _news = newsAndWaiting.news;
       _waiting = newsAndWaiting.waiting;
       _loading = false;
     });
+  }
+
+  /// ADR 0051 point 4 — 🗄 on a row in the folded list (on-hold/done/
+  /// canceled — the project's own home screen is never opened for this).
+  /// Built from `_scan`'s own full, unfiltered project list, which still
+  /// carries hidden projects too — only the `forest:` passed to
+  /// `ProjectsView` filters them out.
+  Future<void> _archiveHiddenProject(String folder) async {
+    final scan = _scan;
+    if (scan == null) return;
+    final forest = buildProjectForest(scan.projects);
+    final node = findInForest(forest, slugOf(folder));
+    if (node == null) {
+      _say('Could not find $folder in a fresh scan — nothing moved.');
+      return;
+    }
+    try {
+      await archiveProject(_rootField.text.trim(), node);
+    } on Object catch (e) {
+      _say('Could not archive: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// ADR 0051 point 4 — 🗑 on the same row; same confirmation dialog
+  /// `project_screen.dart`'s own Details-tab Delete shows.
+  Future<void> _confirmAndDeleteHiddenProject(String folder) async {
+    final scan = _scan;
+    if (scan == null) return;
+    final forest = buildProjectForest(scan.projects);
+    final node = findInForest(forest, slugOf(folder));
+    if (node == null) {
+      _say('Could not find $folder in a fresh scan — nothing deleted.');
+      return;
+    }
+    final fileCount = await countFiles(node.folder);
+    final subNames = [for (final child in node.children) child.project.name];
+
+    if (!mounted) return;
+    final confirmed = await showDeleteProjectDialog(
+      context,
+      name: node.project.name,
+      fileCount: fileCount,
+      subNames: subNames,
+      repoPath: node.project.repoPath,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await deleteProject(node);
+    } on Object catch (e) {
+      _say('Could not delete: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// ADR 0051 — ↩ on an archived row. Builds `_archive\`'s own forest the
+  /// same way the real `projects\` one is (so a parent's own subtree, if
+  /// any of it is still sitting next to it, comes back together), finds
+  /// the node matching [folder]'s slug, and restores it.
+  Future<void> _restoreArchivedProject(String folder) async {
+    final forest = buildProjectForest(_archivedProjects);
+    final node = findInForest(forest, slugOf(folder));
+    if (node == null) {
+      _say('Could not find $folder in a fresh scan — nothing moved.');
+      return;
+    }
+    try {
+      await restoreProject(_rootField.text.trim(), node);
+    } on Object catch (e) {
+      _say('Could not restore: $e');
+      return;
+    }
+    await _load();
   }
 
   /// Round 38 §E — one extra real-disk pass per project, alongside the
@@ -424,9 +517,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   /// the same way. [target]'s optional fields carry where inside the
   /// project to land — an area, "Not in an area", a task to highlight —
   /// through to [ProjectScreen]'s own `initial*` constructor params.
-  void _openProject(ProjectOpenTarget target) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
+  Future<void> _openProject(ProjectOpenTarget target) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
         builder: (_) => ProjectScreen(
           folder: target.folder,
           initialAreaToOpen: target.areaSourceFile,
@@ -444,6 +537,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         ),
       ),
     );
+    // ADR 0051 — archive/delete pop with `true`: the project this
+    // overview was showing may no longer be at that folder at all, so a
+    // real reload, not just a repaint, is the only honest response.
+    if (changed ?? false) await _load();
   }
 
   /// Round-36 §3, L7 — every scanned project's folder, by slug, so a
@@ -726,6 +823,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 onCreateProject: _createProject,
                 news: _news,
                 hidden: _hiddenProjects,
+                archived: _archivedProjects,
+                onRestoreProject: _restoreArchivedProject,
+                onArchiveProject: _archiveHiddenProject,
+                onDeleteProject: _confirmAndDeleteHiddenProject,
               ),
               if (scan.skipped.isNotEmpty) ...[
                 const SizedBox(height: AsaSpace.xl),

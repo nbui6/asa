@@ -77,3 +77,17 @@ List<ProjectNode> buildProjectForest(List<ProjectSummary> projects) {
 
   return rootSlugs.map(build).toList();
 }
+
+/// The one node in [forest] (any depth) whose own folder's [slugOf]
+/// equals [slug] — ADR 0051's archive/delete/restore all need to find
+/// "this project, with its already-resolved subtree" inside a forest
+/// built fresh for the purpose, rather than each walking the tree its
+/// own way.
+ProjectNode? findInForest(List<ProjectNode> forest, String slug) {
+  for (final node in forest) {
+    if (slugOf(node.folder) == slug) return node;
+    final found = findInForest(node.children, slug);
+    if (found != null) return found;
+  }
+  return null;
+}

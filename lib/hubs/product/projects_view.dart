@@ -48,6 +48,7 @@
 /// passed — no new pill, no new icon, no new line.
 library;
 
+import 'package:asa/core/archive_writer.dart' show folderTouchedAt;
 import 'package:asa/core/area.dart';
 import 'package:asa/core/open_url.dart';
 import 'package:asa/core/project_create_writer.dart';
@@ -77,6 +78,10 @@ class ProjectsView extends StatefulWidget {
     required this.onCreateProject,
     this.news = const {},
     this.hidden = const [],
+    this.archived = const [],
+    this.onRestoreProject,
+    this.onArchiveProject,
+    this.onDeleteProject,
     super.key,
   });
 
@@ -87,6 +92,28 @@ class ProjectsView extends StatefulWidget {
   /// so this view only has to fold them into the one quiet line below the
   /// list and, once that line is opened, one group per status.
   final List<ProjectSummary> hidden;
+
+  /// ADR 0051 — every project sitting in `projects\_archive\`, read the
+  /// same way [hidden] is (a scan, done by the caller) — folded into the
+  /// same quiet line and the same "show ›" panel, as its own group, since
+  /// the sketch (`asa-archive-v1`) draws it as a fourth bucket right
+  /// alongside On hold/Done/Canceled rather than a separate feature.
+  final List<ProjectSummary> archived;
+
+  /// ↩ on an archived row — moves the folder (and its own subtree) back
+  /// into `projects\`, old status and all. Null keeps ↩ off every row,
+  /// for a caller (or test) not wired for it.
+  final void Function(String folder)? onRestoreProject;
+
+  /// ADR 0051 point 4 — "the rows of the folded list" get 🗄/🗑 too, the
+  /// other of the two places these actions live (the first is a
+  /// project's own Details tab, `project_screen.dart`'s own job). Each
+  /// callback owns the whole act — finding the project's own subtree,
+  /// Delete's own confirmation, the real move/send, and reloading — the
+  /// same way [onRestoreProject] does; null keeps that one icon off
+  /// every row, for a caller (or test) not wired for it.
+  final void Function(String folder)? onArchiveProject;
+  final void Function(String folder)? onDeleteProject;
 
   /// Round 38 §E — one project's own news (a blue *N new*, an amber
   /// *changed without a note*), keyed by its folder. Empty for a node
@@ -177,7 +204,7 @@ class _ProjectsViewState extends State<ProjectsView> {
           const SizedBox(height: AsaSpace.lg),
           _otherGroup(split.other!),
         ],
-        if (widget.hidden.isNotEmpty) ...[
+        if (widget.hidden.isNotEmpty || widget.archived.isNotEmpty) ...[
           const SizedBox(height: AsaSpace.lg),
           _hiddenSection(),
           if (_hiddenExpanded) ...[
@@ -236,6 +263,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     final parts = [
       for (final word in _hiddenOrder)
         if (counts[word] != null) '${statusLabel(word)} ${counts[word]}',
+      if (widget.archived.isNotEmpty) 'Archived ${widget.archived.length}',
     ];
 
     return InkWell(
@@ -281,7 +309,79 @@ class _ProjectsViewState extends State<ProjectsView> {
           _hiddenGroupHeader(word),
           for (final summary in byStatus[word]!) _hiddenRow(summary),
         ],
+      if (widget.archived.isNotEmpty) ...[
+        _archivedGroupHeader(),
+        for (final summary in widget.archived) _archivedRow(summary),
+      ],
     ]);
+  }
+
+  /// ADR 0051 — "Archived" reads the same as a real status pill (grey,
+  /// quiet) even though it is not one — the folder's own location is the
+  /// archived state, never a stored word (ADR 0051 point 6: an "Archived"
+  /// status is explicitly not built).
+  Widget _archivedGroupHeader() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AsaSpace.md,
+        vertical: AsaSpace.sm,
+      ),
+      child: Pill('Archived', meaning: AsaMeaning.quiet),
+    );
+  }
+
+  /// "archived 05.10 · was On hold" and ↩ — the sketch's own row (§3):
+  /// nothing to undo, archive is just a move both ways, so there is no
+  /// Undo toast, only the real reverse action.
+  Widget _archivedRow(ProjectSummary summary) {
+    final archivedOn = folderTouchedAt(summary.folder);
+    final archivedLabel = archivedOn == null
+        ? null
+        : asaListDate(archivedOn.toIso8601String());
+    final wasStatus = statusLabel(summary.project.status);
+    final onRestore = widget.onRestoreProject;
+
+    return InkWell(
+      onTap: () => widget.onOpenProject(openTarget(summary.folder)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AsaSpace.md,
+          vertical: AsaSpace.sm,
+        ),
+        decoration: _rowHairline,
+        child: Row(
+          children: [
+            Text(summary.project.name, style: AsaText.rowName),
+            const SizedBox(width: AsaSpace.sm),
+            Expanded(
+              child: Text(
+                [
+                  if (archivedLabel != null) 'archived $archivedLabel',
+                  'was $wasStatus',
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AsaText.meta,
+              ),
+            ),
+            if (onRestore != null)
+              Tooltip(
+                message: 'restore',
+                child: InkWell(
+                  onTap: () => onRestore(summary.folder),
+                  child: const Text(
+                    '↩',
+                    style: TextStyle(
+                      color: AsaColors.blue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _hiddenGroupHeader(String canonicalStatusWord) {
@@ -299,6 +399,8 @@ class _ProjectsViewState extends State<ProjectsView> {
 
   Widget _hiddenRow(ProjectSummary summary) {
     final lastResult = _newestResultOf(summary);
+    final onArchive = widget.onArchiveProject;
+    final onDelete = widget.onDeleteProject;
     return InkWell(
       onTap: () => widget.onOpenProject(openTarget(summary.folder)),
       child: Container(
@@ -323,6 +425,24 @@ class _ProjectsViewState extends State<ProjectsView> {
                 style: AsaText.meta,
               ),
             ),
+            if (onArchive != null) ...[
+              Tooltip(
+                message: 'archive',
+                child: InkWell(
+                  onTap: () => onArchive(summary.folder),
+                  child: const Text('🗄'),
+                ),
+              ),
+              const SizedBox(width: AsaSpace.sm),
+            ],
+            if (onDelete != null)
+              Tooltip(
+                message: 'delete',
+                child: InkWell(
+                  onTap: () => onDelete(summary.folder),
+                  child: const Text('🗑', style: TextStyle(color: Colors.red)),
+                ),
+              ),
           ],
         ),
       ),
