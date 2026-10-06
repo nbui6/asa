@@ -1112,6 +1112,7 @@ void main() {
         tester,
         areas: [area()],
         strategy: const Strategy(
+          fileExists: true,
           origin: 'o',
           whoItsFor: 'w',
           painPoints: 'p',

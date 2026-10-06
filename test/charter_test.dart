@@ -53,6 +53,7 @@ void main() {
       final strategy = await readCharter(tempDir.path);
 
       expect(strategy.isEmpty, isFalse);
+      expect(strategy.fileExists, isTrue);
       expect(strategy.origin, contains('Points at §1'));
       expect(strategy.whoItsFor, 'The user, alone.');
       expect(strategy.painPoints, contains('Decisions get lost.'));
@@ -142,11 +143,16 @@ The user.
 
       final strategy = await readCharter(tempDir.path);
       expect(strategy.isEmpty, isTrue);
+      // ADR 0050 — a file that exists but is missing a section is not the
+      // same thing as no file at all; the Strategy tab now tells the two
+      // apart so a filled section can still show next to an empty one.
+      expect(strategy.fileExists, isTrue);
     });
 
     test('no CHARTER.md at all reads as empty, not an error', () async {
       final strategy = await readCharter(tempDir.path);
       expect(strategy.isEmpty, isTrue);
+      expect(strategy.fileExists, isFalse);
       expect(strategy.origin, isNull);
       expect(strategy.objectives, isEmpty);
     });

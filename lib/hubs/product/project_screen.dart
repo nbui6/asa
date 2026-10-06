@@ -36,6 +36,7 @@ import 'package:asa/core/area.dart';
 import 'package:asa/core/area_section_writer.dart';
 import 'package:asa/core/area_writer.dart';
 import 'package:asa/core/charter.dart';
+import 'package:asa/core/charter_writer.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decision_create_writer.dart';
 import 'package:asa/core/decisions_reader.dart';
@@ -602,17 +603,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
   Widget _tabBody(ProjectReadResult read) {
     switch (_activeTab) {
       case _Tab.strategy:
-        final strategy = _strategy;
-        // Round 37 §D2 — an empty tab explains why and what to do,
-        // rather than falling back to a different tab's own body.
-        if (strategy == null || strategy.isEmpty) {
-          return const EmptyLine(
-            'No strategy yet. Start → Copy opener, and ask the AI to '
-            'write CHARTER.md.',
-          );
-        }
+        // ADR 0050 — always StrategyView, same lesson Round 36 cp8 already
+        // taught PlanView: the empty case (no CHARTER.md at all) is a real,
+        // honest body this screen draws itself, not a fallback that hides
+        // the whole tab while some sections are filled and others aren't.
         return StrategyView(
-          strategy: strategy,
+          strategy:
+              _strategy ??
+              const Strategy(
+                fileExists: false,
+                origin: null,
+                whoItsFor: null,
+                painPoints: null,
+                objectives: [],
+              ),
           roadmap: read.isSuccess ? read.project!.roadmap : const [],
           approvals: _approvals,
           decisions: _decisions ?? const [],
@@ -631,6 +635,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
           loadRoundText: _loadRoundText,
           onApproveRound: _approveRound,
           onRequestRoundChanges: _requestRoundChanges,
+          onSetCharterSection: _writeCharterSection,
+          onClearCharterSection: _clearCharterSection,
+          onCreateCharterFile: _createCharterFile,
         );
       case _Tab.plan:
         // Round 36 cp8, §9 point 1 — always PlanView, never a fallback to
@@ -817,6 +824,65 @@ class _ProjectScreenState extends State<ProjectScreen> {
         rawLine: rawLine,
         writeLogPath: widget.writeLogPath,
       );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// ADR 0050 — fills an empty `CHARTER.md` section (the ＋, [oldValue] is
+  /// `''`) or rewrites it from ✎ (`oldValue` is what this screen was
+  /// showing) — `setAreaSection` itself is path-agnostic, so this reuses
+  /// it directly against `CHARTER.md` rather than a second writer.
+  Future<void> _writeCharterSection(
+    String heading,
+    String oldValue,
+    String text,
+  ) async {
+    final path = '${widget.folder}${Platform.pathSeparator}CHARTER.md';
+    try {
+      await setAreaSection(
+        path,
+        heading: heading,
+        text: text,
+        expectedCurrent: oldValue,
+        writeLogPath: widget.writeLogPath,
+        fieldPrefix: 'charter',
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// ADR 0050 — 🗑 in a filled `CHARTER.md` section's own edit mode.
+  Future<void> _clearCharterSection(String heading) async {
+    final strategy = _strategy;
+    final oldValue = heading == "Who it's for"
+        ? strategy?.whoItsFor
+        : strategy?.painPoints;
+    final path = '${widget.folder}${Platform.pathSeparator}CHARTER.md';
+    try {
+      await clearAreaSection(
+        path,
+        heading: heading,
+        expectedCurrent: oldValue ?? '',
+        writeLogPath: widget.writeLogPath,
+        fieldPrefix: 'charter',
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
+  }
+
+  /// ADR 0050 — the single ＋ a project with no `CHARTER.md` at all gets.
+  Future<void> _createCharterFile() async {
+    try {
+      await createCharterFile(widget.folder, writeLogPath: widget.writeLogPath);
     } on Object catch (e) {
       _say('Could not save: $e');
       return;

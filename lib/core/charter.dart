@@ -36,11 +36,19 @@ class Objective {
 /// only half-adopted the shape.
 class Strategy {
   const Strategy({
+    required this.fileExists,
     required this.origin,
     required this.whoItsFor,
     required this.painPoints,
     required this.objectives,
   });
+
+  /// ADR 0050 — whether `CHARTER.md` itself exists, independent of
+  /// [isEmpty]: a project can have the file with some sections filled and
+  /// others not, which [isEmpty]'s own all-or-nothing reading can't tell
+  /// apart from no file at all. The Strategy tab now uses this one, not
+  /// [isEmpty], to decide whether there is a file to show sections of.
+  final bool fileExists;
 
   final String? origin;
   final String? whoItsFor;
@@ -75,6 +83,7 @@ Future<Strategy> readCharter(String projectFolder) async {
   final file = File('$projectFolder${Platform.pathSeparator}CHARTER.md');
   if (!file.existsSync()) {
     return const Strategy(
+      fileExists: false,
       origin: null,
       whoItsFor: null,
       painPoints: null,
@@ -84,6 +93,7 @@ Future<Strategy> readCharter(String projectFolder) async {
   final contents = await file.readAsString();
 
   return Strategy(
+    fileExists: true,
     origin: sectionText(contents, 'Origin'),
     whoItsFor: sectionText(contents, "Who it's for"),
     painPoints: _numberedListIn(sectionText(contents, 'Pain points')),

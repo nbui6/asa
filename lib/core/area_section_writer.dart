@@ -17,12 +17,19 @@ import 'package:asa/core/write_log.dart';
 /// worse than refusing.
 ///
 /// A missing `## [heading]` section is created at the end of the file.
+///
+/// [fieldPrefix] only names the write-log entry (`'$fieldPrefix-…'`) —
+/// this function itself reads and writes any markdown file's `## heading`
+/// section, area page or not; ADR 0050 reuses it directly for
+/// `CHARTER.md`'s own sections with `fieldPrefix: 'charter'`, rather than
+/// duplicating the same read/replace/log logic a second time.
 Future<void> setAreaSection(
   String path, {
   required String heading,
   required String text,
   String? expectedCurrent,
   String? writeLogPath,
+  String fieldPrefix = 'area',
 }) async {
   final newText = text.trim();
   if (newText.isEmpty) {
@@ -65,7 +72,7 @@ Future<void> setAreaSection(
 
   await appendWriteLogEntry(
     path: path,
-    field: 'area-${heading.toLowerCase()}-set',
+    field: '$fieldPrefix-${heading.toLowerCase()}-set',
     from: current ?? '',
     to: newText,
     logPath: writeLogPath,
@@ -84,6 +91,7 @@ Future<void> clearAreaSection(
   required String heading,
   required String expectedCurrent,
   String? writeLogPath,
+  String fieldPrefix = 'area',
 }) async {
   final content = await File(path).readAsString();
   final range = sectionRange(content, heading);
@@ -112,7 +120,7 @@ Future<void> clearAreaSection(
 
   await appendWriteLogEntry(
     path: path,
-    field: 'area-${heading.toLowerCase()}-removed',
+    field: '$fieldPrefix-${heading.toLowerCase()}-removed',
     from: current ?? '',
     to: '',
     logPath: writeLogPath,

@@ -8,10 +8,17 @@
 /// Round 37 (ADR 0029) moves this screen onto the shared `ui/` parts —
 /// its own layout is unchanged, exactly `asa-strategy-v3`.
 ///
-/// **Read-only, all of it — same rule as the Plan tab.** Tapping an ADR
-/// chip opens that decision when it is already loaded, or the project's
-/// own note otherwise (`open_url.dart`). Nothing here writes a byte
-/// anywhere itself.
+/// **Read-only for the rounds and ADRs it links** — tapping a chip opens
+/// that decision when it is already loaded, or the project's own note
+/// otherwise (`open_url.dart`); nothing here writes a round or a
+/// decision. **Writable for the strategy itself, ADR 0044/0050:**
+/// *Who it's for*, *Pain points* and a first *Objective*, each an empty
+/// place (heading + ＋) until the user types it, same `_sectionField`
+/// shape `PlanView`'s own Goal/Plan already use — `onSetCharterSection`/
+/// `onClearCharterSection` do the writing, `area_section_writer.dart`'s
+/// own `setAreaSection`/`clearAreaSection` reused directly against
+/// `CHARTER.md`. A project with no `CHARTER.md` at all gets the one
+/// line and the one ＋ that creates it (`onCreateCharterFile`).
 ///
 /// **Round 38 §C — a round's own row goes to its own *Your call* screen**
 /// (`round_call_screen.dart`'s `openRoundCall`) once the three writer
@@ -35,6 +42,9 @@ import 'package:asa/core/round_approvals.dart';
 import 'package:asa/core/round_state.dart';
 import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/round_call_screen.dart';
+import 'package:asa/hubs/product/ui/empty_line.dart';
+import 'package:asa/hubs/product/ui/escape_to_cancel.dart';
+import 'package:asa/hubs/product/ui/hover_pencil.dart';
 import 'package:asa/hubs/product/ui/link_chip.dart';
 import 'package:asa/hubs/product/ui/pill.dart';
 import 'package:asa/hubs/product/ui/progress_bar.dart';
@@ -59,6 +69,9 @@ class StrategyView extends StatefulWidget {
     this.loadRoundText,
     this.onApproveRound,
     this.onRequestRoundChanges,
+    this.onSetCharterSection,
+    this.onClearCharterSection,
+    this.onCreateCharterFile,
     super.key,
   });
 
@@ -116,6 +129,23 @@ class StrategyView extends StatefulWidget {
   final Future<void> Function(String roundNumber, {required String what})?
   onRequestRoundChanges;
 
+  /// ADR 0050 — fills an empty *Who it's for*/*Pain points* (the ＋,
+  /// `oldValue` is `''`), fills a brand-new first *Objective* the same
+  /// way, or rewrites one from ✎ on existing text. Null keeps every
+  /// section read-only, for a caller (or test) not wired for it.
+  final Future<void> Function(String heading, String oldValue, String newText)?
+  onSetCharterSection;
+
+  /// ADR 0050 — 🗑 in a filled *Who it's for*/*Pain points* own edit mode.
+  /// Null keeps 🗑 off the edit row entirely.
+  final Future<void> Function(String heading)? onClearCharterSection;
+
+  /// ADR 0050 — the single ＋ a project with no `CHARTER.md` at all gets:
+  /// creates the file with its four empty headings. Null falls back to
+  /// the older "ask the AI to write CHARTER.md" line, for a caller (or
+  /// test) not wired for it.
+  final Future<void> Function()? onCreateCharterFile;
+
   @override
   State<StrategyView> createState() => _StrategyViewState();
 }
@@ -137,11 +167,24 @@ class _StrategyViewState extends State<StrategyView> {
     caseSensitive: false,
   );
 
+  /// ADR 0050 — the one empty place currently open for typing, keyed by
+  /// its own heading (`"Who it's for"`, `"Pain points"`, `"Objectives"`);
+  /// null when none is. One `Strategy` per project, unlike `PlanView`'s
+  /// many areas, so the heading alone disambiguates.
+  String? _addingSectionKey;
+  final _sectionController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     final index = _objectiveIndex(widget.objectiveToOpen);
     if (index != null) _expanded.add(index);
+  }
+
+  @override
+  void dispose() {
+    _sectionController.dispose();
+    super.dispose();
   }
 
   @override
@@ -172,23 +215,149 @@ class _StrategyViewState extends State<StrategyView> {
   @override
   Widget build(BuildContext context) {
     final strategy = widget.strategy;
+    // ADR 0050 — no file at all is the one case with its own single line
+    // and single ＋, never a per-section empty place with nothing to
+    // attach to.
+    if (!strategy.fileExists) return _noCharterBody();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionLabel("Who it's for"),
         const SizedBox(height: AsaSpace.xs),
-        _whoItsFor(_plain(strategy.whoItsFor!)),
+        _sectionField("Who it's for", strategy.whoItsFor, _whoItsFor),
         const SizedBox(height: AsaSpace.lg),
         const SectionLabel('Pain points'),
         const SizedBox(height: AsaSpace.xs),
-        Text(_plain(strategy.painPoints!), style: AsaText.body),
+        _sectionField(
+          'Pain points',
+          strategy.painPoints,
+          (text) => Text(text, style: AsaText.body),
+        ),
         const SizedBox(height: AsaSpace.lg),
         const SectionLabel('Objectives'),
-        for (var i = 0; i < strategy.objectives.length; i++)
-          _objectiveTile(strategy.objectives[i], i),
+        const SizedBox(height: AsaSpace.xs),
+        if (strategy.objectives.isEmpty)
+          _firstObjectiveField()
+        else
+          for (var i = 0; i < strategy.objectives.length; i++)
+            _objectiveTile(strategy.objectives[i], i),
         const SizedBox(height: AsaSpace.md),
         _legend(),
       ],
+    );
+  }
+
+  Widget _noCharterBody() {
+    final create = widget.onCreateCharterFile;
+    if (create == null) {
+      return const EmptyLine(
+        'No strategy yet. Start → Copy opener, and ask the AI to write '
+        'CHARTER.md.',
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Expanded(child: EmptyLine('No strategy yet.')),
+        Tooltip(
+          message: 'add',
+          child: InkWell(
+            onTap: create,
+            child: Text(
+              '＋',
+              style: AsaText.body.copyWith(color: AsaColors.blue),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Who it's for / Pain points: one free-text section each ----------
+
+  /// ADR 0050 — one `CHARTER.md` section (`Who it's for`/`Pain points`),
+  /// in whichever of its three states applies: empty (heading and ＋
+  /// only), read (filled, ✎ revealed on hover once a writer is wired in),
+  /// or being typed. Same shape `PlanView`'s own `_sectionField` already
+  /// uses for an area's Goal/Plan, keyed by heading alone — one
+  /// `CHARTER.md` per project, not many area pages.
+  Widget _sectionField(
+    String heading,
+    String? rawValue,
+    Widget Function(String displayText) renderFilled,
+  ) {
+    final write = widget.onSetCharterSection;
+    final hasValue = rawValue != null && rawValue.isNotEmpty;
+
+    if (write != null && _addingSectionKey == heading) {
+      Future<void> submit() async {
+        final text = _sectionController.text.trim();
+        setState(() => _addingSectionKey = null);
+        if (text.isEmpty || text == rawValue) return;
+        await write(heading, rawValue ?? '', text);
+        widget.onDataChanged?.call();
+      }
+
+      final clear = widget.onClearCharterSection;
+      final field = EscapeToCancel(
+        onEscape: () => setState(() => _addingSectionKey = null),
+        child: TextField(
+          controller: _sectionController,
+          autofocus: true,
+          decoration: const InputDecoration(isDense: true),
+          onSubmitted: (_) => submit(),
+        ),
+      );
+      // ADR 0050 — 🗑 only once there is something to remove: the ＋ path
+      // opens this same editing branch from empty.
+      if (!hasValue || clear == null) return field;
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: field),
+          Tooltip(
+            message: 'remove',
+            child: IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18),
+              visualDensity: VisualDensity.compact,
+              onPressed: () async {
+                setState(() => _addingSectionKey = null);
+                await clear(heading);
+                widget.onDataChanged?.call();
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (!hasValue) {
+      if (write == null) {
+        return EmptyLine('No ${heading.toLowerCase()} yet.');
+      }
+      return Tooltip(
+        message: 'add',
+        child: InkWell(
+          onTap: () => setState(() {
+            _addingSectionKey = heading;
+            _sectionController.clear();
+          }),
+          child: Text('＋', style: AsaText.body.copyWith(color: AsaColors.blue)),
+        ),
+      );
+    }
+
+    final content = renderFilled(_plain(rawValue));
+    if (write == null) return content;
+
+    return HoverPencil(
+      onEdit: () => setState(() {
+        _addingSectionKey = heading;
+        _sectionController.text = rawValue;
+      }),
+      child: content,
     );
   }
 
@@ -203,6 +372,50 @@ class _StrategyViewState extends State<StrategyView> {
           onTap: () => openUrl(widget.personaSourceFile),
         ),
       ],
+    );
+  }
+
+  /// ADR 0050 — the Objectives section's own empty place: the heading
+  /// and ＋ only, same as the other two, but what gets written is the
+  /// minimal structural wrapper a real objective needs to parse at all
+  /// (`charter.dart`'s `_objectiveMarker`/`_titleSpan`) — `1. **<typed
+  /// text>**` — never invented prose beyond what the user typed. Adding
+  /// a second objective, or editing one already there, is not in this
+  /// round's own scope; only the empty case reaches this widget.
+  Widget _firstObjectiveField() {
+    const heading = 'Objectives';
+    final write = widget.onSetCharterSection;
+
+    if (write != null && _addingSectionKey == heading) {
+      Future<void> submit() async {
+        final text = _sectionController.text.trim();
+        setState(() => _addingSectionKey = null);
+        if (text.isEmpty) return;
+        await write(heading, '', '1. **$text**\n');
+        widget.onDataChanged?.call();
+      }
+
+      return EscapeToCancel(
+        onEscape: () => setState(() => _addingSectionKey = null),
+        child: TextField(
+          controller: _sectionController,
+          autofocus: true,
+          decoration: const InputDecoration(isDense: true),
+          onSubmitted: (_) => submit(),
+        ),
+      );
+    }
+
+    if (write == null) return const EmptyLine('No objectives yet.');
+    return Tooltip(
+      message: 'add',
+      child: InkWell(
+        onTap: () => setState(() {
+          _addingSectionKey = heading;
+          _sectionController.clear();
+        }),
+        child: Text('＋', style: AsaText.body.copyWith(color: AsaColors.blue)),
+      ),
     );
   }
 

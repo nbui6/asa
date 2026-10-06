@@ -114,6 +114,24 @@ void main() {
       expect(entry.from, 'Old.');
       expect(entry.to, 'New.');
     });
+
+    test("ADR 0050 — fieldPrefix logs this as the caller's own kind of file, "
+        'not "area", when it is not one (CHARTER.md reuses this writer '
+        'directly rather than duplicating it)', () async {
+      File(path).writeAsStringSync('# Charter\n\n## Pain points\nOld.\n');
+
+      await setAreaSection(
+        path,
+        heading: 'Pain points',
+        text: 'New.',
+        expectedCurrent: 'Old.',
+        writeLogPath: logPath,
+        fieldPrefix: 'charter',
+      );
+
+      final entry = (await readWriteLog(logPath: logPath)).single;
+      expect(entry.field, 'charter-pain points-set');
+    });
   });
 
   group('clearAreaSection — Round 43 §D, 🗑 in edit mode', () {
