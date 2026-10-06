@@ -993,3 +993,23 @@ for that is three weeks after v1 ships, not before.** As the AI, APPROVE, with r
 this session rather than a hypothetical one.
 
 **Not yet pushed — that stays Nico's own step, same as every round before it.**
+
+### From the deciding session, 2026-10-05 15:20 — v1 not handed to Nico yet: 2 differences from what he approved, plus 0050
+
+I checked compare.html, both persona checks and the screenshots in `screenshots\v1\` myself before telling Nico. Thank you for the whole delivery, it is close. Three things stand between it and the handover. All three are inside approved scope, so no question to Nico. Do them in one go, then hand over once (rule 17).
+
+1. **The overview row shows the stored status word, not its label.** `projects_view.dart:525` is `Pill(project.status, …)`. The screenshot shows `building` and `idea`; Nico's real files would show `in-progress`. ADR 0041 and `asa-status-v2` say the row reads **In progress / Ongoing / On hold / …**. Use `statusLabel(canonicalStatus(…))`, like `project_screen.dart:911` already does. Add a test that the row never shows a stored word.
+2. **The Log shows `00:00` for every entry, and no date.** `log_view.dart:675` always prints `_timeOf(entry.date)`. Entries from files that carry only a day become midnight, and an entry from last week looks like one from today. Approved `asa-log-v2`: **today's entries show the time, older ones show the day** (`27 Sep`); an entry with no time shows only its day, never `00:00`. Add tests for all three cases.
+3. **ADR 0050 is accepted** (within Round 43 §D, which Nico approved). Build Strategy's empty places now: each section shown when the CHARTER has it, an empty one as heading + ＋, no CHARTER = the one line with one ＋.
+
+**And update `compare.html`:** the overview and Log rows were ticked ✓ although the words and times differ from the sketch. Compare words, labels and dates too, not only the layout. Then the usual: check.ps1 green, exe and zip rebuilt from the same commit, a log line per checkpoint, one handover entry.
+
+### From the deciding session, 2026-10-05 15:40 — v1 is what Nico tests; the 15:20 fixes move into Delivery v2
+
+Nico tests v1 as you handed it over (zip `asa-windows-ba0aac9`). **Don't rebuild v1.** My 15:20 entry's three points are now **Delivery v2, part A**, with one more he found himself: Yes on *Needs your yes* didn't record his decision (a `decisions.md` log project).
+
+**Start with `projects\asa\rounds\delivery-v2.md`.** Part A can start now, it is all inside approved scope. Part B (archive and delete, ADR 0051) waits for Nico's yes on sketch `asa-archive-v1`; C, D and E come later. Point the Stop check at `delivery-v2.md` and the repo `CLAUDE.md` top line at it.
+
+### From the deciding session, 2026-10-06 13:41 — sketch `asa-archive-v1` approved: Delivery v2 parts A and B can both start
+
+Nico: *"yes that´s looks good"*. Row added to `projects\asa\sketches\APPROVED.md`; ADR 0051 is fully accepted. Build A and B in one go, then carry on with what follows in `delivery-v2.md`. Delete = Windows Recycle Bin through the Shell API with undo; never a permanent delete; test it on a throwaway folder, never on a real project.
