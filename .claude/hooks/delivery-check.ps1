@@ -1,5 +1,5 @@
 ﻿# delivery-check.ps1 - Stop hook, blocks ending the turn while
-# projects\asa\rounds\delivery-v1.md's own Progress checklist has an
+# projects\asa\rounds\delivery-v2.md's own Progress checklist has an
 # unticked item and the last answer isn't a real stop (BLOCKED:/DECISION
 # NEEDED:). ADR 0047's own line: "keep going by itself."
 #
@@ -9,8 +9,13 @@
 # already follows).
 #
 # Deliberately temporary: this file, and its one line in
-# .claude\settings.json, are removed once delivery-v1.md's own handover
+# .claude\settings.json, are removed once delivery-v2.md's own handover
 # is done - see that file's own closing checklist item.
+#
+# Repointed 2026-10-06 from delivery-v1.md to delivery-v2.md - the
+# deciding session's own HANDOVER.md entry, 2026-10-05 15:40: v1 was
+# handed over as built, and what delivery-v1.md's own 15:20 fix list named
+# moved into delivery-v2.md's own item A instead.
 
 $ErrorActionPreference = 'Continue'
 
@@ -35,7 +40,7 @@ function Get-ProjectRoot {
 }
 
 $root = Get-ProjectRoot
-$deliveryFile = Join-Path (Join-Path (Join-Path (Join-Path (Split-Path -Parent $root) 'projects') 'asa') 'rounds') 'delivery-v1.md'
+$deliveryFile = Join-Path (Join-Path (Join-Path (Join-Path (Split-Path -Parent $root) 'projects') 'asa') 'rounds') 'delivery-v2.md'
 
 if (-not (Test-Path -LiteralPath $deliveryFile)) { Allow }
 
@@ -96,5 +101,5 @@ if (-not $lastMessage -and $hook.last_assistant_message) {
 $trimmed = $lastMessage.TrimStart()
 if ($trimmed.StartsWith('BLOCKED:') -or $trimmed.StartsWith('DECISION NEEDED:')) { Allow }
 
-[Console]::Error.WriteLine('Delivery v1: continue with the next item.')
+[Console]::Error.WriteLine('Delivery v2: continue with the next item.')
 exit 2

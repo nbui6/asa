@@ -1,7 +1,9 @@
 # CLAUDE.md - Asa
 
-**Delivery v1 in progress:** `projects\asa\rounds\delivery-v1.md`. Continue with the next item;
-don't hand over pieces.
+**Delivery v2 in progress:** `projects\asa\rounds\delivery-v2.md`. Continue with the next item;
+don't hand over pieces. (Delivery v1 was handed over 2026-10-05 as built — see `delivery-v1.md`
+and HANDOVER.md's own 15:40 entry for why the fixes found reviewing it moved here instead of
+reopening it.)
 
 **`AGENTS.md`, in this same folder, is the canonical onboarding file — read it first, before
 this one.** It holds everything that is true regardless of tool: what Asa is, how to find the
