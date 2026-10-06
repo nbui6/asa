@@ -7,6 +7,7 @@ library;
 import 'dart:io';
 
 import 'package:asa/core/decision.dart';
+import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/markdown.dart';
 import 'package:asa/core/write_log.dart';
 
@@ -73,6 +74,180 @@ Future<void> appendVerdict(
 Future<DecisionReadResult> rereadDecision(String sourceFile) async {
   final contents = await File(sourceFile).readAsString();
   return parseDecision(contents, sourceFile);
+}
+
+/// The [rereadDecision] [appendVerdictAnyShape] needs for whichever shape
+/// [sourceFile] really is. A lone ADR file is still [rereadDecision] —
+/// the whole file *is* the one decision. A shared `decisions.md` log is
+/// not: re-parsing the whole file as a single [Decision] would pick up
+/// whichever entry `parseDecision`'s own field-scan happens to find first,
+/// not necessarily the one just decided — this re-runs the real
+/// [DecisionLogSource] split and picks out the matching entry the same
+/// way [appendVerdictInLog] found it to write.
+Future<DecisionReadResult> rereadDecisionAnyShape(
+  String sourceFile, {
+  required String decisionTitle,
+  String? decisionNumber,
+}) async {
+  if (canAppendVerdict(sourceFile)) return rereadDecision(sourceFile);
+
+  final projectFolder = File(sourceFile).parent.path;
+  final results = await const DecisionLogSource().readDecisions(
+    projectFolder,
+    const DiskFileAccess(),
+  );
+  for (final result in results) {
+    if (!result.isSuccess) continue;
+    final decision = result.decision!;
+    if (decisionNumber != null && decision.number == decisionNumber) {
+      return result;
+    }
+    if (decisionNumber == null &&
+        decision.number == null &&
+        decision.title == decisionTitle) {
+      return result;
+    }
+  }
+  return DecisionReadResult(
+    sourceFile: sourceFile,
+    error:
+        'Wrote the verdict, but could not find "$decisionTitle" again '
+        'reading $sourceFile back.',
+  );
+}
+
+/// Delivery v2, item A1 — one seam for both real shapes, so the Log's own
+/// Yes button and the decision detail screen's Accept/Reject go through
+/// the same write rather than each re-deciding which shape [sourceFile]
+/// is. [decisionNumber]/[decisionTitle] are only used to find the right
+/// entry inside a shared `decisions.md` log — unused, and safe to leave
+/// null, for the one-decision-per-file shape.
+Future<void> appendVerdictAnyShape(
+  String sourceFile, {
+  required String decisionTitle,
+  required bool accepted,
+  required String reason,
+  required DateTime date,
+  String? decisionNumber,
+  String? writeLogPath,
+}) {
+  if (canAppendVerdict(sourceFile)) {
+    return appendVerdict(
+      sourceFile,
+      accepted: accepted,
+      reason: reason,
+      date: date,
+    );
+  }
+  return appendVerdictInLog(
+    sourceFile,
+    decisionNumber: decisionNumber,
+    decisionTitle: decisionTitle,
+    accepted: accepted,
+    reason: reason,
+    date: date,
+    writeLogPath: writeLogPath,
+  );
+}
+
+/// The same heading shape `decisions_reader.dart`'s own `DecisionLogSource`
+/// splits a `decisions.md` log on — kept in sync by eye, not shared code,
+/// since the two files read the same bytes for different reasons (finding
+/// every entry to parse, versus finding one entry to write inside).
+final RegExp _logHeading = RegExp(r'^##\s+\S.*$', multiLine: true);
+
+/// `## 0001 - Title` / `## Title` — the number, when the heading has one;
+/// `decision.dart`'s own `_headingPattern`, duplicated for the same reason
+/// as [_logHeading] (one small regex, not worth a shared export across a
+/// reader/writer pair that already don't share code).
+final RegExp _logHeadingFields = RegExp(
+  r'^#{1,2}\s*(?:ADR\s+)?(?:(\d{3,5})\s*[-—]\s*)?(.+)$',
+);
+
+/// Appends a `## Your call` section **inside one entry** of a shared
+/// `decisions.md` log — at the end of that entry's own content, before its
+/// closing `---` separator (if the next entry has one) or the next `## `
+/// heading, never at the true end of the file the way [appendVerdict]
+/// does for a lone ADR file. Every byte before and after the insertion
+/// point is carried over unchanged, exactly as read — the same "never
+/// touch an existing byte" guardrail [appendVerdict] follows, just at a
+/// different splice point.
+///
+/// The entry is found by [decisionNumber] first (most real log entries
+/// are numbered, `## 0001 - Title`); a heading with no number falls back
+/// to an exact match on [decisionTitle]. Throws a [StateError], writing
+/// nothing, when no entry matches — a silent no-op would be worse than a
+/// loud refusal here, same reasoning [canAppendVerdict] already uses.
+Future<void> appendVerdictInLog(
+  String path, {
+  required String decisionTitle,
+  required bool accepted,
+  required String reason,
+  required DateTime date,
+  String? decisionNumber,
+  String? writeLogPath,
+}) async {
+  final content = await File(path).readAsString();
+  final headings = _logHeading.allMatches(content).toList();
+
+  int? entryIndex;
+  for (var i = 0; i < headings.length; i++) {
+    final headingLine = content.substring(headings[i].start, headings[i].end);
+    final fields = _logHeadingFields.firstMatch(headingLine);
+    if (fields == null) continue;
+    final number = fields.group(1);
+    final title = fields.group(2)!.trim();
+    if (decisionNumber != null && number == decisionNumber) {
+      entryIndex = i;
+      break;
+    }
+    if (decisionNumber == null && number == null && title == decisionTitle) {
+      entryIndex = i;
+      break;
+    }
+  }
+  if (entryIndex == null) {
+    throw StateError(
+      'No entry for "$decisionTitle" ($decisionNumber) found in $path.',
+    );
+  }
+
+  final entryStart = headings[entryIndex].start;
+  final entryEnd = entryIndex + 1 < headings.length
+      ? headings[entryIndex + 1].start
+      : content.length;
+  final entryText = content.substring(entryStart, entryEnd);
+
+  // The blank-line-then-"---"-then-blank-line separator a real log puts
+  // between two entries sits inside *this* entry's own span (it comes
+  // before the next heading) — insert ahead of it, not after, so it
+  // keeps separating this entry from the next rather than orphaning
+  // itself between this entry's old content and its own new verdict.
+  final trailingSeparator = RegExp(r'\n-{3,}\s*\n+$').firstMatch(entryText);
+  final insertAt =
+      entryStart +
+      (trailingSeparator != null ? trailingSeparator.start : entryText.length);
+
+  final verdictWord = accepted ? 'Accepted' : 'Rejected';
+  final dateText = _isoDate(date);
+  final reasonText = reason.trim().isEmpty ? 'No reason given.' : reason.trim();
+  final block =
+      '\n\n## Your call\n\n**$verdictWord** — $dateText\n\n$reasonText\n';
+
+  final newContent =
+      content.substring(0, insertAt) + block + content.substring(insertAt);
+
+  final tempFile = File('$path.tmp');
+  await tempFile.writeAsString(newContent);
+  await tempFile.rename(path);
+
+  await appendWriteLogEntry(
+    path: path,
+    field: 'decision-log-your-call',
+    from: '',
+    to: '$verdictWord — $reasonText',
+    logPath: writeLogPath,
+  );
 }
 
 /// Round 43 §D — the human's own ✎ on a decision's own `## Decision` or

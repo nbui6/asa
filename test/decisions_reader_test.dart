@@ -86,6 +86,37 @@ void main() {
       expect(results[0].sourceFile, 'proj/decisions.md');
     });
 
+    test('Delivery v2 A1 — a recorded ## Your call inside an entry is never '
+        'read back as a third, bogus decision of its own', () async {
+      final files = FakeFileAccess(
+        folders: {
+          'proj': ['decisions.md'],
+        },
+        files: {
+          'proj/decisions.md':
+              '# Decisions - Example\n\n'
+              '---\n\n## 0001 - First\n\n**Date:** 2026-09-01 - '
+              '**Status:** proposed\n\n**Decision:** One.\n\n'
+              '## Your call\n\n**Accepted** — 2026-10-06\n\n'
+              'No reason given.\n\n'
+              '---\n\n## 0002 - Second\n\n**Date:** 2026-09-01 - '
+              '**Status:** proposed\n\n**Decision:** Two.\n',
+        },
+      );
+
+      final results = await const DecisionLogSource().readDecisions(
+        'proj',
+        files,
+      );
+
+      expect(results.length, 2);
+      final first = results.firstWhere((r) => r.decision!.number == '0001');
+      expect(first.decision!.verdict!.accepted, isTrue);
+      expect(first.decision!.isProposed, isFalse);
+      final second = results.firstWhere((r) => r.decision!.number == '0002');
+      expect(second.decision!.isProposed, isTrue);
+    });
+
     test('no decisions.md yields an empty list, not an error', () async {
       final files = FakeFileAccess(
         folders: {

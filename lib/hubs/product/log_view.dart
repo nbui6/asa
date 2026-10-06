@@ -46,6 +46,7 @@ class LogView extends StatefulWidget {
     this.lastVisitPath,
     this.onWriteResult,
     this.onCreateDecision,
+    this.onRecordDecisionYes,
     super.key,
   });
 
@@ -119,6 +120,14 @@ class LogView extends StatefulWidget {
     ResultLink? link,
   })?
   onCreateDecision;
+
+  /// Delivery v2 A1 — asa-log-v2: "Yes or Changes right there, then the
+  /// next." Records the verdict with "No reason given." for whichever
+  /// shape [Decision.sourceFile] is, both now supported
+  /// (`appendVerdictAnyShape`). Null falls back to opening the detail
+  /// screen instead, this card's own older behaviour, for a caller (or
+  /// test) not wired for it.
+  final Future<void> Function(Decision decision)? onRecordDecisionYes;
 
   @override
   State<LogView> createState() => _LogViewState();
@@ -543,10 +552,20 @@ class _LogViewState extends State<LogView> {
       widget.onDataChanged?.call();
       return;
     }
-    // A proposed decision's own Yes belongs on its detail screen, where
-    // the reason box lives — opening it is the honest action here, not
-    // guessing an accept with no reason recorded.
-    await _openItem(item);
+    final onRecordDecisionYes = widget.onRecordDecisionYes;
+    final decision = (item as _NeedsYourYesDecision).result.decision!;
+    if (onRecordDecisionYes == null) {
+      // Not wired — the older behaviour, opening the detail screen rather
+      // than guessing an accept with no reason recorded.
+      await _openItem(item);
+      return;
+    }
+    await onRecordDecisionYes(decision);
+    // Delivery v2 A1 — "then the next": once this item is no longer
+    // proposed, `_waiting` itself is one shorter and whatever was next
+    // shifts into this same index — no manual advance needed, the same
+    // way a round's own Yes above already works.
+    widget.onDataChanged?.call();
   }
 
   Future<void> _openItem(_NeedsYourYesItem item) async {

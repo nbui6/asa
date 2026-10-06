@@ -98,10 +98,15 @@ class DecisionLogSource implements DecisionSource {
     final path = '$projectFolder/decisions.md';
     final contents = await files.readFile(path);
 
-    // Every `## ` line starts a new decision. Text before the first one —
-    // the log's own title and intro — is not a decision and is dropped.
+    // Every `## ` line starts a new decision — except `## Your call`
+    // (Delivery v2 A1), `decision_writer.dart`'s own `appendVerdictInLog`
+    // inserts that one *inside* an existing entry, same shape a lone ADR
+    // file's `## Your call` already is; splitting on it too would read a
+    // recorded verdict back as a bogus decision of its own. Text before
+    // the first real heading — the log's own title and intro — is not a
+    // decision and is dropped.
     final headings = RegExp(
-      r'^##\s+\S.*$',
+      r'^##\s+(?!Your call\s*$)\S.*$',
       multiLine: true,
     ).allMatches(contents).toList();
 

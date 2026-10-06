@@ -109,13 +109,19 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
     });
 
     try {
-      await appendVerdict(
+      await appendVerdictAnyShape(
         _decision.sourceFile,
+        decisionNumber: _decision.number,
+        decisionTitle: _decision.title,
         accepted: accepted,
         reason: _reasonController.text,
         date: DateTime.now(),
       );
-      final reread = await rereadDecision(_decision.sourceFile);
+      final reread = await rereadDecisionAnyShape(
+        _decision.sourceFile,
+        decisionNumber: _decision.number,
+        decisionTitle: _decision.title,
+      );
       if (!mounted) return;
       if (!reread.isSuccess) {
         setState(() {
@@ -209,18 +215,12 @@ class _DecisionDetailScreenState extends State<DecisionDetailScreen> {
           const SizedBox(height: AsaSpace.xl),
           if (decision.verdict != null)
             _recordedVerdict(decision.verdict!)
-          else if (decision.isProposed && canAppendVerdict(decision.sourceFile))
-            _yourCall()
           else if (decision.isProposed)
-            // A proposed decision from a shared decisions.md log — see
-            // canAppendVerdict's own reasoning. Read-only here; deciding
-            // it stays a hand edit, same as before this round.
-            const Text(
-              'Proposed. This project keeps its decisions in a shared '
-              'log, so recording a call here is not supported yet — '
-              'edit the file directly.',
-              style: TextStyle(color: AsaColors.ink3),
-            ),
+            // Delivery v2 A1 — both real shapes record a verdict here now:
+            // a lone ADR file through appendVerdict, a shared decisions.md
+            // log through appendVerdictInLog, one seam
+            // (appendVerdictAnyShape) deciding which.
+            _yourCall(),
           if (_error != null) ...[
             const SizedBox(height: AsaSpace.md),
             Text(_error!, style: const TextStyle(color: Colors.red)),

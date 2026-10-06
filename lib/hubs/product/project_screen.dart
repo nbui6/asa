@@ -39,6 +39,7 @@ import 'package:asa/core/charter.dart';
 import 'package:asa/core/charter_writer.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/decision_create_writer.dart';
+import 'package:asa/core/decision_writer.dart';
 import 'package:asa/core/decisions_reader.dart';
 import 'package:asa/core/git_state.dart';
 import 'package:asa/core/log_entries.dart';
@@ -702,7 +703,29 @@ class _ProjectScreenState extends State<ProjectScreen> {
       onRequestRoundChanges: _requestRoundChanges,
       onWriteResult: _writeLogResult,
       onCreateDecision: _writeLogDecision,
+      onRecordDecisionYes: _recordDecisionYes,
     );
+  }
+
+  /// Delivery v2 A1 — the Log's own Needs-your-yes card, Yes on a
+  /// decision: accepts with "No reason given." right there, both real
+  /// shapes, no detail screen involved.
+  Future<void> _recordDecisionYes(Decision decision) async {
+    try {
+      await appendVerdictAnyShape(
+        decision.sourceFile,
+        decisionNumber: decision.number,
+        decisionTitle: decision.title,
+        accepted: true,
+        reason: '',
+        date: DateTime.now(),
+        writeLogPath: widget.writeLogPath,
+      );
+    } on Object catch (e) {
+      _say('Could not save: $e');
+      return;
+    }
+    await _load();
   }
 
   /// The three round-call writer/reader functions, real `dart:io` behind

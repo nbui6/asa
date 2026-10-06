@@ -11,6 +11,7 @@ import 'package:asa/core/area.dart';
 import 'package:asa/core/decision.dart';
 import 'package:asa/core/log_entries.dart';
 import 'package:asa/core/round_approvals.dart';
+import 'package:asa/hubs/product/decision_detail_screen.dart';
 import 'package:asa/hubs/product/log_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,6 +78,7 @@ void main() {
       ResultLink? link,
     })?
     onCreateDecision,
+    Future<void> Function(Decision decision)? onRecordDecisionYes,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -97,6 +99,7 @@ void main() {
             lastVisitPath: lastVisitPath,
             onWriteResult: onWriteResult,
             onCreateDecision: onCreateDecision,
+            onRecordDecisionYes: onRecordDecisionYes,
           ),
         ),
       ),
@@ -255,13 +258,52 @@ void main() {
       },
     );
 
-    // A proposed decision's own Yes opens its detail screen rather than
-    // quick-approving (log_view.dart's own _recordYesFor comment) — so
-    // tapping Yes here should navigate, not call onApproveRound at all.
+    // A proposed decision's own Yes is never a round approval — with no
+    // onRecordDecisionYes wired here, it falls back to opening the detail
+    // screen (log_view.dart's own _recordYesFor), the card's older
+    // behaviour; either way, tapping it should never call onApproveRound.
     await tester.tap(find.text('Yes'));
     await tester.pumpAndSettle();
 
     expect(approvedNumber, isNull);
+  });
+
+  testWidgets('Delivery v2 A1 — Yes on a proposed decision calls '
+      'onRecordDecisionYes directly, never opening the detail screen', (
+    tester,
+  ) async {
+    Decision? recorded;
+    await pump(
+      tester,
+      decisions: [_decision(number: '0009', proposed: true)],
+      onRecordDecisionYes: (decision) async {
+        recorded = decision;
+      },
+    );
+
+    await tester.tap(find.text('Yes'));
+    await tester.pump();
+
+    expect(recorded?.number, '0009');
+    expect(find.byType(DecisionDetailScreen), findsNothing);
+  });
+
+  testWidgets('with onRecordDecisionYes wired, Changes… still opens the detail '
+      'screen as before', (tester) async {
+    var recordedCalls = 0;
+    await pump(
+      tester,
+      decisions: [_decision(number: '0009', proposed: true)],
+      onRecordDecisionYes: (decision) async {
+        recordedCalls++;
+      },
+    );
+
+    await tester.tap(find.text('Changes…'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DecisionDetailScreen), findsOneWidget);
+    expect(recordedCalls, 0);
   });
 
   testWidgets('switching to Decisions in force shows the other view', (
