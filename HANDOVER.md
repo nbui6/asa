@@ -1013,3 +1013,117 @@ Nico tests v1 as you handed it over (zip `asa-windows-ba0aac9`). **Don't rebuild
 ### From the deciding session, 2026-10-06 13:41 — sketch `asa-archive-v1` approved: Delivery v2 parts A and B can both start
 
 Nico: *"yes that´s looks good"*. Row added to `projects\asa\sketches\APPROVED.md`; ADR 0051 is fully accepted. Build A and B in one go, then carry on with what follows in `delivery-v2.md`. Delete = Windows Recycle Bin through the Shell API with undo; never a permanent delete; test it on a throwaway folder, never on a real project.
+
+### Delivery v2, item A — the v1 review's own five fixes, built 2026-10-06
+
+Told to read the 15:20 entry and act on it; found the two later entries above first and followed
+those instead — v1 stays exactly as handed over (`asa-windows-ba0aac9`, untouched), and the three
+2026-10-05 15:20 fixes landed here as Delivery v2 item A, plus the fourth Nico found himself (Yes on
+a decision) and the `compare.html` correction. All five built, tested, committed; `check.ps1` green
+end to end throughout (950 tests by the end of item B below). Four separate commits, one per piece,
+not one giant one.
+
+1. **The overview's status pill now reads the label, not the stored word** —
+   `Pill(statusLabel(project.status), …)` in `projects_view.dart`, matching `project_screen.dart`'s
+   own existing pattern. New test (`projects_view_test.dart`) checks every ADR 0017/0041 word reads
+   its label and the raw stored word never appears at all, not just the two words the original
+   screenshot happened to show.
+2. **The Log's own time column shows the day, never a blanket `00:00`** — `log_view.dart`'s
+   `_timeOrDayOf`/`_dayOf`: today's own entry (a real time, not midnight) shows `HH:mm`; everything
+   else — older, or a source that only ever carries a day (`.asa-log.md`'s own date, which parses as
+   exact midnight) — shows its day, `27 Sep`, sharing the same month-label code `_weekOf`'s own fold
+   line already used. Three new tests cover all three cases named in the 15:20 entry.
+3. **ADR 0050 — Strategy's empty places, one section at a time.** `Strategy.fileExists` tells
+   "`CHARTER.md` exists but a section is empty" apart from "no file at all" (`isEmpty` itself is
+   unchanged, still used by the Plan tab's own banner). `project_screen.dart` now always builds
+   `StrategyView` — the same lesson Round 36 cp8 already taught `PlanView` — which draws each section
+   independently: *Who it's for*/*Pain points* get the exact ＋ (fill) / ✎ (edit) / 🗑 (clear)
+   empty-place shape `PlanView`'s own Goal/Plan already use, reusing `area_section_writer.dart`'s
+   `setAreaSection`/`clearAreaSection` directly against `CHARTER.md` (now takes an optional
+   `fieldPrefix` so the write log reads `charter-…`, not `area-…`) rather than a second writer. An
+   empty *Objectives* section's own ＋ writes only the minimal structural wrapper a real objective
+   needs to parse, `1. **<typed text>**` — never invented prose. No `CHARTER.md` at all: the one line
+   and the one ＋ that creates it (`charter_writer.dart`'s `createCharterFile`, four empty headings,
+   refuses on an existing file).
+4. **Yes on a proposed decision now records the verdict right there** — Nico's own find, not in the
+   original three: the Log's Needs-your-yes card's Yes used to always open the decision's detail
+   screen, and that screen refused outright for a project keeping decisions in one shared
+   `decisions.md` log ("not supported yet") — exactly what he hit in Data Retention. Fixed with one
+   seam, `appendVerdictAnyShape`, dispatching to the existing `appendVerdict` (a lone ADR file) or the
+   new `appendVerdictInLog` (a shared log, inserting `## Your call` inside the right entry's own span
+   — before its closing `---` or the next `## ` heading — found by number first, falling back to an
+   exact title match). **A real bug this surfaced immediately and not by guessing:** `decisions_reader.dart`'s
+   own `DecisionLogSource` treated *any* `## ` line as a new decision, so the freshly written
+   `## Your call` parsed back as a bogus third entry of its own — fixed by excluding that one reserved
+   heading from the split, with a dedicated regression test at the reader level, not only through the
+   writer's own round-trip. `DecisionDetailScreen`'s own Accept/Reject now go through the same seam, so
+   Changes… works for both shapes too — the old refusal text is gone because it no longer applies.
+5. **`screenshots\v1\compare.html` corrected, not just the app** — the overview and Log rows had been
+   ticked ✓ on layout alone while the words/time still carried the bugs above; re-screenshotted for
+   real (a genuine bug in my own first attempt at the screenshot test, found and fixed: the
+   `RepaintBoundary` wrapped only the first route, so a pushed `ProjectScreen` kept rendering the
+   frozen overview underneath it — moving the boundary to wrap the whole `MaterialApp`, Navigator
+   included, fixed it), both now show the real, correct text. A new paragraph on the page names this
+   second look honestly, rather than quietly amending the old ✓ out of sight.
+
+Commits: `ff0b81a` (item 1 above, overview pill), `5d5ba2c` (item 2, Log day/time), `874735e`
+(item 3, ADR 0050), `1dcc840` (ARCHITECTURE.md/CLAUDE.md/the Stop hook repointed to this file),
+`7eef338` (the deciding session's own three pending entries, committed on her behalf), `a3d2a39`
+(item 4, Yes on a decision), `92ee827` (ARCHITECTURE.md for item 4). Item 5 (`compare.html`) touches
+only `projects\asa\`, outside this repository — never committed here, per rule 17.
+
+### Delivery v2, item B — archive and delete a project (ADR 0051, sketch `asa-archive-v1`), 2026-10-06
+
+Built the same session as item A, once the sketch's approval (13:41 entry above) cleared it to start.
+
+- **`archiveProject`/`restoreProject`** (`archive_writer.dart`) move a project's own folder — and
+  every project whose own `parent:` field names it, transitively, since a sub-project is never nested
+  inside its parent's folder on disk, only linked by that field — to/from `projects\_archive\`,
+  unchanged, refusing outright on any name collision. **`deleteProject`** sends the same whole subtree
+  to the **Windows Recycle Bin**, never a permanent delete, via `recycle_bin.dart` shelling out to
+  PowerShell's own `Microsoft.VisualBasic.FileIO.FileSystem` — no Flutter plugin, and no new pub
+  dependency either, since this machine cannot build either without Developer Mode (`open_url.dart`'s
+  own header already gives the reasoning, reused rather than re-derived). `project_tree.dart` gained
+  one shared `findInForest` lookup — "locate this project, with its own subtree already resolved" —
+  used by archive, delete and restore alike rather than three copies of the same tree-walk.
+- **Two places only, exactly as decided:** the bottom of a project's own Details tab (🗄 Archive, no
+  question — "it just goes"; 🗑 Delete, one confirmation naming the folder, its real file count, its
+  sub-projects by name, and — only when a repo is actually set — that it is not touched), and the
+  overview's own folded list (the same two icons on every on-hold/done/canceled row, sharing the exact
+  same confirmation dialog — pulled out into `delete_project_dialog.dart` once building the second
+  location made the duplication obvious). Popping back from an archive/delete reloads the overview for
+  real, never just a repaint, since the project it was showing may no longer be at that folder at all.
+- **The overview's "Archived N" / "show ›"** gets a fourth bucket right alongside On hold/Done/
+  Canceled, each row reading "archived \<day\> · was \<old status\>" with ↩ to bring it straight back —
+  the folder's own real modified time stands in for "when," since archiving touches no file to record
+  it anywhere (ADR 0051 point 6 — no new "Archived" status word, on purpose).
+- **`projects\_archive\` needed no scanner change at all** — `scanProjects` already skips any folder
+  starting with `_` (the same rule that already protected `_to_delete`), so it, and `asa-brief` which
+  reuses the identical scan, already never read it. ADR 0051 point 5 ("the AI never reads
+  `projects\_archive\`") was therefore already true the moment the folder existed, not something built
+  today.
+- **Delete's own real send verified once, by hand, exactly as asked** ("test it on a throwaway folder,
+  never on a real project"): a throwaway `flutter test` file sent a genuine temp folder through
+  `sendToRecycleBin`, confirmed gone from its original path, then confirmed **sitting in the real
+  Windows Recycle Bin** via the Shell COM API's own listing (`Shell.Application`'s `Namespace(10)`) —
+  not just "the folder is gone," which a permanent delete would also produce. Deleted immediately
+  after; never committed, never run against anything but that one throwaway folder. The permanent
+  suite (`recycle_bin_test.dart`) checks only the PowerShell command string itself (escaping, the
+  right `.FileIO` member for a file vs. a folder) — running the real send on every `flutter test`
+  would populate whatever machine runs the suite's own real Recycle Bin forever after, the same "never
+  touch real state in an automated test" rule Gate 2 already holds everywhere else.
+- **One real violation of rule 16 caught and fixed along the way, not silently worked around:**
+  `recycle_bin_test.dart`'s own first draft used a test path containing the literal word this repo's
+  `no_personal_name_test.dart` bans — reworded to the same generic `test` placeholder every other
+  fixture in this repo already uses, not loosened the check.
+
+`check.ps1` green end to end (950 tests, both integration test files, skills/manual in sync). Commit
+`d9c8980`.
+
+**Delivery v2 Progress: A and B both ticked.** C ("what Nico finds testing v1") has nothing added to
+act on yet — "as it comes in," and nothing has. D (the build made visible) and E (Round 44) both wait
+on their own sketch and Nico's yes, named in `delivery-v2.md` itself, not a guess made here. Per the
+delivery's own rule — ask only once nothing else is left — this is that point: **nothing in C, D or E
+is buildable right now without Nico.** The whole-delivery check and the one handover (`delivery-v2.md`'s
+own last two rows) wait for all five of A–E, not just these two — not done, named rather than
+silently skipped.
