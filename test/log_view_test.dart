@@ -135,6 +135,81 @@ void main() {
     expect(find.text('CHARTER.md'), findsOneWidget);
   });
 
+  // The deciding session, 2026-10-05 15:20 — asa-log-v2: today's own
+  // entries show the time, older ones show the day, and a day-only source
+  // (no time recorded) never reads as midnight.
+  group('the time column (asa-log-v2)', () {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    String dayLabel(DateTime date) => '${date.day} ${months[date.month - 1]}';
+
+    testWidgets("today's own entry with a real time shows the time", (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      await pump(
+        tester,
+        entries: [
+          LogEntry(
+            type: LogEntryType.aiWorked,
+            date: DateTime(now.year, now.month, now.day, 14, 26),
+            title: 'did the thing',
+            detail: 'did the thing',
+          ),
+        ],
+      );
+      expect(find.text('14:26'), findsOneWidget);
+    });
+
+    testWidgets('an older entry shows its day, never its time', (tester) async {
+      await pump(
+        tester,
+        entries: [
+          LogEntry(
+            type: LogEntryType.aiWorked,
+            date: DateTime(2026, 9, 27, 14, 5),
+            title: 'did the thing',
+            detail: 'did the thing',
+          ),
+        ],
+      );
+      expect(find.text('27 Sep'), findsOneWidget);
+      expect(find.text('14:05'), findsNothing);
+    });
+
+    testWidgets('an entry with no recorded time shows its day, never 00:00', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      await pump(
+        tester,
+        entries: [
+          LogEntry(
+            type: LogEntryType.aiWorked,
+            date: today,
+            title: 'did the thing',
+            detail: 'did the thing',
+          ),
+        ],
+      );
+      expect(find.text('00:00'), findsNothing);
+      expect(find.text(dayLabel(today)), findsOneWidget);
+    });
+  });
+
   testWidgets('the needs-your-yes card shows one item and cycles with next', (
     tester,
   ) async {

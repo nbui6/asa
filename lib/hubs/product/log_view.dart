@@ -631,21 +631,7 @@ class _LogViewState extends State<LogView> {
   String _weekOf(DateTime date) {
     final mondayOffset = date.weekday - DateTime.monday;
     final monday = date.subtract(Duration(days: mondayOffset));
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${monday.day} ${months[monday.month - 1]}';
+    return _dayOf(monday);
   }
 
   Widget _logRow(LogEntry entry) {
@@ -671,8 +657,13 @@ class _LogViewState extends State<LogView> {
               child: Row(
                 children: [
                   SizedBox(
-                    width: 44,
-                    child: Text(_timeOf(entry.date), style: AsaText.meta),
+                    width: 52,
+                    child: Text(
+                      _timeOrDayOf(entry.date),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AsaText.meta,
+                    ),
                   ),
                   const SizedBox(width: AsaSpace.sm),
                   Pill(
@@ -733,9 +724,41 @@ class _LogViewState extends State<LogView> {
     );
   }
 
+  /// The deciding session, 2026-10-05 15:20: today's own entries show the
+  /// time; older ones show the day, never a bare `00:00` — a source that
+  /// only ever carries a day (`.asa-log.md`'s own date, with no time)
+  /// parses as exact midnight, so "no time recorded" and "today, midnight
+  /// sharp" are indistinguishable on purpose, and both read as the day.
+  String _timeOrDayOf(DateTime date) {
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+    final hasTime = date.hour != 0 || date.minute != 0;
+    if (isToday && hasTime) return _timeOf(date);
+    return _dayOf(date);
+  }
+
   String _timeOf(DateTime date) {
     return '${date.hour.toString().padLeft(2, '0')}:'
         '${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _dayOf(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
   }
 
   String _typeLabel(LogEntryType type) => switch (type) {
