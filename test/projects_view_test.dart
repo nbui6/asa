@@ -80,7 +80,7 @@ void main() {
     },
   );
 
-  testWidgets('an unrecognized status word still renders, neutral emphasis', (
+  testWidgets('an unrecognized status word still renders, title-cased', (
     tester,
   ) async {
     final node = ProjectNode(
@@ -91,26 +91,38 @@ void main() {
     await _pump(tester, [node]);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('archived'), findsOneWidget);
+    expect(find.text('Archived'), findsOneWidget);
   });
 
-  testWidgets('every ADR 0017 word renders without throwing', (tester) async {
-    for (final status in [
-      'idea',
-      'discovery-done',
-      'building',
-      'shipped',
-      'ongoing',
-      'paused',
-      'dropped',
-    ]) {
+  // The deciding session, 2026-10-05 15:20 — the overview row showed the
+  // stored word (`building`, `idea`), not ADR 0041's label (`In progress`,
+  // `Idea`). Every stored word, old (ADR 0017) and current (ADR 0041), must
+  // render as its label — and the raw stored word must never appear.
+  testWidgets('the row never shows a stored status word, only its label', (
+    tester,
+  ) async {
+    const storedToLabel = {
+      'idea': 'Idea',
+      'discovery-done': 'Discovery done',
+      'building': 'In progress',
+      'in-progress': 'In progress',
+      'ongoing': 'Ongoing',
+      'paused': 'On hold',
+      'on-hold': 'On hold',
+      'shipped': 'Done',
+      'done': 'Done',
+      'dropped': 'Canceled',
+      'canceled': 'Canceled',
+    };
+    for (final entry in storedToLabel.entries) {
       final node = ProjectNode(
-        project: _project(status: status),
+        project: _project(status: entry.key),
         folder: 'demo',
       );
       await _pump(tester, [node]);
-      expect(tester.takeException(), isNull, reason: status);
-      expect(find.text(status), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: entry.key);
+      expect(find.text(entry.value), findsOneWidget, reason: entry.key);
+      expect(find.text(entry.key), findsNothing, reason: entry.key);
     }
   });
 

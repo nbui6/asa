@@ -522,7 +522,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                           _deadlineLabel(deadline, overdue),
                           const SizedBox(width: AsaSpace.xs),
                         ],
-                        Pill(project.status, meaning: meaning),
+                        Pill(statusLabel(project.status), meaning: meaning),
                         const SizedBox(width: AsaSpace.xs),
                         StartMenu(
                           projectName: project.name,
